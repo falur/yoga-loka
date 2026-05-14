@@ -14,3 +14,5 @@
 Для generic-контейнеров используйте именованные DTO/value object, enum, коллекции, `list<T>` или `array<int|string, T>`, где `T` не является массивом, shape или tuple.
 
 Локальная проверка: `composer phpstan`.
+
+Все PHP-файлы, анализируемые PHPStan, должны начинаться с `declare(strict_types=1)`.

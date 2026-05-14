@@ -18,3 +18,7 @@ services:
         class: Tools\PHPStan\Rules\TypeContractRule
         tags:
             - phpstan.rules.rule
+    -
+        class: Tools\PHPStan\Rules\RequireStrictTypesRule
+        tags:
+            - phpstan.rules.rule

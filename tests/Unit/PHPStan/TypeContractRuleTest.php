@@ -8,9 +8,9 @@ use PHPStan\PhpDoc\TypeNodeResolver;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
 use PHPStan\Type\FileTypeMapper;
-use Tools\PHPStan\PhpDocContractTypeCollector;
 use Tools\PHPStan\Rules\TypeContractRule;
-use Tools\PHPStan\TypeContractInspector;
+use Tools\PHPStan\TypeContracts\PhpDocContractTypeCollector;
+use Tools\PHPStan\TypeContracts\TypeContractInspector;
 
 /**
  * @extends RuleTestCase<TypeContractRule>

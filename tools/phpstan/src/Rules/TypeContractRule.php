@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tools\PHPStan\Rules;
 
-use Tools\PHPStan\PhpDocContractTypeCollector;
-use Tools\PHPStan\TypeContractInspector;
-use Tools\PHPStan\TypeContractViolation;
+use Tools\PHPStan\TypeContracts\PhpDocContractTypeCollector;
+use Tools\PHPStan\TypeContracts\TypeContractInspector;
+use Tools\PHPStan\TypeContracts\TypeContractViolation;
 use PhpParser\Comment\Doc;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;

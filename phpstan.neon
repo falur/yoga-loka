@@ -11,9 +11,9 @@ parameters:
 
 services:
     -
-        class: Tools\PHPStan\TypeContractInspector
+        class: Tools\PHPStan\TypeContracts\TypeContractInspector
     -
-        class: Tools\PHPStan\PhpDocContractTypeCollector
+        class: Tools\PHPStan\TypeContracts\PhpDocContractTypeCollector
     -
         class: Tools\PHPStan\Rules\TypeContractRule
         tags:

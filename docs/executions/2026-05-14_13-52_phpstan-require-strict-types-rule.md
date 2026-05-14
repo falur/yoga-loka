@@ -11,11 +11,13 @@ status: done
 | # | Шаг | Файлы | Тесты | Статус |
 |---|-----|-------|-------|--------|
 | 1 | Добавить правило strict_types и тесты | `tools/phpstan/src/Rules/RequireStrictTypesRule.php`, `phpstan.neon`, `tests/Unit/PHPStan/RequireStrictTypesRuleTest.php`, `tests/Unit/PHPStan/Fixtures/StrictTypesValid.php`, `tests/Unit/PHPStan/Fixtures/*.fixture`, `docs/rules.md` | `composer test -- --filter RequireStrictTypesRuleTest`; `composer phpstan`; `composer test -- --filter PhpStan`; `rg -n "RequireStrictTypesRule\|phpstan.rules.rule" phpstan.neon`; `rg -n "app/src\|app/config\|tools/phpstan/src\|tests" tools/phpstan/src/Rules/RequireStrictTypesRule.php` | done |
+| 2 | Уточнить структуру PHPStan tooling | `tools/phpstan/src/TypeContracts/*`, `tools/phpstan/src/Rules/TypeContractRule.php`, `tests/Unit/PHPStan/TypeContractRuleTest.php`, `phpstan.neon` | `composer phpstan`; `composer test -- --filter PhpStan`; `vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no` | done |
 
 ## Заметки
 
 - `processNode()` оставлен с сигнатурой интерфейса `PhpParser\Node`; фактический `FileNode` задаётся через `@implements Rule<FileNode>` и `getNodeType()`.
 - Негативные fixtures сохранены с расширением `.fixture`, чтобы PHPStan `RuleTestCase` проверял содержимое, а php-cs-fixer не переписывал намеренно неверные `declare`.
+- Вспомогательные классы PHPDoc-контрактов перенесены из корня `Tools\PHPStan` в `Tools\PHPStan\TypeContracts`, чтобы корень `tools/phpstan/src` не смешивал правила и доменную поддержку правила.
 
 ## Изменения в docs
 
@@ -32,3 +34,11 @@ status: done
 | `rg -n "app/src\|app/config\|tools/phpstan/src\|tests" tools/phpstan/src/Rules/RequireStrictTypesRule.php` | OK: совпадений нет |
 | `vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no` | OK: files empty |
 | `composer test` | Exit code 0: 10 tests, 17 assertions, 1 existing risky test `Tests\Unit\DemoTest::testDemo` |
+
+### Повторная проверка после уточнения структуры, 2026-05-14 14:02
+
+| Команда | Результат |
+|---|---|
+| `composer phpstan` | OK: no errors |
+| `composer test -- --filter PhpStan` | OK: 9 tests, 15 assertions |
+| `vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no` | OK: files empty |

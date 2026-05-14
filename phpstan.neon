@@ -1,24 +1,10 @@
+includes:
+    - vendor/yoga-loka/phpstan-rules/extension.neon
+
 parameters:
     level: max
     paths:
         - app/src
-        - tools/phpstan/src
     phpVersion: 80506
     bootstrapFiles:
         - vendor/autoload.php
-    stubFiles:
-        - tools/phpstan/stubs/SpiralRoutesBootloader.stub
-
-services:
-    -
-        class: Tools\PHPStan\TypeContracts\TypeContractInspector
-    -
-        class: Tools\PHPStan\TypeContracts\PhpDocContractTypeCollector
-    -
-        class: Tools\PHPStan\Rules\TypeContractRule
-        tags:
-            - phpstan.rules.rule
-    -
-        class: Tools\PHPStan\Rules\RequireStrictTypesRule
-        tags:
-            - phpstan.rules.rule

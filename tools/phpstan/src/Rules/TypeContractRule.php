@@ -44,7 +44,7 @@ final class TypeContractRule implements Rule
      */
     public function processNode(Node $node, Scope $scope): array
     {
-        $errors = $this->inspectPhpDoc($node, $scope);
+        $errors = $this->inspectPhpDoc(node: $node, scope: $scope);
 
         if (!$node instanceof ClassMethod && !$node instanceof Function_ && !$node instanceof Closure && !$node instanceof ArrowFunction && !$node instanceof Property) {
             return $errors;
@@ -67,20 +67,20 @@ final class TypeContractRule implements Rule
             return [];
         }
 
-        $className = $this->resolveClassName($node, $scope);
+        $className = $this->resolveClassName(node: $node, scope: $scope);
         $traitReflection = $scope->getTraitReflection();
         $phpDoc = $this->fileTypeMapper->getResolvedPhpDoc(
-            $scope->getFile(),
-            $className,
-            $traitReflection?->getName(),
-            $scope->getFunctionName(),
-            $docComment->getText(),
+            fileName: $scope->getFile(),
+            className: $className,
+            traitName: $traitReflection?->getName(),
+            functionName: $scope->getFunctionName(),
+            docComment: $docComment->getText(),
         );
 
         $errors = [];
         foreach ($this->phpDocContractTypeCollector->collect($phpDoc) as $type) {
             foreach ($this->inspector->inspect($type) as $violation) {
-                $errors[] = $this->buildError($violation, $docComment->getStartLine());
+                $errors[] = $this->buildError(violation: $violation, line: $docComment->getStartLine());
             }
         }
 
@@ -115,7 +115,7 @@ final class TypeContractRule implements Rule
 
         foreach ($errors as $error) {
             $message = $error->getMessage();
-            if (\in_array($message, $seen, true)) {
+            if (\in_array(needle: $message, haystack: $seen, strict: true)) {
                 continue;
             }
 

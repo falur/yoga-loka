@@ -30,10 +30,10 @@
         "spiral/sentry-bridge": "^2.3"
     },
     "require-dev": {
-        "phpstan/phpstan": "2.1.54",
         "spiral/code-style": "^2.2",
         "spiral/testing": "^3.0",
-        "spiral/dumper": "^3.3.1"
+        "spiral/dumper": "^3.3.1",
+        "yoga-loka/phpstan-rules": "*"
     },
     "autoload": {
         "psr-4": {
@@ -42,10 +42,18 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tools\\PHPStan\\": "tools/phpstan/src",
             "Tests\\": "tests"
         }
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "tools/phpstan",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "extra": {
         "publish-cmd": "php app.php publish"
     },
@@ -66,8 +74,16 @@
         "rr:download": "rr get-binary",
         "rr:download-protoc": "rr download-protoc-binary",
         "cs:fix": "php-cs-fixer fix -v",
-        "phpstan": "phpstan analyse",
-        "test": "phpunit",
+        "phpstan": [
+            "phpstan analyse",
+            "@phpstan-rules:phpstan"
+        ],
+        "phpstan-rules:phpstan": "phpstan analyse -c tools/phpstan/phpstan.neon",
+        "phpstan-rules:test": "phpunit -c tools/phpstan/phpunit.xml",
+        "test": [
+            "phpunit",
+            "@phpstan-rules:test"
+        ],
         "test-coverage": "phpunit --coverage"
     },
     "minimum-stability": "dev",

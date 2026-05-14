@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\PHPStan;
+namespace Tools\PHPStan\Tests\Unit\PHPStan;
 
 use PHPStan\PhpDoc\TypeNodeResolver;
 use PHPStan\Rules\Rule;

@@ -38,17 +38,17 @@ final class ViewRenderer implements RendererInterface
         // If request accepts json, we will render as a json response
         $acceptItems = AcceptHeader::fromString($request->getHeaderLine('Accept'))->getAll();
         if ($acceptItems && $acceptItems[0]->getValue() === 'application/json') {
-            return $this->renderJson($code, $exception);
+            return $this->renderJson(code: $code, exception: $exception);
         }
 
-        return $this->renderView($code, $exception);
+        return $this->renderView(code: $code, exception: $exception);
     }
 
     private function renderJson(int $code, \Throwable $exception): ResponseInterface
     {
         $response = $this->responseFactory->createResponse($code);
 
-        $response = $response->withHeader('Content-Type', 'application/json; charset=UTF-8');
+        $response = $response->withHeader(name: 'Content-Type', value: 'application/json; charset=UTF-8');
 
         $payload = [
             'status' => $code,
@@ -70,7 +70,7 @@ final class ViewRenderer implements RendererInterface
 
         try {
             // Try to find view for specific exception code
-            $view = $this->views->get(\sprintf(self::VIEW_PATTERN, $code));
+            $view = $this->views->get(\sprintf(...[self::VIEW_PATTERN, $code]));
         } catch (ViewException) {
             // Fallback to default view in case if specific view not found
             $view = $this->views->get(self::DEFAULT_VIEW);

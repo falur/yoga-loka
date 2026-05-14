@@ -1,0 +1,29 @@
+{
+    "name": "yoga-loka/phpstan-rules",
+    "type": "library",
+    "license": "MIT",
+    "description": "Project PHPStan rules for Yoga Loka",
+    "require": {
+        "php": ">=8.5 <8.6",
+        "phpstan/phpstan": "^2.1.54"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tools\\PHPStan\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tools\\PHPStan\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "phpstan": "phpstan analyse",
+        "test": "phpunit"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

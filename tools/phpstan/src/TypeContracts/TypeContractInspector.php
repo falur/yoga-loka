@@ -22,7 +22,7 @@ final class TypeContractInspector
         $hasNestedArray = false;
         $hasArrayShape = false;
 
-        TypeTraverser::map($type, function (Type $current, callable $traverse) use (&$hasImplicitMixed, &$hasNestedArray, &$hasArrayShape): Type {
+        TypeTraverser::map(type: $type, cb: function (Type $current, callable $traverse) use (&$hasImplicitMixed, &$hasNestedArray, &$hasArrayShape): Type {
             if ($current instanceof MixedType && !$current instanceof TemplateType && !$current->isExplicitMixed()) {
                 $hasImplicitMixed = true;
             }
@@ -42,22 +42,22 @@ final class TypeContractInspector
 
         if ($hasImplicitMixed) {
             $violations[] = new TypeContractViolation(
-                TypeContractViolation::NO_IMPLICIT_MIXED_TYPE,
-                'Type contracts must specify generic types instead of relying on implicit mixed.',
+                identifier: TypeContractViolation::NO_IMPLICIT_MIXED_TYPE,
+                message: 'Type contracts must specify generic types instead of relying on implicit mixed.',
             );
         }
 
         if ($hasNestedArray) {
             $violations[] = new TypeContractViolation(
-                TypeContractViolation::NO_NESTED_ARRAY_TYPE,
-                'Type contracts must not contain nested arrays.',
+                identifier: TypeContractViolation::NO_NESTED_ARRAY_TYPE,
+                message: 'Type contracts must not contain nested arrays.',
             );
         }
 
         if ($hasArrayShape) {
             $violations[] = new TypeContractViolation(
-                TypeContractViolation::NO_ARRAY_SHAPE_TYPE,
-                'Type contracts must not contain array shapes or tuple types.',
+                identifier: TypeContractViolation::NO_ARRAY_SHAPE_TYPE,
+                message: 'Type contracts must not contain array shapes or tuple types.',
             );
         }
 
@@ -68,7 +68,7 @@ final class TypeContractInspector
     {
         $containsArray = false;
 
-        TypeTraverser::map($type, static function (Type $current, callable $traverse) use (&$containsArray): Type {
+        TypeTraverser::map(type: $type, cb: static function (Type $current, callable $traverse) use (&$containsArray): Type {
             if ($current instanceof ArrayType || $current instanceof ConstantArrayType) {
                 $containsArray = true;
             }

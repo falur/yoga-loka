@@ -39,7 +39,7 @@ final class LocaleSelector implements MiddlewareInterface
 
         try {
             foreach ($this->fetchLocales($request) as $locale) {
-                if ($locale !== '' && \in_array($locale, $this->availableLocales, true)) {
+                if ($locale !== '' && \in_array(needle: $locale, haystack: $this->availableLocales, strict: true)) {
                     $this->translator->setLocale($locale);
                     break;
                 }
@@ -58,10 +58,10 @@ final class LocaleSelector implements MiddlewareInterface
     public function fetchLocales(ServerRequestInterface $request): \Generator
     {
         $header = $request->getHeaderLine('accept-language');
-        foreach (\explode(',', $header) as $value) {
-            $pos = \strpos($value, ';');
+        foreach (\explode(separator: ',', string: $header) as $value) {
+            $pos = \strpos(haystack: $value, needle: ';');
             if ($pos !== false) {
-                yield \substr($value, 0, $pos);
+                yield \substr(string: $value, offset: 0, length: $pos);
             }
 
             yield $value;

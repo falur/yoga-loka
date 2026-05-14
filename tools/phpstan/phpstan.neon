@@ -1,0 +1,10 @@
+includes:
+    - extension.neon
+
+parameters:
+    level: max
+    paths:
+        - src
+    phpVersion: 80506
+    bootstrapFiles:
+        - bootstrap.php

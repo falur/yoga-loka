@@ -100,9 +100,9 @@ final class PhpDocContractTypeCollector
     {
         $typeNodeResolver = $this->typeNodeResolver;
         $resolve = \Closure::bind(
-            static fn(TypeAliasTag $aliasTag): Type => $typeNodeResolver->resolve($aliasTag->typeNode, $aliasTag->nameScope),
-            null,
-            TypeAliasTag::class,
+            closure: static fn(TypeAliasTag $aliasTag): Type => $typeNodeResolver->resolve(typeNode: $aliasTag->typeNode, nameScope: $aliasTag->nameScope),
+            newThis: null,
+            newScope: TypeAliasTag::class,
         );
 
         return $resolve($tag);

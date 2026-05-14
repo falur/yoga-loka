@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\PHPStan\Fixtures;
+namespace Tools\PHPStan\Tests\Unit\PHPStan\Fixtures;
 
 /**
  * @property array $items

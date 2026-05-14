@@ -1,0 +1,20 @@
+parameters:
+    level: max
+    paths:
+        - app/src
+        - tools/phpstan/src
+    phpVersion: 80506
+    bootstrapFiles:
+        - vendor/autoload.php
+    stubFiles:
+        - tools/phpstan/stubs/SpiralRoutesBootloader.stub
+
+services:
+    -
+        class: Tools\PHPStan\TypeContractInspector
+    -
+        class: Tools\PHPStan\PhpDocContractTypeCollector
+    -
+        class: Tools\PHPStan\Rules\TypeContractRule
+        tags:
+            - phpstan.rules.rule

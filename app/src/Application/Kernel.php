@@ -35,9 +35,6 @@ use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
 use Spiral\YiiErrorHandler\Bootloader\YiiErrorHandlerBootloader;
 
-/**
- * @psalm-suppress ClassMustBeFinal
- */
 class Kernel extends \Spiral\Framework\Kernel
 {
     #[\Override]

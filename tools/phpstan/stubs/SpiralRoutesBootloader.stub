@@ -1,0 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Spiral\Bootloader\Http;
+
+abstract class RoutesBootloader
+{
+    /**
+     * @return array<string,array<object|class-string<object>>>
+     */
+    abstract protected function middlewareGroups(): array;
+}

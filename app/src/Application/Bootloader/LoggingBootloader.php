@@ -6,7 +6,6 @@ namespace App\Application\Bootloader;
 
 use Monolog\Level;
 use Spiral\Boot\Bootloader\Bootloader;
-use Spiral\Config\ConfiguratorInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Spiral\Monolog\Bootloader\MonologBootloader;
 use Spiral\Monolog\Config\MonologConfig;
@@ -18,10 +17,6 @@ use Spiral\Monolog\Config\MonologConfig;
  */
 final class LoggingBootloader extends Bootloader
 {
-    public function __construct(
-        private readonly ConfiguratorInterface $config,
-    ) {}
-
     public function init(MonologBootloader $monolog): void
     {
         // HTTP level errors

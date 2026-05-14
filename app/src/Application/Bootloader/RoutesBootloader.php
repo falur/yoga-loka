@@ -48,7 +48,7 @@ final class RoutesBootloader extends BaseRoutesBootloader
                 CookiesMiddleware::class,
                 SessionMiddleware::class,
                 CsrfMiddleware::class,
-                ValidationHandlerMiddleware::class
+                ValidationHandlerMiddleware::class,
             ],
         ];
     }

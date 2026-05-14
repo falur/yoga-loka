@@ -18,7 +18,7 @@ use Temporal\Workflow\WorkflowMethod;
 class Ping
 {
     #[WorkflowMethod(name: 'ping')]
-    public function handle()
+    public function handle(): string
     {
         return 'pong';
     }

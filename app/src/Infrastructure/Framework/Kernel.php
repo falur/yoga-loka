@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application;
+namespace App\Infrastructure\Framework;
 
 use Spiral\Boot\Bootloader\CoreBootloader;
 use Spiral\Bootloader as Framework;
@@ -53,12 +53,12 @@ class Kernel extends \Spiral\Framework\Kernel
     public function defineBootloaders(): array
     {
         return [
-            // Logging and exceptions handling
+            // Логирование и обработка исключений
             MonologBootloader::class,
             YiiErrorHandlerBootloader::class,
             Bootloader\ExceptionHandlerBootloader::class,
 
-            // Application specific logs
+            // Логи приложения
             Bootloader\LoggingBootloader::class,
 
             // RoadRunner
@@ -67,15 +67,15 @@ class Kernel extends \Spiral\Framework\Kernel
             RoadRunnerBridge\HttpBootloader::class,
             RoadRunnerBridge\CacheBootloader::class,
 
-            // Core Services
+            // Базовые сервисы
             Framework\SnapshotsBootloader::class,
 
-            // Security and validation
+            // Безопасность и валидация
             Framework\Security\EncrypterBootloader::class,
             Framework\Security\FiltersBootloader::class,
             Framework\Security\GuardBootloader::class,
 
-            // HTTP extensions
+            // HTTP-расширения
             HttpBootloader::class,
             Framework\Http\RouterBootloader::class,
             Framework\Http\JsonPayloadsBootloader::class,
@@ -84,7 +84,7 @@ class Kernel extends \Spiral\Framework\Kernel
             Framework\Http\CsrfBootloader::class,
             Framework\Http\PaginationBootloader::class,
 
-            // Databases
+            // Базы данных
             CycleBridge\DatabaseBootloader::class,
             CycleBridge\MigrationsBootloader::class,
 
@@ -93,38 +93,38 @@ class Kernel extends \Spiral\Framework\Kernel
             CycleBridge\CycleOrmBootloader::class,
             CycleBridge\AnnotatedBootloader::class,
 
-            // Event Dispatcher
+            // Диспетчер событий
             EventsBootloader::class,
             EventBootloader::class,
 
-            // Scheduler
+            // Планировщик
             SchedulerBootloader::class,
 
-            // Sentry and Data collectors
+            // Sentry и сборщики данных
             SentryReporterBootloader::class,
             Framework\DebugBootloader::class,
             Framework\Debug\LogCollectorBootloader::class,
             Framework\Debug\HttpCollectorBootloader::class,
 
-            // Views
+            // Представления
             ViewsBootloader::class,
             TwigBootloader::class,
 
-            // Queue
+            // Очереди
             QueueBootloader::class,
 
-            // Cache
+            // Кэш
             CacheBootloader::class,
 
-            // Storage
+            // Хранилище файлов
             StorageBootloader::class,
             DistributionBootloader::class,
 
-            // Internationalization
+            // Интернационализация
             I18nBootloader::class,
             TranslatedCacheBootloader::class,
 
-            // Mailer
+            // Почта
             MailerBootloader::class,
 
             // Data Grid
@@ -143,7 +143,7 @@ class Kernel extends \Spiral\Framework\Kernel
 
             RoadRunnerBridge\MetricsBootloader::class,
 
-            // Console commands
+            // Консольные команды
             Framework\CommandBootloader::class,
             RoadRunnerBridge\CommandBootloader::class,
             CycleBridge\CommandBootloader::class,
@@ -151,10 +151,10 @@ class Kernel extends \Spiral\Framework\Kernel
             RoadRunnerBridge\ScaffolderBootloader::class,
             CycleBridge\ScaffolderBootloader::class,
 
-            // Fast code prototyping
+            // Быстрое прототипирование кода
             PrototypeBootloader::class,
 
-            // Configure route groups, middleware for route groups
+            // Группы маршрутов и middleware
             Bootloader\RoutesBootloader::class,
         ];
     }
@@ -163,7 +163,10 @@ class Kernel extends \Spiral\Framework\Kernel
     public function defineAppBootloaders(): array
     {
         return [
-            // Application domain
+            // DTO конфигурации приложения
+            Bootloader\ConfigBootloader::class,
+
+            // Доменный обработчик приложения
             Bootloader\AppBootloader::class,
         ];
     }

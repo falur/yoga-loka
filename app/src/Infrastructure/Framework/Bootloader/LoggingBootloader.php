@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Bootloader;
+namespace App\Infrastructure\Framework\Bootloader;
 
 use Monolog\Level;
 use Spiral\Boot\Bootloader\Bootloader;
@@ -11,7 +11,7 @@ use Spiral\Monolog\Bootloader\MonologBootloader;
 use Spiral\Monolog\Config\MonologConfig;
 
 /**
- * The bootloader is responsible for configuring the application specific loggers.
+ * Настраивает логгеры приложения.
  *
  * @link https://spiral.dev/docs/basics-logging
  */
@@ -19,7 +19,7 @@ final class LoggingBootloader extends Bootloader
 {
     public function init(MonologBootloader $monolog): void
     {
-        // HTTP level errors
+        // Ошибки HTTP-слоя
         $monolog->addHandler(
             channel: ErrorHandlerMiddleware::class,
             handler: $monolog->logRotate(
@@ -27,7 +27,7 @@ final class LoggingBootloader extends Bootloader
             ),
         );
 
-        // app level errors
+        // Ошибки приложения
         $monolog->addHandler(
             channel: MonologConfig::DEFAULT_CHANNEL,
             handler: $monolog->logRotate(
@@ -38,7 +38,7 @@ final class LoggingBootloader extends Bootloader
             ),
         );
 
-        // debug and info messages via global LoggerInterface
+        // Debug- и info-сообщения через глобальный LoggerInterface
         $monolog->addHandler(
             channel: MonologConfig::DEFAULT_CHANNEL,
             handler: $monolog->logRotate(

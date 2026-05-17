@@ -9,7 +9,7 @@ use Temporal\Workflow\WorkflowInterface;
 use Temporal\Workflow\WorkflowMethod;
 
 /**
- * This is a simple ping workflow that does nothing.
+ * Простой ping workflow для проверки Temporal.
  *
  * @link https://docs.temporal.io/develop/php/
  */

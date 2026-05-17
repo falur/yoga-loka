@@ -6,9 +6,9 @@ namespace Tools\PHPStan\TypeContracts;
 
 final class TypeContractViolation
 {
-    public const NO_IMPLICIT_MIXED_TYPE = 'project.noImplicitMixedType';
-    public const NO_NESTED_ARRAY_TYPE = 'project.noNestedArrayType';
-    public const NO_ARRAY_SHAPE_TYPE = 'project.noArrayShapeType';
+    public const string NO_IMPLICIT_MIXED_TYPE = 'project.noImplicitMixedType';
+    public const string NO_NESTED_ARRAY_TYPE = 'project.noNestedArrayType';
+    public const string NO_ARRAY_SHAPE_TYPE = 'project.noArrayShapeType';
 
     public function __construct(
         private readonly string $identifier,

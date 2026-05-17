@@ -18,8 +18,8 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 final class RequireStrictTypesRule implements Rule
 {
-    private const ERROR_MESSAGE = 'Every analysed PHP file must start with declare(strict_types=1).';
-    private const ERROR_IDENTIFIER = 'project.missingStrictTypes';
+    private const string ERROR_MESSAGE = 'Every analysed PHP file must start with declare(strict_types=1).';
+    private const string ERROR_IDENTIFIER = 'project.missingStrictTypes';
 
     public function getNodeType(): string
     {

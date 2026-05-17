@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Bootloader;
+namespace App\Infrastructure\Framework\Bootloader;
 
-use App\Endpoint\Web\Middleware\LocaleSelector;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Spiral\Boot\Bootloader\BootloaderInterface;
+use Spiral\Boot\Bootloader\DependedInterface;
 use Spiral\Bootloader\Http\RoutesBootloader as BaseRoutesBootloader;
 use Spiral\Cookies\Middleware\CookiesMiddleware;
 use Spiral\Csrf\Middleware\CsrfMiddleware;
@@ -20,19 +19,18 @@ use Spiral\Router\Loader\Configurator\RoutingConfigurator;
 use Spiral\Session\Middleware\SessionMiddleware;
 
 /**
- * A bootloader that configures the application's routes and middleware.
+ * Настраивает маршруты и middleware приложения.
  *
  * @link https://spiral.dev/docs/http-routing
  */
 final class RoutesBootloader extends BaseRoutesBootloader
 {
-    protected const DEPENDENCIES = [AnnotatedRoutesBootloader::class];
+    protected const array DEPENDENCIES = [AnnotatedRoutesBootloader::class];
 
     #[\Override]
     protected function globalMiddleware(): array
     {
         return [
-            LocaleSelector::class,
             ErrorHandlerMiddleware::class,
             DumperMiddleware::class,
             JsonPayloadMiddleware::class,
@@ -56,11 +54,11 @@ final class RoutesBootloader extends BaseRoutesBootloader
     #[\Override]
     protected function defineRoutes(RoutingConfigurator $routes): void
     {
-        // Fallback route if no other route matched
-        // Will show 404 page
+        // Запасной маршрут на случай, если другие маршруты не подошли.
+        // Можно использовать для явной 404-страницы.
         // $routes->default('/<path:.*>')
         //    ->callable(function (ServerRequestInterface $r, ResponseInterface $response) {
-        //        return $response->withStatus(404)->withBody('Not found');
+        //        return $response->withStatus(404)->withBody('Не найдено');
         //    });
     }
 }

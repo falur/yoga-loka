@@ -18,8 +18,8 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 final class RequireNamedArgumentsRule implements Rule
 {
-    private const ERROR_MESSAGE = 'Calls with two or more ordinary arguments must use named arguments.';
-    private const ERROR_IDENTIFIER = 'project.namedArgumentsRequired';
+    private const string ERROR_MESSAGE = 'Calls with two or more ordinary arguments must use named arguments.';
+    private const string ERROR_IDENTIFIER = 'project.namedArgumentsRequired';
 
     private ?string $currentFile = null;
 

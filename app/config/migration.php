@@ -5,23 +5,23 @@ declare(strict_types=1);
 use Spiral\Boot\Environment\AppEnvironment;
 
 /**
- * Migrations configuration.
+ * Конфигурация миграций.
  *
  * @link https://spiral.dev/docs/basics-orm#migrations
  */
 return [
     /**
-     * Directory to store migration files
+     * Директория для файлов миграций.
      */
     'directory' => directory('app') . 'database/migrations/',
 
     /**
-     * Table name to store information about migrations status (per database)
+     * Таблица для хранения статуса миграций по базам данных.
      */
     'table' => 'migrations',
 
     /**
-     * When set to true no confirmation will be requested on migration run.
+     * Если true, миграции запускаются без интерактивного подтверждения.
      */
     'safe' => env('SAFE_MIGRATIONS', spiral(AppEnvironment::class)->isProduction()),
 ];

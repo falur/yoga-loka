@@ -5,20 +5,20 @@ declare(strict_types=1);
 use Spiral\Scaffolder\Declaration;
 
 /**
- * Scaffolder configuration.
+ * Конфигурация генератора кода.
  * @link https://spiral.dev/docs/basics-scaffolding
  * @see \Spiral\Scaffolder\Config\ScaffolderConfig
  */
 return [
-    // Default namespace for all declarations
+    // Базовый namespace для всех деклараций.
     'namespace' => 'App',
 
     'declarations' => [
         Declaration\BootloaderDeclaration::TYPE => [
-            'namespace' => 'Application\\Bootloader',
+            'namespace' => 'Infrastructure\\Framework\\Bootloader',
         ],
         Declaration\ConfigDeclaration::TYPE => [
-            'namespace' => 'Application\\Config',
+            'namespace' => 'Infrastructure\\Configuration',
         ],
         Declaration\ControllerDeclaration::TYPE => [
             'namespace' => 'Endpoint\\Web',

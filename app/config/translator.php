@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Translator component configuration.
+ * Конфигурация переводчика.
  *
  * @link https://spiral.dev/docs/advanced-i18n#configuration
  */

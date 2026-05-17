@@ -4,24 +4,22 @@ declare(strict_types=1);
 
 
 /**
- * Configuration for Cycle ORM.
+ * Конфигурация Cycle ORM.
  *
  * @link https://spiral.dev/docs/basics-orm#orm
  */
 return [
     'schema' => [
         /**
-         * true (Default) - Schema will be stored in a cache after compilation.
-         * It won't be changed after entity modification. Use `php app.php cycle` to update schema.
+         * true - схема будет сохранена в кэше после компиляции.
+         * После изменения entity обновите схему командой `php app.php cycle`.
          *
-         * false - Schema won't be stored in a cache after compilation.
-         * It will be automatically changed after entity modification. (Development mode)
+         * false - схема не будет кэшироваться и будет обновляться автоматически в режиме разработки.
          */
         'cache' => env('CYCLE_SCHEMA_CACHE', true),
 
         /**
-         * The CycleORM provides the ability to manage default settings for
-         * every schema with not defined segments
+         * Настройки по умолчанию для сегментов схемы, которые не были заданы явно.
          */
         'defaults' => [
             // SchemaInterface::MAPPER => \Cycle\ORM\Mapper\Mapper::class,
@@ -38,8 +36,8 @@ return [
         ],
 
         /**
-         * Schema generators (Optional)
-         * null (default) - Will be used schema generators defined in bootloaders
+         * Генераторы схемы.
+         * null - использовать генераторы, заданные bootloader-ами.
          */
         'generators' => null,
 
@@ -61,7 +59,7 @@ return [
     'warmup' => env('RR_MODE') === null ? false : env('CYCLE_SCHEMA_WARMUP', false),
 
     /**
-     * Custom relation types for entities
+     * Пользовательские типы связей для entity.
      */
     'customRelations' => [
         // \Cycle\ORM\Relation::EMBEDDED => [

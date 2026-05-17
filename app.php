@@ -2,23 +2,21 @@
 
 declare(strict_types=1);
 
-use App\Application\Kernel;
+use App\Infrastructure\Framework\Kernel;
 use Spiral\Core\Container;
 use Spiral\Core\Options;
 
-// If you forgot to configure some of this in your php.ini file,
-// then don't worry, we will set the standard environment
-// settings for you.
+// Базовые настройки окружения для локального запуска.
 
 \mb_internal_encoding('UTF-8');
 \error_reporting(E_ALL ^ E_DEPRECATED);
 \ini_set('display_errors', 'stderr');
 
-// Register Composer's auto loader.
+// Регистрируем автозагрузчик Composer.
 require __DIR__ . '/vendor/autoload.php';
 
 
-// Initialize shared container, bindings, directories and etc.
+// Инициализируем общий контейнер, биндинги и директории.
 $options = new Options();
 $options->allowSingletonsRebinding = false;
 $options->validateArguments = false;

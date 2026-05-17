@@ -10,18 +10,18 @@ use Spiral\RoadRunner\Jobs\Queue\SQSCreateInfo;
 use Spiral\RoadRunnerBridge\Queue\Queue;
 
 /**
- * Queue configuration
+ * Конфигурация очередей.
  *
  * @link https://spiral.dev/docs/queue-configuration and https://spiral.dev/docs/queue-roadrunner
  */
 return [
     /**
-     *  Default queue connection name
+     * Подключение очереди по умолчанию.
      */
     'default' => env('QUEUE_CONNECTION', 'in-memory'),
 
     /**
-     *  Aliases for queue connections, if you want to use domain specific queues
+     * Алиасы подключений для предметных очередей.
      */
     'aliases' => [
         // 'mail-queue' => 'in-memory',
@@ -29,14 +29,14 @@ return [
     ],
 
     /**
-     * Queue connections
-     * Drivers: "sync", "roadrunner"
+     * Подключения очередей.
+     * Драйверы: "sync", "roadrunner".
      *
      * @link https://spiral.dev/docs/queue-configuration
      */
     'connections' => [
         'sync' => [
-            // Job will be handled immediately without queueing
+            // Задача будет выполнена сразу, без постановки в очередь.
             'driver' => 'sync',
         ],
         'in-memory' => [
@@ -46,23 +46,23 @@ return [
     ],
 
     /**
-     * You can create dynamic pipelines for RoadRunner.
+     * Динамические конвейеры для RoadRunner.
      *
      * @link https://spiral.dev/docs/queue-roadrunner#declaring-pipelines-in-configuration-file
-     * Here is a list of all available queue {@link https://roadrunner.dev/docs/queues-overview#creating-a-new-queue}
+     * Список доступных очередей: {@link https://roadrunner.dev/docs/queues-overview#creating-a-new-queue}
      */
     'pipelines' => [
         'memory' => [
             'connector' => new MemoryCreateInfo('local'),
-            // Run consumer for this pipeline on startup (by default)
-            // You can pause consumer for this pipeline via console command
+            // Запускаем обработчик этого конвейера при старте.
+            // Обработчик можно поставить на паузу консольной командой.
             // php app.php queue:pause local
             'consume' => true,
         ],
         // 'amqp' => [
         //     'connector' => new AMQPCreateInfo('bus', ...),
-        //     // Don't consume jobs for this pipeline on start
-        //     // You can run consumer for this pipeline via console command
+        //     // Не запускаем обработчик этого конвейера при старте.
+        //     // Обработчик можно запустить консольной командой.
         //     // php app.php queue:resume local
         //     'consume' => false
         // ],
@@ -77,7 +77,7 @@ return [
     ],
 
     /**
-     * A serializer uses for converting job's payload from specified type to string and vice versa.
+     * Сериализатор для преобразования payload задачи в строку и обратно.
      *
      * @link https://spiral.dev/docs/queue-jobs/#job-payload-serialization
      */
@@ -85,8 +85,8 @@ return [
 
     'registry' => [
         /**
-         * Mapping of job names to job handlers for consumer. When a consumer receives a job, it will look for a
-         * handler in this mapping.
+         * Соответствие имён задач и обработчиков.
+         * Когда обработчик очереди получает задачу, он ищет обработчик задачи здесь.
          *
          * (QueueInterface)->push('ping', ["url" => "http://site.com"]);
          *
@@ -97,9 +97,8 @@ return [
         ],
 
         /**
-         * Mapping of job names to serializers. When a job is pushed to the queue, it will be serialized using the
-         * serializer specified in this mapping and then deserialized using the same serializer when the job is
-         * handled.
+         * Соответствие имён задач и сериализаторов.
+         * При постановке задачи используется указанный сериализатор, при обработке он же используется для десериализации.
          *
          * @link https://spiral.dev/docs/queue-jobs#changing-serializer
          */
@@ -110,9 +109,7 @@ return [
     ],
 
     /**
-     * Spiral provides a way for developers to customize the behavior of their job processing pipeline through the use
-     * of interceptors. An interceptor is a piece of code that is executed before or after a job is pushed or consumed,
-     * and which allows developers to hook into the job processing pipeline to perform some action.
+     * Interceptor позволяет подключиться к обработке задач до или после постановки и выполнения.
      *
      * @link https://spiral.dev/docs/queue-interceptors
      */

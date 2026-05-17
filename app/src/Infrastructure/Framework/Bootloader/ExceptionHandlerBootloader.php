@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Bootloader;
+namespace App\Infrastructure\Framework\Bootloader;
 
-use App\Application\Exception\Renderer\ViewRenderer;
 use Spiral\Boot\AbstractKernel;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Boot\Environment\AppEnvironment;
@@ -13,20 +12,18 @@ use Spiral\Exceptions\Renderer\ConsoleRenderer;
 use Spiral\Exceptions\Renderer\JsonRenderer;
 use Spiral\Exceptions\Reporter\FileReporter;
 use Spiral\Exceptions\Reporter\LoggerReporter;
-use Spiral\Http\ErrorHandler\RendererInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware\EnvSuppressErrors;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware\SuppressErrorsInterface;
 
 /**
- * The exception handler bootloader is responsible for registering the exception renderers and reporters.
+ * Регистрирует рендереры и репортёры исключений.
  *
  * @link https://spiral.dev/docs/basics-errors
  */
 final class ExceptionHandlerBootloader extends Bootloader
 {
-    protected const BINDINGS = [
+    protected const array BINDINGS = [
         SuppressErrorsInterface::class => EnvSuppressErrors::class,
-        RendererInterface::class => ViewRenderer::class,
     ];
 
     public function __construct(
@@ -35,25 +32,21 @@ final class ExceptionHandlerBootloader extends Bootloader
 
     public function init(AbstractKernel $kernel): void
     {
-        // Register the console renderer, that will be used when the application
-        // is running in the console.
+        // Регистрируем рендерер для консольного режима.
         $this->handler->addRenderer(new ConsoleRenderer());
 
         $kernel->running(function (): void {
-            // Register the JSON renderer, that will be used when the application is
-            // running in the HTTP context and a JSON response is expected.
+            // Регистрируем JSON-рендерер для HTTP-запросов, ожидающих JSON.
             $this->handler->addRenderer(new JsonRenderer());
         });
     }
 
     public function boot(LoggerReporter $logger, FileReporter $files, AppEnvironment $appEnv): void
     {
-        // Register the logger reporter, that will be used to log the exceptions using
-        // the logger component.
+        // Регистрируем репортёр, который пишет исключения в лог.
         $this->handler->addReporter($logger);
 
-        // Register the file reporter. It allows you to save detailed information about an exception to a file
-        // known as snapshot.
+        // В локальном окружении сохраняем подробный snapshot исключения в файл.
         if ($appEnv->isLocal()) {
             $this->handler->addReporter($files);
         }

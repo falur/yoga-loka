@@ -6,18 +6,18 @@ use Spiral\Cache\Storage\ArrayStorage;
 use Spiral\Cache\Storage\FileStorage;
 
 /**
- * Configuration for cache component.
+ * Конфигурация компонента кэша.
  *
  * @link https://spiral.dev/docs/basics-cache
  */
 return [
     /**
-     * The default cache connection that gets used while using this caching library.
+     * Хранилище кэша по умолчанию.
      */
     'default' => env('CACHE_STORAGE', 'rr-local'),
 
     /**
-     * Aliases, if you want to use domain specific storages.
+     * Алиасы для предметных хранилищ.
      */
     'aliases' => [
         // 'user-data' => [
@@ -28,7 +28,7 @@ return [
     ],
 
     /**
-     * Here you may define all of the cache "storages" for your application as well as their types.
+     * Хранилища кэша и их типы.
      */
     'storages' => [
 
@@ -48,7 +48,7 @@ return [
     ],
 
     /**
-     * Aliases for storage types
+     * Алиасы типов хранилищ.
      */
     'typeAliases' => [],
 ];

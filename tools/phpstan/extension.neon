@@ -19,3 +19,7 @@ services:
         class: Tools\PHPStan\Rules\RequireNamedArgumentsRule
         tags:
             - phpstan.rules.rule
+    -
+        class: Tools\PHPStan\Rules\DisallowLooseComparisonRule
+        tags:
+            - phpstan.rules.rule

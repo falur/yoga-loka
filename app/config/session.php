@@ -6,7 +6,7 @@ use Spiral\Core\Container\Autowire;
 use Spiral\Session\Handler\FileHandler;
 
 /**
- * Session configuration.
+ * Конфигурация сессий.
  * @link https://spiral.dev/docs/basics-session
  */
 return [

@@ -1,0 +1,53 @@
+version: '3'
+
+rpc:
+  listen: 'tcp://0.0.0.0:6001'
+
+server:
+  command: 'php app.php'
+  relay: pipes
+
+http:
+  address: '0.0.0.0:8080'
+  middleware:
+    - gzip
+    - static
+  static:
+    dir: public
+    forbid:
+      - .php
+      - .htaccess
+  pool:
+    num_workers: 1
+    supervisor:
+      max_worker_memory: 100
+
+kv:
+  local:
+    driver: memory
+    config:
+      interval: 60
+  redis:
+    driver: redis
+    config:
+      addrs:
+        - redis:6379
+
+metrics:
+  address: '0.0.0.0:2112'
+
+jobs:
+  pool:
+    num_workers: 2
+    max_worker_memory: 100
+  pipelines:
+    memory:
+      driver: memory
+      config:
+        priority: 10
+  consume:
+    - memory
+
+logs:
+  mode: development
+  level: debug

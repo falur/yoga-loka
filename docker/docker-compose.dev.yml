@@ -1,0 +1,222 @@
+name: ${COMPOSE_PROJECT_NAME:-yoga-loka-spiral-2}
+
+services:
+  app-http:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    working_dir: /app
+    env_file:
+      - ../.env
+    command: ["rr", "serve", "-c", "docker/rr/http-jobs.yaml", "-w", "/app"]
+    volumes:
+      - ..:/app
+      - app-runtime:/app/runtime
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-60080}:8080"
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+      temporal:
+        condition: service_healthy
+      centrifugo:
+        condition: service_started
+
+  temporal-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    working_dir: /app
+    env_file:
+      - ../.env
+    command: ["rr", "serve", "-c", "docker/rr/temporal-worker.yaml", "-w", "/app"]
+    volumes:
+      - ..:/app
+      - temporal-worker-runtime:/app/runtime
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      temporal:
+        condition: service_healthy
+
+  test-runner:
+    profiles: ["test"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    working_dir: /app
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_DATABASE: yoga_loka_test
+      STORAGE_DEFAULT: s3-test
+      S3_BUCKET: yoga-loka-test
+      CACHE_STORAGE: local
+    command: ["bash", "docker/test/run-tests.sh"]
+    volumes:
+      - ..:/app
+      - test-runtime:/app/runtime
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+
+  postgres:
+    image: postgres:18.3-bookworm
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: yoga_loka
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-65432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-init:
+    image: postgres:18.3-bookworm
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASES: yoga_loka yoga_loka_test temporal temporal_visibility
+    volumes:
+      - ./postgres/ensure-databases.sh:/usr/local/bin/ensure-databases.sh:ro
+    command: ["bash", "/usr/local/bin/ensure-databases.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  redis:
+    image: redis:8.6.3-trixie
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-60379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yoga_loka}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yoga_loka_password}
+    ports:
+      - "127.0.0.1:${MINIO_HOST_PORT:-60900}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_HOST_PORT:-60901}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yoga_loka}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yoga_loka_password}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKETS: yoga-loka yoga-loka-test
+    volumes:
+      - ./minio/ensure-buckets.sh:/usr/local/bin/ensure-buckets.sh:ro
+    entrypoint: ["bash", "/usr/local/bin/ensure-buckets.sh"]
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.30.0
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_HOST_PORT:-61025}:1025"
+      - "127.0.0.1:${MAILPIT_WEB_HOST_PORT:-60825}:8025"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8025/api/v1/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.29.6
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PWD: ${DB_PASSWORD:-password}
+      POSTGRES_SEEDS: postgres
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      - "127.0.0.1:${TEMPORAL_HOST_PORT:-62333}:7233"
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    volumes:
+      - temporal-data:/etc/temporal
+    healthcheck:
+      test: ["CMD-SHELL", "temporal operator cluster health --address temporal:7233 | grep -q SERVING"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  temporal-ui:
+    image: temporalio/ui:2.49.1
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:${APP_HOST_PORT:-60080}
+    ports:
+      - "127.0.0.1:${TEMPORAL_UI_HOST_PORT:-62334}:8080"
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  centrifugo:
+    image: centrifugo/centrifugo:v6.7.2
+    command: ["centrifugo", "-c", "/centrifugo/config.json"]
+    ports:
+      - "127.0.0.1:${CENTRIFUGO_HOST_PORT:-60000}:8000"
+    volumes:
+      - ./centrifugo/config.json:/centrifugo/config.json:ro
+      - centrifugo-data:/centrifugo
+    healthcheck:
+      test: ["CMD", "centrifugo", "checkconfig", "-c", "/centrifugo/config.json"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  app-runtime:
+  test-runtime:
+  temporal-worker-runtime:
+  postgres-data:
+  redis-data:
+  minio-data:
+  temporal-data:
+  centrifugo-data:

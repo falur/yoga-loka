@@ -26,11 +26,27 @@
         </include>
     </source>
     <php>
-        <env name="DB_CONNECTION" value="sqlite" />
+        <env name="DB_CONNECTION" value="pgsql" />
         <env name="DB_LOG_QUERY_PARAMETERS" value="true" />
+        <env name="DB_DATABASE" value="yoga_loka_test" />
+        <env name="DB_HOST" value="postgres" />
+        <env name="DB_PORT" value="5432" />
+        <env name="DB_USERNAME" value="postgres" />
+        <env name="DB_PASSWORD" value="password" />
         <env name="CYCLE_SCHEMA_CACHE" value="true" />
         <env name="QUEUE_CONNECTION" value="sync" />
         <env name="CACHE_STORAGE" value="local" />
+        <env name="REDIS_DSN" value="redis://redis:6379/0" />
+        <env name="STORAGE_DEFAULT" value="s3-test" />
+        <env name="S3_BUCKET" value="yoga-loka-test" />
+        <env name="S3_TEST_BUCKET" value="yoga-loka-test" />
+        <env name="S3_KEY" value="yoga_loka" />
+        <env name="S3_SECRET" value="yoga_loka_password" />
+        <env name="S3_ENDPOINT" value="http://minio:9000" />
+        <env name="MAILER_DSN" value="smtp://mailpit:1025" />
+        <env name="TEMPORAL_ADDRESS" value="temporal:7233" />
+        <env name="TEMPORAL_TASK_QUEUE" value="default" />
+        <env name="CENTRIFUGO_API_URL" value="http://centrifugo:8000/api" />
         <env name="APP_ENV" value="testing" />
         <env name="TOKENIZER_CACHE_TARGETS" value="true" />
         <env name="TELEMETRY_DRIVER" value="null" />

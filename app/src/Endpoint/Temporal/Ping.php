@@ -13,7 +13,7 @@ use Temporal\Workflow\WorkflowMethod;
  *
  * @link https://docs.temporal.io/develop/php/
  */
-#[AssignWorker('my-task-queue')]
+#[AssignWorker('default')]
 #[WorkflowInterface]
 class Ping
 {

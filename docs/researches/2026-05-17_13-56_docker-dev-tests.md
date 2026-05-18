@@ -1,9 +1,9 @@
 ---
 title: Docker для dev и тестов
-date: 2026-05-17 13:56
+date: 2026-05-17 18:08
 mode: normal
 decision_mode: recommend_and_ask
-status: blocked
+status: draft
 reviewer: none
 sources:
   rules: docs/rules.md
@@ -14,122 +14,119 @@ sources:
 
 ## Суть
 
-Исследуется будущая Docker-настройка для локальной разработки и тестов проекта YogaLoka: один compose-файл с именем `docker-compose.dev.yml`, Docker-артефакты в корневой папке `docker/`, сервисы для почты, S3, PostgreSQL, Redis, Temporal, Temporal UI, Centrifugo, очередей и HTTP.
+Исследовали Docker-настройку для локальной разработки и тестов YogaLoka: один compose-файл `docker/docker-compose.dev.yml`, все Docker-артефакты в корневой папке `docker/`, полный локальный стенд для HTTP, очередей, PostgreSQL, Redis, MinIO/S3, почты, Temporal, Temporal UI и Centrifugo.
 
-Готовность для следующего шага: закрыть развилки по расположению compose-файла, составу сервисов, режиму запуска приложения, S3-эмулятору, очередям, версии PostgreSQL и разделению dev/test данных. Без этих ответов финальное решение будет слишком рискованным: оно затронет env-переменные, RoadRunner, хранение данных, тестовые сценарии и будущую стоимость поддержки.
+Проблема не сводится к compose-файлу: текущий проект - API-first backend на PHP 8.5, Spiral, RoadRunner и Cycle ORM (`docs/arch.md:5`), HTTP работает через RoadRunner (`docs/arch.md:91`), очереди и Temporal являются отдельными runtime-входами (`docs/arch.md:150`, `docs/arch.md:164`), а внешние эффекты должны идти через transactional outbox (`docs/arch.md:241`, `docs/rules.md:67`). Поэтому выбран вариант полной настройки: Docker + env/test/RoadRunner/config-доработки, чтобы приложение реально использовало поднятые сервисы.
 
 ## Решение
 
-Предварительно выбранная рамка: делать не только набор внешних сервисов, а полноценный локальный dev/test stack вокруг Spiral + RoadRunner, но с профилями Compose для тяжёлых сервисов. Это соответствует архитектуре API-first backend на PHP 8.5, Spiral, RoadRunner и Cycle ORM (`docs/arch.md:5`), HTTP-потоку через RoadRunner (`docs/arch.md:91`), отдельным входам для Queue (`docs/arch.md:150`) и Temporal (`docs/arch.md:164`), а также outbox-подходу для email/Centrifugo/webhooks (`docs/arch.md:241`).
-
-Предварительная схема:
+Выбран единый Docker dev/test stack:
 
 ```text
-developer/test
-  -> app/http container: PHP 8.5 + Composer + RoadRunner
-     -> PostgreSQL: app database
-     -> Redis: cache/session/queue backend if selected
-     -> S3 emulator: LocalStack S3 or alternative
-     -> Mailpit: SMTP + web UI for emails
-     -> Temporal server + Temporal UI
-     -> Centrifugo
-     -> RoadRunner jobs / selected queue backend
+make up
+  -> app-http: PHP 8.5 + RoadRunner HTTP
+  -> queue-worker: RoadRunner jobs worker
+  -> temporal-worker: Temporal worker
+  -> postgres: app, test и temporal databases
+  -> redis: cache/session/lock
+  -> minio: S3-compatible storage
+  -> mailpit: SMTP + web UI
+  -> temporal + temporal-ui
+  -> centrifugo: API + admin UI
+
+make test / CI
+  -> тот же compose
+  -> минимальный test profile/target: postgres, redis, minio, mailpit, test-runner
 ```
 
-Факты проекта:
+### Архитектурные решения
 
-| Факт | Источник | Влияние на Docker-решение |
-|---|---|---|
-| Режим исследования обычный, `decision_mode: recommend_and_ask` | `docs/settings.yaml:4` и `docs/settings.yaml:14` | Существенные инфраструктурные решения нужно подтвердить у пользователя. |
-| Проект - API-first backend на PHP 8.5, Spiral, RoadRunner, Cycle ORM | `docs/arch.md:5` | HTTP-сервис должен запускать RoadRunner, а не отдельный nginx/apache по умолчанию. |
-| Текущий RoadRunner слушает HTTP на `0.0.0.0:8080` | `.rr.yaml:4` | В compose нужно явно решить наружный порт, например `8080:8080`. |
-| Temporal в `.rr.yaml` пока закомментирован | `.rr.yaml:26` | Для полноценного Temporal нужно менять конфиг RoadRunner/worker, не только compose. |
-| Текущий `jobs.consume` пустой | `.rr.yaml:30` | Очереди сейчас не включены на уровне RoadRunner runtime. |
-| `.env.sample` по умолчанию использует SQLite | `.env.sample:56` | Docker с PostgreSQL потребует отдельный env-профиль или изменение sample/env. |
-| `.env.sample` по умолчанию использует `QUEUE_CONNECTION=in-memory` | `.env.sample:17` | Нужно решить: оставлять in-memory для dev/test или делать внешний backend. |
-| `.env.sample` по умолчанию использует `CACHE_STORAGE=rr-local` | `.env.sample:20` | Redis есть в запросе, но приложение пока не выбрало Redis как cache backend. |
-| S3-конфигурация в `storage.php` есть только как закомментированный пример | `app/config/storage.php:49` | Для S3 нужны env-переменные и включение сервера/bucket-а в конфиге. |
-| В примере S3 уже учтён `use_path_style_endpoint` | `app/config/storage.php:111` | Это важно для MinIO/LocalStack и других S3-compatible dev-сервисов. |
-| В правилах Centrifugo должен вызываться через собственный HTTP-клиент | `docs/rules.md:66` | Compose должен дать Centrifugo HTTP API endpoint и секреты. |
-| Внешние эффекты должны идти через transactional outbox | `docs/rules.md:67` | Нужен worker для outbox/queue, иначе email/Centrifugo могут не отрабатываться локально. |
-| Docker-папки в корне сейчас нет | локальная проверка `find . -maxdepth 3 -type d -name docker` | Папку `docker/` нужно будет создать при реализации. |
-
-Проверенные внешние источники на 2026-05-17:
-
-| Тема | Источник | Что важно |
-|---|---|---|
-| Docker Compose profiles | https://docs.docker.com/compose/how-tos/profiles/ | Тяжёлые сервисы вроде Temporal можно включать профилем, а базовый stack держать быстрым. |
-| PostgreSQL Docker image | https://hub.docker.com/_/postgres/tags | Есть tag `postgres:18.3-bookworm`; при выборе PostgreSQL 18 важно закрепить Debian-suite tag, а не голый major/latest. |
-| Temporal server | https://github.com/temporalio/temporal/releases | Актуальные server images есть в GitHub releases; найден release с Docker tag `1.29.6`. |
-| Temporal UI | https://github.com/temporalio/ui/releases | UI версионируется отдельно от Temporal server. |
-| Redis | https://github.com/redis/redis/releases и https://github.com/redis/redis | Последняя стабильная ветка в источнике отмечена как Redis `8.6.3`; pre-release `8.8-M*` не подходит для dev baseline. |
-| Centrifugo | https://github.com/centrifugal/centrifugo/releases | Centrifugo активно версионируется отдельно; нужно закрепить tag после выбора. |
-| LocalStack S3 | https://docs.localstack.cloud/user-guide/aws/s3/ | У LocalStack есть S3-only Docker image, но документация указывает, что S3-only image не поддерживает persistence. |
-| LocalStack releases | https://github.com/localstack/localstack | Найден latest release `v4.14.0`; подходит как кандидат для S3-эмуляции, если нужна AWS-похожая среда. |
-| MinIO | https://github.com/minio/minio | Репозиторий MinIO заархивирован 2026-04-25; historical binary releases больше не поддерживаются. |
-
-Рекомендации по развилкам до ответа пользователя:
-
-| Развилка | Рекомендация | Почему | Риск/ограничение |
+| Решение | Выбранный вариант | Источник/основание | Риск и закрытие |
 |---|---|---|---|
-| Где хранить compose-файл | `docker-compose.dev.yml` в корне, а `docker/` для Dockerfile, env, init scripts, service configs | Так compose удобно запускать из корня без `-f docker/...`, и одновременно выполняется требование хранить Docker-артефакты в `docker/` | В запросе можно прочитать иначе: сам compose тоже должен лежать в `docker/`. Нужно подтвердить. |
-| Dev и test | Один compose-файл с профилями `dev`, `test`, `temporal`, возможно `app` | Пользователь просит "1 настройка"; profiles позволяют одной настройкой включать/выключать тяжёлые части | Если CI должен запускать всё одной командой без profiles, подход нужно упростить. |
-| S3 | По умолчанию рассмотреть LocalStack S3 вместо MinIO | MinIO repository archived, LocalStack даёт AWS-похожую S3-эмуляцию | S3-only LocalStack без persistence; если нужны сохраняемые файлы между перезапусками, нужен полный LocalStack с volume или другой S3-compatible сервис. |
-| PostgreSQL | Не менять на PostgreSQL 18 автоматически; сначала подтвердить: 15 как в `.env.sample` или 18 как текущий Docker tag | В `.env.sample` уже стоит `POSTGRESQL_VERSION=15`, но Docker Hub показывает 18.x tags | Major upgrade PostgreSQL меняет формат данных и может ломать volume; для чистого dev/test это проще, для долгоживущих локальных данных риск выше. |
-| Очереди | Начать с RoadRunner jobs, но решить backend отдельно | В проекте уже есть RoadRunner Bridge и queue config | Redis как очередь не включён в текущий config; AMQP/Beanstalk/SQS примеры есть, Redis-коннектора в текущем config нет. |
-| Temporal DB | Не использовать app DB без подтверждения; лучше отдельная БД/schema для Temporal | Temporal - инфраструктурный runtime, смешивать служебные таблицы с app schema неудобно | Увеличит compose-сложность: либо отдельный postgres service, либо отдельные databases в одном Postgres. |
+| Расположение compose | `docker/docker-compose.dev.yml` | Ответ пользователя; требование хранить Docker в `docker/` | Команды длиннее, закрывается `Makefile`. |
+| Локальный запуск | `make up` поднимает все контейнеры | Ответ пользователя | Стенд тяжелее, но локально он должен быть всегда поднят. |
+| CI | Тот же compose, но минимальный test profile/target | Ответ пользователя | Нужно не стартовать UI/Temporal/Centrifugo без тестовой необходимости. |
+| Полнота настройки | Docker + конфиги приложения | Ответ пользователя; `env()` допустим только в `app/config/*.php` (`docs/rules.md:46`) | Реализация шире compose, но иначе сервисы будут подняты и не использованы. |
+| HTTP | RoadRunner app container | Архитектура HTTP-потока через RoadRunner (`docs/arch.md:91`) | RoadRunner binary ставить внутри Docker image, не брать host `./rr`. |
+| Workers | Отдельные `queue-worker` и `temporal-worker` | Queue и Temporal описаны как отдельные входы (`docs/arch.md:150`, `docs/arch.md:164`) | Больше контейнеров, но проще рестарты и логи. |
+| Очереди | RoadRunner jobs in-memory на первом шаге | Текущий queue config использует RoadRunner pipeline `memory` (`app/config/queue.php:42`) | Redis-backed очередь не включать: в текущем config нет Redis queue connector. |
+| Redis | Cache/session/lock, не queue broker | Ответ пользователя после уточнения | Для очередей Redis вынести в отдельное исследование, если понадобится. |
+| PostgreSQL | Один PostgreSQL 18, базы `yoga_loka`, `yoga_loka_test`, `temporal` | Ответ пользователя | Major 18 может ломать старые volumes; для новой dev-настройки риск принят. |
+| Test isolation | Отдельная БД `yoga_loka_test` | Ответ пользователя | Тесты не портят dev-БД; нужен `make reset-test`. |
+| S3 | MinIO, buckets `yoga-loka` и `yoga-loka-test` | Ответ пользователя; S3 config сейчас только пример (`app/config/storage.php:49`) | MinIO repo archived; используем pin конкретного Quay image tag и фиксируем риск. |
+| Почта | Mailpit | Ответ пользователя; mailer config использует DSN (`app/config/mailer.php:15`) | Письма dev/test ловятся локально, не уходят наружу. |
+| Temporal | Temporal server + UI, task queue `default`, данные в БД `temporal` | `.env.sample` уже содержит `TEMPORAL_TASK_QUEUE=default` (`.env.sample:80`) | Текущий `Ping` может использовать другое имя очереди; при реализации привести к `default`. |
+| Centrifugo | API + admin UI, dev-секреты | Правило: Centrifugo через свой HTTP-клиент (`docs/rules.md:66`) | Секреты только локальные; не переносить в production. |
+| Composer/vendor | Проект монтируется целиком вместе с `vendor/`; Composer всегда через Docker | Ответ пользователя | Host `vendor/` виден IDE; Composer запускается контейнерным PHP, чтобы не ловить расхождение PHP/ext. |
+| Init | Автоматически создать БД и buckets; миграции отдельной командой | Ответ пользователя | Меньше магии при старте; нужна `make migrate`. |
+| Docs | Кратко в README, подробно в `docker/README.md` | Ответ пользователя | Команды не теряются, детали не раздувают корневой README. |
+
+### Порты
+
+Порты брать из `~/.ports`: файл требует минимальный свободный prefix (`~/.ports:34`, `~/.ports:36`), вычисление host-порта по prefix и стандартному порту (`~/.ports:40`) и переменные в compose/env (`~/.ports:49`, `~/.ports:51`). Префиксы `1`-`5` уже заняты (`~/.ports:59`, `~/.ports:72`, `~/.ports:84`, `~/.ports:97`, `~/.ports:107`), поэтому выбран prefix `6`.
+
+| Сервис | Host port | Container port |
+|---|---:|---:|
+| app/http | `68080` | `8080` |
+| postgres | `65432` | `5432` |
+| redis | `66379` | `6379` |
+| centrifugo | `68000` | `8000` |
+| minio | `69000` | `9000` |
+| minio console | `69001` | `9001` |
+| mailpit smtp | `61025` | `1025` |
+| mailpit web | `68025` | `8025` |
+| temporal | `67233` | `7233` |
+| temporal ui | `68233` | `8080` |
+
+При реализации добавить секцию `[yoga-loka-spiral-2]` в `~/.ports`, а в compose публиковать ports через переменные с fallback, например `${APP_HOST_PORT:-68080}:8080`.
+
+### Проверенные версии и образы
+
+Проверка выполнена 2026-05-17 по официальным Docker Hub/GitHub/Quay API.
+
+| Компонент | Выбранный tag | Источник | Причина |
+|---|---|---|---|
+| PHP | `php:8.5-cli-bookworm` | https://registry.hub.docker.com/v2/repositories/library/php/tags/8.5-cli-bookworm | Проект требует PHP `>=8.5 <8.6` (`composer.json:18`). |
+| PostgreSQL | `postgres:18.3-bookworm` | https://registry.hub.docker.com/v2/repositories/library/postgres/tags/18.3-bookworm | Пользователь выбрал PostgreSQL 18; tag закреплён без `latest`. |
+| Redis | `redis:8.6.3-trixie` | https://registry.hub.docker.com/v2/repositories/library/redis/tags?page_size=20&name=8.6.3 и https://github.com/redis/redis/releases/tag/8.6.3 | Latest stable Redis release `8.6.3`; `bookworm` tag не найден, выбран опубликованный Debian-based `trixie`. |
+| Mailpit | `axllent/mailpit:v1.30.0` | https://github.com/axllent/mailpit/releases/tag/v1.30.0 и https://registry.hub.docker.com/v2/repositories/axllent/mailpit/tags?page_size=5&name=v1.30.0 | Catch-all SMTP + web UI, tag опубликован. |
+| Centrifugo | `centrifugo/centrifugo:v6.7.2` | https://github.com/centrifugal/centrifugo/releases/tag/v6.7.2 и https://registry.hub.docker.com/v2/repositories/centrifugo/centrifugo/tags?page_size=5&name=v6.7.2 | Latest stable release, tag опубликован. |
+| Temporal server | `temporalio/auto-setup:1.29.6` | https://registry.hub.docker.com/v2/repositories/temporalio/auto-setup/tags?page_size=10&name=1.29 | Для dev проще auto-setup; latest server release `1.31.0` есть, но auto-setup tag `1.31.0` не найден. |
+| Temporal UI | `temporalio/ui:2.49.1` | https://github.com/temporalio/ui/releases/tag/v2.49.1 и https://registry.hub.docker.com/v2/repositories/temporalio/ui/tags?page_size=20&name=2.49.1 | Latest UI release, tag опубликован. |
+| MinIO | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772` | https://quay.io/api/v1/repository/minio/minio/tag/?limit=10 и https://github.com/minio/minio | Пользователь выбрал MinIO; GitHub repo archived, поэтому pin берётся из Quay registry tags, не `latest`. |
 
 ## Ответы на вопросы
 
-Пока ответов пользователя нет. Нужно ответить на вопросы ниже, чтобы финализировать исследование и затем перейти к `eda-plan`.
-
-1. Где должен лежать сам compose-файл: в корне как `docker-compose.dev.yml` или внутри `docker/docker-compose.dev.yml`?
-2. Под "всё хранилось в папке docker" вы имеете в виду только Dockerfile/config/init scripts/volumes templates, или ещё и compose-файл?
-3. Docker должен поднимать PHP-приложение и RoadRunner тоже, или только внешние сервисы, а приложение запускается на host-машине?
-4. Для dev/test нужен один и тот же набор сервисов или test должен быть урезанным и быстрым?
-5. Нужны ли Docker Compose profiles, например базовый stack по умолчанию, а Temporal/Centrifugo/S3 через `--profile`?
-6. Нужна ли поддержка CI, или только локальная разработка на машине разработчика?
-7. Тесты должны сами стартовать compose, или разработчик/CI стартует его заранее?
-8. Должны ли тесты очищать базы/бакеты/очереди автоматически между прогонами?
-9. Данные dev-окружения должны сохраняться между `docker compose down/up`?
-10. Для тестов данные должны быть ephemeral, то есть удаляться после каждого запуска?
-11. PostgreSQL брать версии 15, как сейчас указано в `.env.sample`, или актуальную 18.x?
-12. Нужны ли отдельные базы `app`, `app_test`, `temporal`, или достаточно одной базы и разных schema?
-13. Нужен ли PostGIS/pgvector/uuid-ossp/другие расширения PostgreSQL?
-14. Нужно ли пробрасывать PostgreSQL наружу на host, например `5432:5432`, или доступ только внутри Docker network?
-15. Redis нужен только как cache, или ещё как session/lock/rate-limit/pubsub?
-16. Redis должен быть обязательным для тестов или только для dev?
-17. Нужен ли RedisInsight/UI для Redis, или достаточно контейнера Redis?
-18. "Очереди" - это RoadRunner jobs, отдельный broker RabbitMQ/Beanstalk/SQS, Redis-backed queue, или пока не принципиально?
-19. Почта: достаточно Mailpit/MailHog с web UI, или нужна проверка реального SMTP-поведения?
-20. Нужно ли сохранять письма между перезапусками dev stack?
-21. S3: нужна максимальная похожесть на AWS S3 или просто S3-compatible bucket для загрузки файлов?
-22. S3-данные должны сохраняться между перезапусками?
-23. Можно ли использовать LocalStack для S3, учитывая EULA/лицензионные условия, или предпочитаете MinIO/другой совместимый сервис?
-24. Если S3 через LocalStack, нужен только S3 или потенциально позже пригодятся SQS/SNS/SES?
-25. Нужно ли автоматически создавать bucket при старте compose?
-26. Нужны ли public/private buckets отдельно?
-27. Temporal нужен всегда при dev-start или только когда разрабатываем workflows/activities?
-28. Temporal должен использовать отдельный Postgres service или общую PostgreSQL-инстанцию с отдельной БД?
-29. Нужен ли Temporal admin-tools контейнер для `tctl`/`temporal` CLI?
-30. Какое имя task queue должно быть каноническим: текущее `default`, `my-task-queue` из примера `Ping`, или новое имя проекта?
-31. Centrifugo должен стартовать с включённым web admin UI?
-32. Какие secrets/token для Centrifugo использовать в dev: фиксированные небезопасные значения или генерируемые через `.env`?
-33. Нужно ли пробрасывать Centrifugo наружу для мобильного приложения/фронта на host-машине?
-34. HTTP-сервис должен быть доступен на `localhost:8080`, как в `.rr.yaml`, или нужен другой порт?
-35. Нужен ли Swagger/OpenAPI UI в Docker stack, или это отдельная задача?
-36. Нужен ли отдельный worker container для queue/outbox, или RoadRunner jobs внутри app container достаточно?
-37. Нужен ли отдельный Temporal worker container, или Temporal worker запускается внутри общего RoadRunner/app process?
-38. Нужны ли healthchecks для всех сервисов, чтобы app стартовал только после готовности PostgreSQL/Redis/S3/Temporal?
-39. Нужны ли init scripts в `docker/`, например создание БД, S3 bucket, Temporal namespace?
-40. Нужен ли dev Dockerfile с PHP 8.5 extensions (`pdo_pgsql`, `sockets`, `redis`, `curl`) или PHP окружение уже считается установленным вне Docker?
-41. Нужно ли запускать Composer install внутри контейнера или vendor остаётся с host-машины?
-42. Нужен ли bind mount всего проекта в app container для live reload?
-43. Нужна ли отдельная `.env.docker` / `.env.testing.docker`, или менять существующий `.env.sample`?
-44. Можно ли менять `.rr.yaml`, `app/config/*.php` и `.env.sample` в рамках реализации Docker, если без этого сервисы не будут реально использоваться?
-45. Нужно ли документировать команды запуска в README или отдельном `docker/README.md`?
-46. Нужно ли оставлять поддержку запуска без Docker после внедрения?
+| Вопрос | Ответ пользователя | Решение |
+|---|---|---|
+| Где лежит compose? | `В docker/` | `docker/docker-compose.dev.yml`. |
+| Docker поднимает app или только infra? | `App + infra` | Поднимать приложение, workers и инфраструктуру. |
+| Profiles нужны? | Для локалки полный стенд, для CI удобен profile | Локально всё без profiles, CI через минимальный test profile/target. |
+| Локальный `up -d` что поднимает? | `Все контейнеры` | Поднимать весь dev-стенд. |
+| Как изолировать тестовые данные? | `Отдельная БД` | `yoga_loka_test` в общем Postgres. |
+| PostgreSQL version | `PostgreSQL 18` | Закрепить `postgres:18.3-bookworm`. |
+| S3 provider | `MinIO` | Использовать MinIO вместо LocalStack. |
+| Сохранять dev-данные? | `Dev сохранять` | Named volumes для dev state. |
+| Queue backend | `RoadRunner jobs`; Redis-backed queue отложить | RoadRunner jobs in-memory сейчас. |
+| Redis usage | Cache/session/lock + не queue | Redis не становится broker очередей в первом шаге. |
+| Temporal DB | `Отдельная БД` | База `temporal` в общем Postgres. |
+| Workers | `Queue + Temporal` | Отдельные queue и temporal worker containers. |
+| Почта | `Mailpit` | SMTP + web UI. |
+| Порты | `Возьми в ~/.ports` | Prefix `6`, секцию добавить в `~/.ports`. |
+| Env strategy | `.env` в корне для dev, `phpunit.xml` для test | Не плодить `.env.dev/.env.test`; test overrides в `phpunit.xml`. |
+| Можно менять конфиги приложения? | `Полная настройка с конфигами` | Менять `.env.sample`, `phpunit.xml`, `.rr.yaml`, `app/config/*.php` при реализации. |
+| Buckets | `Два bucket` | `yoga-loka`, `yoga-loka-test`. |
+| Centrifugo | `API + admin UI` | Включить API/admin UI с dev-секретами. |
+| Код/vendor | Монтировать весь проект с `vendor/` | Bind mount `../:/app`; Composer запускать через Docker. |
+| Composer локально/CI | `Всегда через Docker` | `make composer-install`, `make test`, `make phpstan` работают в контейнере. |
+| Команды | `Makefile годится` | Добавить базовый Makefile. |
+| Документация | `README + docker README` | Коротко в README, подробно в `docker/README.md`. |
+| Init | `DB + buckets` | Базы и buckets авто, миграции отдельной командой. |
+| Temporal task queue | `default` | `TEMPORAL_TASK_QUEUE=default`. |
+| Healthchecks | `Строго для infra` | Healthchecks для критичной инфраструктуры. |
+| RoadRunner binary | `Из Docker build` | Не использовать host binary. |
+| Make targets | `Базовый набор` | `up`, `down`, `restart`, `composer-install`, `test`, `phpstan`, `shell`, `logs`, `migrate`, `reset-test`. |
 
 ## Итог
 
-Исследование заблокировано до ответов пользователя. Предварительно стоит делать единый `docker-compose.dev.yml` с профилями, корневой папкой `docker/` для всех Docker-артефактов, app/http на RoadRunner, PostgreSQL, Redis, Mailpit, S3-эмулятор, Temporal + UI, Centrifugo и отдельный worker-подход для queue/outbox. Самые важные решения для подтверждения: расположение compose-файла, запуск app внутри Docker или на host, S3-эмулятор, версия PostgreSQL, backend очередей и разделение dev/test persistence.
+Следующий шаг - `eda-plan` на реализацию полного Docker dev/test stack. План должен исходить из одного compose-файла `docker/docker-compose.dev.yml`, полного локального стенда, минимального CI test profile/target, PostgreSQL 18 с тремя БД, Redis без очередей, RoadRunner jobs in-memory, MinIO с двумя buckets, Mailpit, Temporal auto-setup `1.29.6`, Temporal UI `2.49.1`, Centrifugo `6.7.2`, портового prefix `6` из `~/.ports` и полной синхронизации Docker с `.env.sample`, `phpunit.xml`, `.rr.yaml` и `app/config/*.php`.

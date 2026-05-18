@@ -66,6 +66,7 @@ class Kernel extends \Spiral\Framework\Kernel
             RoadRunnerBridge\QueueBootloader::class,
             RoadRunnerBridge\HttpBootloader::class,
             RoadRunnerBridge\CacheBootloader::class,
+            RoadRunnerBridge\LockBootloader::class,
 
             // Базовые сервисы
             Framework\SnapshotsBootloader::class,

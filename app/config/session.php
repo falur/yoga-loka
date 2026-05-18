@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Spiral\Core\Container\Autowire;
-use Spiral\Session\Handler\FileHandler;
+use Spiral\Session\Handler\CacheHandler;
 
 /**
  * Конфигурация сессий.
@@ -15,10 +15,11 @@ return [
     'secure' => true,
     'sameSite' => null,
     'handler' => new Autowire(
-        FileHandler::class,
+        CacheHandler::class,
         [
-            'directory' => directory('runtime') . 'session',
-            'lifetime' => (int) env('SESSION_LIFETIME', 86400),
+            'storage' => env('SESSION_CACHE_STORAGE', 'redis'),
+            'ttl' => (int) env('SESSION_LIFETIME', 86400),
+            'prefix' => env('SESSION_CACHE_PREFIX', 'session:'),
         ],
     ),
 ];

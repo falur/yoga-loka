@@ -1,0 +1,22 @@
+version: '3'
+
+rpc:
+  listen: 'tcp://0.0.0.0:6001'
+
+server:
+  command: 'php app.php'
+  relay: pipes
+
+temporal:
+  address: 'temporal:7233'
+  activities:
+    num_workers: 2
+  workflows:
+    num_workers: 2
+
+metrics:
+  address: '0.0.0.0:2112'
+
+logs:
+  mode: development
+  level: debug

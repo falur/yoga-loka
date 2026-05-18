@@ -1,0 +1,9 @@
+.git
+.idea
+.claude
+.codex
+vendor
+runtime
+rr
+protoc-gen-php-grpc
+*.cache

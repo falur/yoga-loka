@@ -10,5 +10,8 @@ final readonly class CacheStorageConfig
         public string $type,
         public ?string $driver = null,
         public ?string $path = null,
+        public ?string $dsn = null,
+        public ?string $namespace = null,
+        public ?int $defaultLifetime = null,
     ) {}
 }

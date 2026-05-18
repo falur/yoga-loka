@@ -46,76 +46,22 @@ return [
             ],
         ],
 
-        // Пример конфигурации S3.
-        /*'s3' => [
-            //
-            // Тип S3-сервера: "s3" или "s3-async".
-            //
+        's3' => [
             'adapter' => 's3',
-
-            //
-            // Регион S3, например "eu-north-1".
-            //  - https://s3.console.aws.amazon.com/s3/home
-            //
-            'region' => env('S3_REGION'),
-
-            //
-            // Версия S3 API.
-            //
+            'region' => env('S3_REGION', 'us-east-1'),
             'version' => env('S3_VERSION', 'latest'),
-
-            //
-            // Имя bucket в S3.
-            //  - https://s3.console.aws.amazon.com/s3/home
-            //
-            'bucket' => env('S3_BUCKET'),
-
-            //
-            // Ключ доступа S3.
-            //  - https://console.aws.amazon.com/iam/home#/security_credentials
-            //
-            'key' => env('S3_KEY'),
-
-            //
-            // Секретный ключ S3 или путь к файлу с ключом.
-            //  - https://console.aws.amazon.com/iam/home#/security_credentials
-            //
-            'secret' => env('S3_SECRET'),
-
-            //
-            // Токен S3 credentials.
-            //
+            'bucket' => env('S3_BUCKET', 'yoga-loka'),
+            'key' => env('S3_KEY', 'yoga_loka'),
+            'secret' => env('S3_SECRET', 'yoga_loka_password'),
             'token' => env('S3_TOKEN', null),
-
-            //
-            // Время истечения S3 credentials.
-            //
             'expires' => env('S3_EXPIRES', null),
-
-            //
-            // Visibility файлов S3.
-            //
             'visibility' => env('S3_VISIBILITY', 'public'),
-
-            //
-            // Префикс директории для S3 bucket.
-            //
             'prefix' => '',
-
-            //
-            // Endpoint S3 API для серверов, отличных от Amazon.
-            //
-            'endpoint' => env('S3_ENDPOINT', null),
-
-            //
-            // Дополнительные опции S3.
-            // Например, "use_path_style_endpoint" нужен для MinIO.
-            // См. https://github.com/spiral/framework/issues/416
-            //
+            'endpoint' => env('S3_ENDPOINT', 'http://minio:9000'),
             'options' => [
                 'use_path_style_endpoint' => true,
-            ]
-        ], */
+            ],
+        ],
     ],
 
     /**
@@ -127,9 +73,13 @@ return [
         'default' => [
             'server' => 'local',
         ],
-        /*
-        'images' => [
+        's3' => [
             'server' => 's3',
-        ],*/
+            'bucket' => env('S3_BUCKET', 'yoga-loka'),
+        ],
+        's3-test' => [
+            'server' => 's3',
+            'bucket' => env('S3_TEST_BUCKET', 'yoga-loka-test'),
+        ],
     ],
 ];

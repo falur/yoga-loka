@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Cache\RedisCacheStorage;
 use Spiral\Cache\Storage\ArrayStorage;
 use Spiral\Cache\Storage\FileStorage;
 
@@ -44,6 +45,13 @@ return [
         'file' => [
             'type' => FileStorage::class,
             'path' => directory('runtime') . 'cache',
+        ],
+
+        'redis' => [
+            'type' => RedisCacheStorage::class,
+            'dsn' => env('REDIS_DSN', 'redis://redis:6379/0'),
+            'namespace' => env('REDIS_CACHE_NAMESPACE', 'yoga_loka_cache'),
+            'defaultLifetime' => (int) env('REDIS_CACHE_DEFAULT_LIFETIME', 0),
         ],
     ],
 

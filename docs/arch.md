@@ -9,6 +9,27 @@ Framework, RoadRunner и Cycle ORM.
 приложения. Физические bounded contexts не выделены. Домены группируются внутри
 текущих слоёв по предметной области и действию.
 
+## Локальный Docker-runtime
+
+Локальная разработка и проверки выполняются через Docker Compose из
+`docker/docker-compose.dev.yml`. Приложение запускается в двух RoadRunner
+runtime:
+
+- `app-http`: HTTP на `0.0.0.0:8080` внутри контейнера и RoadRunner jobs memory consumer в том же
+- `app-http`: RoadRunner слушает `0.0.0.0:8080` только внутри контейнера.
+  Наружу compose публикует сервис как `127.0.0.1:60080 -> 8080`. RoadRunner
+  jobs memory consumer работает в том же процессе.
+- `temporal-worker`: отдельный Temporal worker на task queue `default`.
+
+Memory-очередь RoadRunner не выносится в отдельный queue worker, потому что
+задачи доступны только внутри runtime, который владеет memory pipeline. Redis в
+локальном стенде используется для cache/session и RoadRunner KV, но не является
+брокером очереди.
+
+Локальная инфраструктура: PostgreSQL, Redis, MinIO, Mailpit, Temporal, Temporal
+UI и Centrifugo. Dev storage по умолчанию использует MinIO bucket `yoga-loka`,
+тесты используют отдельные `yoga_loka_test` и `yoga-loka-test`.
+
 ## Структура каталогов
 
 ```

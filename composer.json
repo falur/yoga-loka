@@ -11,9 +11,12 @@
     "require": {
         "php": ">=8.5 <8.6",
         "ext-mbstring": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-redis": "*",
         "ext-sockets": "*",
         "cuyz/valinor": "^2.4",
         "illuminate/collections": "8 - 12",
+        "league/flysystem-aws-s3-v3": "3.34.0",
         "spiral-packages/league-event": "^1.0.1",
         "spiral-packages/scheduler": "^2.1",
         "spiral-packages/symfony-validator": "^1.5",

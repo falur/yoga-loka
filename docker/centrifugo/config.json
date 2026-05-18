@@ -1,0 +1,15 @@
+{
+  "client": {
+    "token": {
+      "hmac_secret_key": "dev-centrifugo-token-secret"
+    }
+  },
+  "admin": {
+    "enabled": true,
+    "password": "dev-centrifugo-admin-password",
+    "secret": "dev-centrifugo-admin-secret"
+  },
+  "http_api": {
+    "key": "dev-centrifugo-api-key"
+  }
+}

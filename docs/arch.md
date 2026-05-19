@@ -154,6 +154,13 @@ API-документация генерируется автоматически
 attributes в `Endpoint\Api\V1`. OpenAPI-спецификация строится из кода, а
 Swagger используется как UI для её просмотра.
 
+Генератор OpenAPI живёт в переносимом Composer-пакете `tools/openapi` с
+namespace `Tools\OpenApi`. Приложение не содержит логики статического разбора:
+оно только собирает типизированный `OpenApiConfig`, задаёт mapping базовых
+response wrappers и вызывает пакет через команду `openapi:generate`. YAML
+записывается в `public/openapi/openapi.yml`, а Swagger UI по `/api/docs` читает
+тот же файл через route `/api/docs/openapi.yml`.
+
 ### Поток консольной команды
 
 ```text

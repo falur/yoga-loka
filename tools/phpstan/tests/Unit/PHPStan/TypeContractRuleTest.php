@@ -26,7 +26,7 @@ final class TypeContractRuleTest extends RuleTestCase
     {
         $errors = $this->gatherAnalyserErrors([__DIR__ . '/Fixtures/ForbiddenContracts.php']);
 
-        $this->assertSame([
+        self::assertSame([
             'project.noArrayShapeType',
             'project.noNestedArrayType',
             'project.noArrayShapeType',

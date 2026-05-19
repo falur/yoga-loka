@@ -40,5 +40,4 @@ final class AllowedContracts
      * @param callable(mixed): void $callback
      */
     public function explicitMixedInGeneric(array $items, callable $callback): void {}
-
 }

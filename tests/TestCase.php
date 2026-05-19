@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Infrastructure\Framework\DirectoryAlias;
 use Spiral\Config\ConfiguratorInterface;
 use Spiral\Config\Patch\Set;
 use Spiral\Core\Container;
@@ -32,7 +33,7 @@ class TestCase extends BaseTestCase
     public function defineDirectories(string $root): array
     {
         return [
-            'root' => $root,
+            DirectoryAlias::Root->value => $root,
         ];
     }
 
@@ -57,6 +58,9 @@ class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
+        \restore_error_handler();
+        \restore_exception_handler();
+
         // Раскомментируйте строку ниже, если нужно очищать runtime-директорию после тестов.
         // $this->cleanUpRuntimeDirectory();
     }

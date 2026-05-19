@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Framework\Bootloader;
 
+use App\Infrastructure\Framework\DirectoryAlias;
 use Monolog\Level;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Boot\DirectoriesInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Spiral\Monolog\Bootloader\MonologBootloader;
 use Spiral\Monolog\Config\MonologConfig;
@@ -17,13 +19,27 @@ use Spiral\Monolog\Config\MonologConfig;
  */
 final class LoggingBootloader extends Bootloader
 {
+    private const string HTTP_LOG_FILE = 'logs/http.log';
+
+    private const string ERROR_LOG_FILE = 'logs/error.log';
+    private const string DEBUG_LOG_FILE = 'logs/debug.log';
+    private const int ERROR_LOG_MAX_FILES = 25;
+
+    public function __construct(
+        private readonly DirectoriesInterface $directories,
+    ) {}
+
     public function init(MonologBootloader $monolog): void
     {
         // Ошибки HTTP-слоя
         $monolog->addHandler(
             channel: ErrorHandlerMiddleware::class,
             handler: $monolog->logRotate(
-                directory('runtime') . 'logs/http.log',
+                \sprintf(
+                    '%s/%s',
+                    $this->directories->get(DirectoryAlias::Runtime->value),
+                    self::HTTP_LOG_FILE,
+                ),
             ),
         );
 
@@ -31,9 +47,13 @@ final class LoggingBootloader extends Bootloader
         $monolog->addHandler(
             channel: MonologConfig::DEFAULT_CHANNEL,
             handler: $monolog->logRotate(
-                filename: directory('runtime') . 'logs/error.log',
+                filename: \sprintf(
+                    '%s/%s',
+                    $this->directories->get(DirectoryAlias::Runtime->value),
+                    self::ERROR_LOG_FILE,
+                ),
                 level: Level::Error,
-                maxFiles: 25,
+                maxFiles: self::ERROR_LOG_MAX_FILES,
                 bubble: false,
             ),
         );
@@ -42,7 +62,11 @@ final class LoggingBootloader extends Bootloader
         $monolog->addHandler(
             channel: MonologConfig::DEFAULT_CHANNEL,
             handler: $monolog->logRotate(
-                filename: directory('runtime') . 'logs/debug.log',
+                filename: \sprintf(
+                    '%s/%s',
+                    $this->directories->get(DirectoryAlias::Runtime->value),
+                    self::DEBUG_LOG_FILE,
+                ),
             ),
         );
     }

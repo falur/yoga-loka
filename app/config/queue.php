@@ -18,7 +18,7 @@ return [
     /**
      * Подключение очереди по умолчанию.
      */
-    'default' => env('QUEUE_CONNECTION', 'in-memory'),
+    'default' => \env('QUEUE_CONNECTION', 'in-memory'),
 
     /**
      * Алиасы подключений для предметных очередей.

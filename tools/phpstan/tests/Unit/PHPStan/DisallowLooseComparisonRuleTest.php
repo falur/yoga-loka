@@ -24,7 +24,7 @@ final class DisallowLooseComparisonRuleTest extends RuleTestCase
 
         $errors = $this->gatherAnalyserErrors([$file]);
 
-        $this->assertSame([
+        self::assertSame([
             'project.looseEqualForbidden',
             'project.looseNotEqualForbidden',
             'project.looseNotEqualForbidden',

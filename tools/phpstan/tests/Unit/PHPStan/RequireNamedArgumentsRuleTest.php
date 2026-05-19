@@ -30,8 +30,7 @@ final class RequireNamedArgumentsRuleTest extends RuleTestCase
 
         $errors = $this->gatherAnalyserErrors([$file]);
 
-        $this->assertSame([
-            'project.namedArgumentsRequired',
+        self::assertSame([
             'project.namedArgumentsRequired',
             'project.namedArgumentsRequired',
             'project.namedArgumentsRequired',
@@ -70,12 +69,11 @@ final class RequireNamedArgumentsRuleTest extends RuleTestCase
             ['Calls with two or more ordinary arguments must use named arguments.', 21],
             ['Calls with two or more ordinary arguments must use named arguments.', 25],
             ['Calls with two or more ordinary arguments must use named arguments.', 25],
-            ['Calls with two or more ordinary arguments must use named arguments.', 28],
         ]);
     }
 
     protected function getRule(): Rule
     {
-        return new RequireNamedArgumentsRule();
+        return new RequireNamedArgumentsRule(reflectionProvider: self::createReflectionProvider());
     }
 }

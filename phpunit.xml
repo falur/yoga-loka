@@ -36,6 +36,8 @@
         <env name="CYCLE_SCHEMA_CACHE" value="true" />
         <env name="QUEUE_CONNECTION" value="sync" />
         <env name="CACHE_STORAGE" value="local" />
+        <env name="SESSION_CACHE_STORAGE" value="local" />
+        <env name="SCHEDULER_MUTEX_CACHE_STORAGE" value="local" />
         <env name="REDIS_DSN" value="redis://redis:6379/0" />
         <env name="STORAGE_DEFAULT" value="s3-test" />
         <env name="S3_BUCKET" value="yoga-loka-test" />

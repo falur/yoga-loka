@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Cache;
 
-use DateInterval;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Psr16Cache;
@@ -34,7 +33,7 @@ final class RedisCacheStorage implements CacheInterface
     }
 
     #[\Override]
-    public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool
+    public function set(string $key, mixed $value, int|\DateInterval|null $ttl = null): bool
     {
         return $this->cache->set(key: $key, value: $value, ttl: $ttl);
     }
@@ -64,7 +63,7 @@ final class RedisCacheStorage implements CacheInterface
      * @param iterable<string, mixed> $values
      */
     #[\Override]
-    public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
+    public function setMultiple(iterable $values, int|\DateInterval|null $ttl = null): bool
     {
         return $this->cache->setMultiple(values: $values, ttl: $ttl);
     }

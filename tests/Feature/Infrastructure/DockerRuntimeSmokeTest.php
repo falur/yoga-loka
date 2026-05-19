@@ -11,9 +11,9 @@ final class DockerRuntimeSmokeTest extends TestCase
 {
     public function testApplicationBootsWithDockerTestEnvironment(): void
     {
-        $this->assertSame('pgsql', \env('DB_CONNECTION'));
-        $this->assertSame('yoga_loka_test', \env('DB_DATABASE'));
-        $this->assertSame('local', \env('CACHE_STORAGE'));
+        self::assertSame('pgsql', \env('DB_CONNECTION'));
+        self::assertSame('yoga_loka_test', \env('DB_DATABASE'));
+        self::assertSame('local', \env('CACHE_STORAGE'));
     }
 
     public function testStorageCanUseTestBucket(): void
@@ -26,8 +26,8 @@ final class DockerRuntimeSmokeTest extends TestCase
 
         $bucket->write($path, 'ok');
 
-        $this->assertTrue($bucket->exists($path));
-        $this->assertSame('ok', $bucket->getContents($path));
+        self::assertTrue($bucket->exists($path));
+        self::assertSame('ok', $bucket->getContents($path));
 
         $bucket->delete($path);
     }

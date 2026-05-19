@@ -15,7 +15,7 @@ return [
     /**
      * Хранилище кэша по умолчанию.
      */
-    'default' => env('CACHE_STORAGE', 'rr-local'),
+    'default' => \env('CACHE_STORAGE', 'rr-local'),
 
     /**
      * Алиасы для предметных хранилищ.
@@ -44,14 +44,14 @@ return [
 
         'file' => [
             'type' => FileStorage::class,
-            'path' => directory('runtime') . 'cache',
+            'path' => \directory('runtime') . 'cache',
         ],
 
         'redis' => [
             'type' => RedisCacheStorage::class,
-            'dsn' => env('REDIS_DSN', 'redis://redis:6379/0'),
-            'namespace' => env('REDIS_CACHE_NAMESPACE', 'yoga_loka_cache'),
-            'defaultLifetime' => (int) env('REDIS_CACHE_DEFAULT_LIFETIME', 0),
+            'dsn' => \env('REDIS_DSN', 'redis://redis:6379/0'),
+            'namespace' => \env('REDIS_CACHE_NAMESPACE', 'yoga_loka_cache'),
+            'defaultLifetime' => (int) \env('REDIS_CACHE_DEFAULT_LIFETIME', 0),
         ],
     ],
 

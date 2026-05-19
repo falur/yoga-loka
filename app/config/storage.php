@@ -15,7 +15,7 @@ return [
      *  Bucket по умолчанию
      * -------------------------------------------------------------------------
      */
-    'default' => env('STORAGE_DEFAULT', Storage::DEFAULT_STORAGE),
+    'default' => \env('STORAGE_DEFAULT', Storage::DEFAULT_STORAGE),
 
     /**
      * -------------------------------------------------------------------------
@@ -32,15 +32,15 @@ return [
             //
             // Директория для хранения файлов.
             //
-            'directory' => directory('public') . 'uploads',
+            'directory' => \directory('public') . 'uploads',
 
             //
             // Соответствие visibility и прав доступа для файлов и директорий.
             // Допустимые значения visibility: "private" и "public".
             //
             'visibility' => [
-                'public' => ['file' => 0644, 'dir' => 0755],
-                'private' => ['file' => 0600, 'dir' => 0700],
+                'public' => ['file' => 0o644, 'dir' => 0o755],
+                'private' => ['file' => 0o600, 'dir' => 0o700],
 
                 'default' => 'public',
             ],
@@ -48,16 +48,16 @@ return [
 
         's3' => [
             'adapter' => 's3',
-            'region' => env('S3_REGION', 'us-east-1'),
-            'version' => env('S3_VERSION', 'latest'),
-            'bucket' => env('S3_BUCKET', 'yoga-loka'),
-            'key' => env('S3_KEY', 'yoga_loka'),
-            'secret' => env('S3_SECRET', 'yoga_loka_password'),
-            'token' => env('S3_TOKEN', null),
-            'expires' => env('S3_EXPIRES', null),
-            'visibility' => env('S3_VISIBILITY', 'public'),
+            'region' => \env('S3_REGION', 'us-east-1'),
+            'version' => \env('S3_VERSION', 'latest'),
+            'bucket' => \env('S3_BUCKET', 'yoga-loka'),
+            'key' => \env('S3_KEY', 'yoga_loka'),
+            'secret' => \env('S3_SECRET', 'yoga_loka_password'),
+            'token' => \env('S3_TOKEN', null),
+            'expires' => \env('S3_EXPIRES', null),
+            'visibility' => \env('S3_VISIBILITY', 'public'),
             'prefix' => '',
-            'endpoint' => env('S3_ENDPOINT', 'http://minio:9000'),
+            'endpoint' => \env('S3_ENDPOINT', 'http://minio:9000'),
             'options' => [
                 'use_path_style_endpoint' => true,
             ],
@@ -75,11 +75,11 @@ return [
         ],
         's3' => [
             'server' => 's3',
-            'bucket' => env('S3_BUCKET', 'yoga-loka'),
+            'bucket' => \env('S3_BUCKET', 'yoga-loka'),
         ],
         's3-test' => [
             'server' => 's3',
-            'bucket' => env('S3_TEST_BUCKET', 'yoga-loka-test'),
+            'bucket' => \env('S3_TEST_BUCKET', 'yoga-loka-test'),
         ],
     ],
 ];

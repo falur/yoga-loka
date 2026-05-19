@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Framework\DirectoryAlias;
 use App\Infrastructure\Framework\Kernel;
 use Spiral\Core\Container;
 use Spiral\Core\Options;
 
 // Базовые настройки окружения для локального запуска.
-
 \mb_internal_encoding('UTF-8');
 \error_reporting(E_ALL ^ E_DEPRECATED);
 \ini_set('display_errors', 'stderr');
@@ -15,14 +15,13 @@ use Spiral\Core\Options;
 // Регистрируем автозагрузчик Composer.
 require __DIR__ . '/vendor/autoload.php';
 
-
 // Инициализируем общий контейнер, биндинги и директории.
 $options = new Options();
 $options->allowSingletonsRebinding = false;
 $options->validateArguments = false;
 $container = new Container(options: $options);
 $app = Kernel::create(
-    directories: ['root' => __DIR__],
+    directories: [DirectoryAlias::Root->value => __DIR__],
     container: $container,
 )->run();
 

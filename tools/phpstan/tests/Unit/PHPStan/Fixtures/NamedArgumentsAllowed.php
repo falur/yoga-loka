@@ -22,7 +22,10 @@ final class NamedArgumentsAllowed
         $function(first: 'a', second: 'b');
 
         \sprintf(...['%s %s', 'a', 'b']);
+        \sprintf('%s %s', 'a', 'b');
         two('a', ...['b']);
+        variadicAllowed('a', 'b');
+        variadicAllowed('a', 'b', ...['c']);
     }
 
     private static function staticMethod(string $first, string $second): string
@@ -55,4 +58,9 @@ function one(string $value): string
 function two(string $first, string $second): string
 {
     return $first . $second;
+}
+
+function variadicAllowed(string $first, string $second, string ...$rest): string
+{
+    return $first . $second . \implode(separator: '', array: $rest);
 }

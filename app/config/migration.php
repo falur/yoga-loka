@@ -13,7 +13,7 @@ return [
     /**
      * Директория для файлов миграций.
      */
-    'directory' => directory('app') . 'database/migrations/',
+    'directory' => \directory('app') . 'database/migrations/',
 
     /**
      * Таблица для хранения статуса миграций по базам данных.
@@ -23,5 +23,5 @@ return [
     /**
      * Если true, миграции запускаются без интерактивного подтверждения.
      */
-    'safe' => env('SAFE_MIGRATIONS', spiral(AppEnvironment::class)->isProduction()),
+    'safe' => \env('SAFE_MIGRATIONS', \spiral(AppEnvironment::class)->isProduction()),
 ];

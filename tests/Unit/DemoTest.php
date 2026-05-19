@@ -13,7 +13,7 @@ class DemoTest extends TestCase
         $expected = true;
         $actual = false;
 
-        $this->assertTrue($expected);
-        $this->assertFalse($actual);
+        self::assertTrue($expected);
+        self::assertFalse($actual);
     }
 }

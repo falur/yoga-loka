@@ -1,0 +1,9 @@
+parameters:
+    level: max
+    tmpDir: ../../runtime/phpstan-openapi
+    paths:
+        - src
+        - tests
+    phpVersion: 80506
+    bootstrapFiles:
+        - bootstrap.php

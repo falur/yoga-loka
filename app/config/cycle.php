@@ -16,7 +16,7 @@ return [
          *
          * false - схема не будет кэшироваться и будет обновляться автоматически в режиме разработки.
          */
-        'cache' => env('CYCLE_SCHEMA_CACHE', true),
+        'cache' => \env('CYCLE_SCHEMA_CACHE', true),
 
         /**
          * Настройки по умолчанию для сегментов схемы, которые не были заданы явно.
@@ -56,7 +56,7 @@ return [
         // ],
     ],
 
-    'warmup' => env('RR_MODE') === null ? false : env('CYCLE_SCHEMA_WARMUP', false),
+    'warmup' => \env('RR_MODE') === null ? false : \env('CYCLE_SCHEMA_WARMUP', false),
 
     /**
      * Пользовательские типы связей для entity.

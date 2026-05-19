@@ -6,6 +6,7 @@ namespace Tests\Unit\Infrastructure\Configuration;
 
 use App\Infrastructure\Configuration\Cache\CacheConfig as AppCacheConfig;
 use App\Infrastructure\Configuration\Cache\CacheStorageConfig;
+use App\Infrastructure\Configuration\OpenApi\OpenApiConfig;
 use Spiral\Cache\Config\CacheConfig as SpiralCacheConfig;
 use Tests\TestCase;
 
@@ -18,12 +19,24 @@ final class CacheConfigBindingTest extends TestCase
         $firstConfig = $container->get(AppCacheConfig::class);
         $secondConfig = $container->get(AppCacheConfig::class);
 
-        $this->assertSame($firstConfig, $secondConfig);
-        $this->assertSame('local', $firstConfig->default);
-        $this->assertArrayHasKey('rr-local', $firstConfig->storages);
-        $this->assertInstanceOf(CacheStorageConfig::class, $firstConfig->storages['rr-local']);
-        $this->assertSame('roadrunner', $firstConfig->storages['rr-local']->type);
-        $this->assertSame('local', $firstConfig->storages['rr-local']->driver);
+        self::assertSame($firstConfig, $secondConfig);
+        self::assertSame('local', $firstConfig->default);
+        self::assertArrayHasKey('rr-local', $firstConfig->storages);
+        self::assertInstanceOf(CacheStorageConfig::class, $firstConfig->storages['rr-local']);
+        self::assertSame('roadrunner', $firstConfig->storages['rr-local']->type);
+        self::assertSame('local', $firstConfig->storages['rr-local']->driver);
+    }
+
+    public function testOpenApiConfigIsRegisteredAsSingleton(): void
+    {
+        $container = $this->getContainer();
+
+        $firstConfig = $container->get(OpenApiConfig::class);
+        $secondConfig = $container->get(OpenApiConfig::class);
+
+        self::assertSame($firstConfig, $secondConfig);
+        self::assertSame('/api/v1', $firstConfig->routePrefix);
+        self::assertSame('public/openapi/openapi.yml', $firstConfig->outputFile);
     }
 
     public function testSpiralCacheConfigStillUsesNativeArrayConfig(): void
@@ -31,7 +44,7 @@ final class CacheConfigBindingTest extends TestCase
         $spiralConfig = $this->getContainer()->get(SpiralCacheConfig::class);
         $rawConfig = $spiralConfig->toArray();
 
-        $this->assertSame('local', $spiralConfig->getDefaultStorage());
-        $this->assertSame('roadrunner', $rawConfig['storages']['rr-local']['type']);
+        self::assertSame('local', $spiralConfig->getDefaultStorage());
+        self::assertSame('roadrunner', $rawConfig['storages']['rr-local']['type']);
     }
 }

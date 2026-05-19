@@ -15,12 +15,12 @@
         "ext-redis": "*",
         "ext-sockets": "*",
         "cuyz/valinor": "^2.4",
-        "illuminate/collections": "8 - 12",
+        "illuminate/collections": "^13.0",
+        "illuminate/support": "^13.0",
         "league/flysystem-aws-s3-v3": "3.34.0",
         "spiral-packages/league-event": "^1.0.1",
         "spiral-packages/scheduler": "^2.1",
         "spiral-packages/symfony-validator": "^1.5",
-        "spiral-packages/yii-error-handler-bridge": "^1.1",
         "spiral/cycle-bridge": "^2.11",
         "spiral/data-grid-bridge": "^3.0.1",
         "spiral/framework": "^3.15.7",
@@ -31,13 +31,16 @@
         "spiral/sentry-bridge": "^2.3",
         "spiral/temporal-bridge": "^3.3",
         "spiral/translator": "^3.15",
-        "spiral/twig-bridge": "^2.0.1"
+        "spiral/twig-bridge": "^2.0.1",
+        "swagger-api/swagger-ui": "v5.32.6"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "*",
         "phpstan/phpstan": "^2.1.54",
         "spiral/code-style": "^2.2",
         "spiral/dumper": "^3.3.1",
         "spiral/testing": "^3.0",
+        "yoga-loka/openapi-tools": "*",
         "yoga-loka/phpstan-rules": "*"
     },
     "autoload": {
@@ -57,6 +60,13 @@
             "options": {
                 "symlink": true
             }
+        },
+        {
+            "type": "path",
+            "url": "tools/openapi",
+            "options": {
+                "symlink": true
+            }
         }
     ],
     "extra": {
@@ -70,26 +80,25 @@
         }
     },
     "scripts": {
-        "post-create-project-cmd": [
-            "php app.php encrypt:key -m .env",
-            "php app.php configure --quiet",
-            "rr get-binary --quiet",
-            "composer dump-autoload"
-        ],
-        "rr:download": "rr get-binary",
-        "rr:download-protoc": "rr download-protoc-binary",
+        "phpstan": "phpstan analyse",
+        "cs": "php-cs-fixer fix --dry-run --diff -v",
         "cs:fix": "php-cs-fixer fix -v",
-        "phpstan": [
-            "phpstan analyse",
-            "@phpstan-rules:phpstan"
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage",
+        "qa": [
+            "@cs",
+            "@phpstan",
+            "@test",
+            "@test-coverage"
         ],
-        "phpstan-rules:phpstan": "phpstan analyse -c tools/phpstan/phpstan.neon",
-        "phpstan-rules:test": "phpunit -c tools/phpstan/phpunit.xml",
-        "test": [
-            "phpunit",
-            "@phpstan-rules:test"
+        "tools:phpstan:qa": [
+            "phpstan analyse -c tools/phpstan/phpstan.neon",
+            "phpunit -c tools/phpstan/phpunit.xml"
         ],
-        "test-coverage": "phpunit --coverage"
+        "tools:openapi:qa": [
+            "phpstan analyse -c tools/openapi/phpstan.neon",
+            "phpunit -c tools/openapi/phpunit.xml"
+        ]
     },
     "minimum-stability": "dev",
     "prefer-stable": true

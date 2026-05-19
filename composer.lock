@@ -4,55 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "50d72d4689ff626dd7dc7f0e7e3eb006",
+    "content-hash": "3f535914a62540a1bad3ae84760ad49f",
     "packages": [
-        {
-            "name": "alexkart/curl-builder",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/alexkart/curl-builder.git",
-                "reference": "ce9224d8a33625059ae1c549b101061cf8d8bc27"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/alexkart/curl-builder/zipball/ce9224d8a33625059ae1c549b101061cf8d8bc27",
-                "reference": "ce9224d8a33625059ae1c549b101061cf8d8bc27",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.3",
-                "psr/http-message": "^2.0"
-            },
-            "require-dev": {
-                "nyholm/psr7": "^1.3",
-                "phan/phan": "^5.4",
-                "phpstan/phpstan": "^1.10",
-                "phpunit/phpunit": "^9.5"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Alexkart\\CurlBuilder\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Alexander Kartavenko",
-                    "email": "askemailbox@gmail.com"
-                }
-            ],
-            "description": "PSR-7 compatible curl builder.",
-            "support": {
-                "issues": "https://github.com/alexkart/curl-builder/issues",
-                "source": "https://github.com/alexkart/curl-builder/tree/1.1.0"
-            },
-            "time": "2025-06-03T23:28:32+00:00"
-        },
         {
             "name": "aws/aws-crt-php",
             "version": "v1.2.7",
@@ -390,70 +343,6 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
-        },
-        {
-            "name": "cebe/markdown",
-            "version": "1.2.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/cebe/markdown.git",
-                "reference": "9bac5e971dd391e2802dca5400bbeacbaea9eb86"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/cebe/markdown/zipball/9bac5e971dd391e2802dca5400bbeacbaea9eb86",
-                "reference": "9bac5e971dd391e2802dca5400bbeacbaea9eb86",
-                "shasum": ""
-            },
-            "require": {
-                "lib-pcre": "*",
-                "php": ">=5.4.0"
-            },
-            "require-dev": {
-                "cebe/indent": "*",
-                "facebook/xhprof": "*@dev",
-                "phpunit/phpunit": "4.1.*"
-            },
-            "bin": [
-                "bin/markdown"
-            ],
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "1.2.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "cebe\\markdown\\": ""
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Carsten Brandt",
-                    "email": "mail@cebe.cc",
-                    "homepage": "http://cebe.cc/",
-                    "role": "Creator"
-                }
-            ],
-            "description": "A super fast, highly extensible markdown parser for PHP",
-            "homepage": "https://github.com/cebe/markdown#readme",
-            "keywords": [
-                "extensible",
-                "fast",
-                "gfm",
-                "markdown",
-                "markdown-extra"
-            ],
-            "support": {
-                "issues": "https://github.com/cebe/markdown/issues",
-                "source": "https://github.com/cebe/markdown"
-            },
-            "time": "2018-03-26T11:24:36+00:00"
         },
         {
             "name": "clue/stream-filter",
@@ -2310,35 +2199,35 @@
         },
         {
             "name": "illuminate/collections",
-            "version": "v12.58.0",
+            "version": "v13.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/collections.git",
-                "reference": "83313b009c4afb6f02dbc090bdb67809756eefa2"
+                "reference": "dda57c96a3e2620e4218ba54c818d55c9c2fcd4f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/collections/zipball/83313b009c4afb6f02dbc090bdb67809756eefa2",
-                "reference": "83313b009c4afb6f02dbc090bdb67809756eefa2",
+                "url": "https://api.github.com/repos/illuminate/collections/zipball/dda57c96a3e2620e4218ba54c818d55c9c2fcd4f",
+                "reference": "dda57c96a3e2620e4218ba54c818d55c9c2fcd4f",
                 "shasum": ""
             },
             "require": {
-                "illuminate/conditionable": "^12.0",
-                "illuminate/contracts": "^12.0",
-                "illuminate/macroable": "^12.0",
-                "php": "^8.2",
-                "symfony/polyfill-php83": "^1.33",
-                "symfony/polyfill-php84": "^1.33",
-                "symfony/polyfill-php85": "^1.33"
+                "illuminate/conditionable": "^13.0",
+                "illuminate/contracts": "^13.0",
+                "illuminate/macroable": "^13.0",
+                "php": "^8.3",
+                "symfony/polyfill-php84": "^1.36",
+                "symfony/polyfill-php85": "^1.36",
+                "symfony/polyfill-php86": "^1.36"
             },
             "suggest": {
-                "illuminate/http": "Required to convert collections to API resources (^12.0).",
-                "symfony/var-dumper": "Required to use the dump method (^7.2)."
+                "illuminate/http": "Required to convert collections to API resources (^13.0).",
+                "symfony/var-dumper": "Required to use the dump method (^7.4 || ^8.0)."
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "12.x-dev"
+                    "dev-master": "13.0.x-dev"
                 }
             },
             "autoload": {
@@ -2366,29 +2255,29 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-03-11T14:13:25+00:00"
+            "time": "2026-05-05T20:55:51+00:00"
         },
         {
             "name": "illuminate/conditionable",
-            "version": "v12.58.0",
+            "version": "v13.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/conditionable.git",
-                "reference": "ec677967c1f2faf90b8428919124d2184a4c9b49"
+                "reference": "7f1ef52d9a346f829421b296adfb7644a951b216"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/conditionable/zipball/ec677967c1f2faf90b8428919124d2184a4c9b49",
-                "reference": "ec677967c1f2faf90b8428919124d2184a4c9b49",
+                "url": "https://api.github.com/repos/illuminate/conditionable/zipball/7f1ef52d9a346f829421b296adfb7644a951b216",
+                "reference": "7f1ef52d9a346f829421b296adfb7644a951b216",
                 "shasum": ""
             },
             "require": {
-                "php": "^8.2"
+                "php": "^8.3"
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "12.x-dev"
+                    "dev-master": "13.0.x-dev"
                 }
             },
             "autoload": {
@@ -2412,31 +2301,31 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2025-05-13T15:08:45+00:00"
+            "time": "2026-02-25T16:07:55+00:00"
         },
         {
             "name": "illuminate/contracts",
-            "version": "v12.58.0",
+            "version": "v13.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/contracts.git",
-                "reference": "099fd9b56ccaf776facaa27699b960a3f2451127"
+                "reference": "71dba8668753f7c6ea862bc4258eba6513b592ec"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/contracts/zipball/099fd9b56ccaf776facaa27699b960a3f2451127",
-                "reference": "099fd9b56ccaf776facaa27699b960a3f2451127",
+                "url": "https://api.github.com/repos/illuminate/contracts/zipball/71dba8668753f7c6ea862bc4258eba6513b592ec",
+                "reference": "71dba8668753f7c6ea862bc4258eba6513b592ec",
                 "shasum": ""
             },
             "require": {
-                "php": "^8.2",
-                "psr/container": "^1.1.1|^2.0.1",
-                "psr/simple-cache": "^1.0|^2.0|^3.0"
+                "php": "^8.3",
+                "psr/container": "^1.1.1 || ^2.0.1",
+                "psr/simple-cache": "^1.0 || ^2.0 || ^3.0"
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "12.x-dev"
+                    "dev-master": "13.0.x-dev"
                 }
             },
             "autoload": {
@@ -2460,20 +2349,20 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-02-20T14:37:40+00:00"
+            "time": "2026-05-06T18:50:26+00:00"
         },
         {
             "name": "illuminate/macroable",
-            "version": "v12.58.0",
+            "version": "v13.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/macroable.git",
-                "reference": "e295d62d89dcdb87e2b1bd70dd14d074a0ed73cc"
+                "reference": "59b5b5f3cf290a91db8cf6cd3d35ff56978bc057"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/macroable/zipball/e295d62d89dcdb87e2b1bd70dd14d074a0ed73cc",
-                "reference": "e295d62d89dcdb87e2b1bd70dd14d074a0ed73cc",
+                "url": "https://api.github.com/repos/illuminate/macroable/zipball/59b5b5f3cf290a91db8cf6cd3d35ff56978bc057",
+                "reference": "59b5b5f3cf290a91db8cf6cd3d35ff56978bc057",
                 "shasum": ""
             },
             "require": {
@@ -2482,7 +2371,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "12.x-dev"
+                    "dev-master": "13.0.x-dev"
                 }
             },
             "autoload": {
@@ -2506,7 +2395,137 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-03-30T19:05:19+00:00"
+            "time": "2026-04-29T09:35:06+00:00"
+        },
+        {
+            "name": "illuminate/reflection",
+            "version": "v13.9.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/illuminate/reflection.git",
+                "reference": "4fe1659f068ab2b50131cf906c5d8bba4e34df0c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/illuminate/reflection/zipball/4fe1659f068ab2b50131cf906c5d8bba4e34df0c",
+                "reference": "4fe1659f068ab2b50131cf906c5d8bba4e34df0c",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/collections": "^13.0",
+                "illuminate/contracts": "^13.0",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "13.0.x-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "helpers.php"
+                ],
+                "psr-4": {
+                    "Illuminate\\Support\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "The Illuminate Reflection package.",
+            "homepage": "https://laravel.com",
+            "support": {
+                "issues": "https://github.com/laravel/framework/issues",
+                "source": "https://github.com/laravel/framework"
+            },
+            "time": "2026-03-10T20:04:12+00:00"
+        },
+        {
+            "name": "illuminate/support",
+            "version": "v13.9.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/illuminate/support.git",
+                "reference": "3367c25b040788835fd043fbddb64bd5af659ec6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/illuminate/support/zipball/3367c25b040788835fd043fbddb64bd5af659ec6",
+                "reference": "3367c25b040788835fd043fbddb64bd5af659ec6",
+                "shasum": ""
+            },
+            "require": {
+                "doctrine/inflector": "^2.0",
+                "ext-ctype": "*",
+                "ext-filter": "*",
+                "ext-mbstring": "*",
+                "illuminate/collections": "^13.0",
+                "illuminate/conditionable": "^13.0",
+                "illuminate/contracts": "^13.0",
+                "illuminate/macroable": "^13.0",
+                "illuminate/reflection": "^13.0",
+                "nesbot/carbon": "^3.8.4",
+                "php": "^8.3",
+                "symfony/polyfill-php85": "^1.36",
+                "voku/portable-ascii": "^2.0.2"
+            },
+            "conflict": {
+                "tightenco/collect": "<5.5.33"
+            },
+            "replace": {
+                "spatie/once": "*"
+            },
+            "suggest": {
+                "illuminate/filesystem": "Required to use the Composer class (^13.0).",
+                "laravel/serializable-closure": "Required to use the once function (^2.0.10).",
+                "league/commonmark": "Required to use Str::markdown() and Stringable::markdown() (^2.7).",
+                "league/uri": "Required to use the Uri class (^7.5.1).",
+                "ramsey/uuid": "Required to use Str::uuid() (^4.7).",
+                "symfony/process": "Required to use the Composer class (^7.4 || ^8.0).",
+                "symfony/uid": "Required to use Str::ulid() (^7.4 || ^8.0).",
+                "symfony/var-dumper": "Required to use the dd function (^7.4 || ^8.0).",
+                "vlucas/phpdotenv": "Required to use the Env class and env helper (^5.6.1)."
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "13.0.x-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "functions.php",
+                    "helpers.php"
+                ],
+                "psr-4": {
+                    "Illuminate\\Support\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "The Illuminate Support package.",
+            "homepage": "https://laravel.com",
+            "support": {
+                "issues": "https://github.com/laravel/framework/issues",
+                "source": "https://github.com/laravel/framework"
+            },
+            "time": "2026-05-10T15:47:41+00:00"
         },
         {
             "name": "internal/destroy",
@@ -5490,70 +5509,6 @@
             "time": "2024-04-02T08:57:21+00:00"
         },
         {
-            "name": "spiral-packages/yii-error-handler-bridge",
-            "version": "1.1.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/spiral-packages/yii-error-handler-bridge.git",
-                "reference": "d17381e749d8057b6d445ec0833c678587da40cc"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/spiral-packages/yii-error-handler-bridge/zipball/d17381e749d8057b6d445ec0833c678587da40cc",
-                "reference": "d17381e749d8057b6d445ec0833c678587da40cc",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^8.1",
-                "spiral/boot": "^3.0",
-                "spiral/exceptions": "^3.0",
-                "yiisoft/error-handler": "~3.3"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.5",
-                "phpunit/phpunit": "^9.5.28",
-                "spiral/http": "^3.0",
-                "spiral/testing": "^2.0",
-                "vimeo/psalm": "^4.9"
-            },
-            "type": "library",
-            "extra": {
-                "spiral": {
-                    "bootloaders": [
-                        "Spiral\\YiiErrorHandler\\Bootloader\\YiiErrorHandlerBootloader"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Spiral\\YiiErrorHandler\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "kastahov",
-                    "email": "kastahov1021@gmail.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Yii Error Handler integration package for Spiral Framework",
-            "homepage": "https://github.com/spiral-packages/yii-error-handler-bridge",
-            "keywords": [
-                "error-handling",
-                "spiral",
-                "spiral-framework"
-            ],
-            "support": {
-                "issues": "https://github.com/spiral-packages/yii-error-handler-bridge/issues",
-                "source": "https://github.com/spiral-packages/yii-error-handler-bridge/tree/1.1.2"
-            },
-            "time": "2024-09-11T11:15:23+00:00"
-        },
-        {
             "name": "spiral/attributes",
             "version": "v3.1.8",
             "source": {
@@ -7340,6 +7295,67 @@
                 "source": "https://github.com/spiral/twig-bridge/tree/v2.0.1"
             },
             "time": "2022-09-14T17:08:28+00:00"
+        },
+        {
+            "name": "swagger-api/swagger-ui",
+            "version": "v5.32.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/swagger-api/swagger-ui.git",
+                "reference": "dcdca62c8b64a0a54e4decd4e1a6c3c712fdcc60"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/swagger-api/swagger-ui/zipball/dcdca62c8b64a0a54e4decd4e1a6c3c712fdcc60",
+                "reference": "dcdca62c8b64a0a54e4decd4e1a6c3c712fdcc60",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Anna Bodnia",
+                    "email": "anna.bodnia@gmail.com"
+                },
+                {
+                    "name": "Buu Nguyen",
+                    "email": "buunguyen@gmail.com"
+                },
+                {
+                    "name": "Josh Ponelat",
+                    "email": "jponelat@gmail.com"
+                },
+                {
+                    "name": "Kyle Shockey",
+                    "email": "kyleshockey1@gmail.com"
+                },
+                {
+                    "name": "Robert Barnwell",
+                    "email": "robert@robertismy.name"
+                },
+                {
+                    "name": "Sahar Jafari",
+                    "email": "shr.jafari@gmail.com"
+                }
+            ],
+            "description": " Swagger UI is a collection of HTML, Javascript, and CSS assets that dynamically generate beautiful documentation from a Swagger-compliant API.",
+            "homepage": "http://swagger.io",
+            "keywords": [
+                "api",
+                "documentation",
+                "openapi",
+                "specification",
+                "swagger",
+                "ui"
+            ],
+            "support": {
+                "issues": "https://github.com/swagger-api/swagger-ui/issues",
+                "source": "https://github.com/swagger-api/swagger-ui/tree/v5.32.6"
+            },
+            "time": "2026-05-12T09:35:37+00:00"
         },
         {
             "name": "symfony/cache",
@@ -9389,6 +9405,86 @@
             "time": "2026-04-26T13:10:57+00:00"
         },
         {
+            "name": "symfony/polyfill-php86",
+            "version": "v1.37.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/polyfill-php86.git",
+                "reference": "33d8fc5a705481e21fe3a81212b26f9b1f61749c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/polyfill-php86/zipball/33d8fc5a705481e21fe3a81212b26f9b1f61749c",
+                "reference": "33d8fc5a705481e21fe3a81212b26f9b1f61749c",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/polyfill",
+                    "name": "symfony/polyfill"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ],
+                "psr-4": {
+                    "Symfony\\Polyfill\\Php86\\": ""
+                },
+                "classmap": [
+                    "Resources/stubs"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony polyfill backporting some PHP 8.6+ features to lower PHP versions",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "compatibility",
+                "polyfill",
+                "portable",
+                "shim"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/polyfill-php86/tree/v1.37.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-04-26T13:13:48+00:00"
+        },
+        {
             "name": "symfony/process",
             "version": "v8.0.11",
             "source": {
@@ -10424,94 +10520,78 @@
             "time": "2025-12-27T19:49:13+00:00"
         },
         {
-            "name": "yiisoft/error-handler",
-            "version": "3.3.0",
+            "name": "voku/portable-ascii",
+            "version": "2.1.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/yiisoft/error-handler.git",
-                "reference": "a263c9dea48d5a42022dd7df76706cff39e3e960"
+                "url": "https://github.com/voku/portable-ascii.git",
+                "reference": "8e1051fe39379367aecf014f41744ce7539a856f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/yiisoft/error-handler/zipball/a263c9dea48d5a42022dd7df76706cff39e3e960",
-                "reference": "a263c9dea48d5a42022dd7df76706cff39e3e960",
+                "url": "https://api.github.com/repos/voku/portable-ascii/zipball/8e1051fe39379367aecf014f41744ce7539a856f",
+                "reference": "8e1051fe39379367aecf014f41744ce7539a856f",
                 "shasum": ""
             },
             "require": {
-                "alexkart/curl-builder": "^1.0",
-                "cebe/markdown": "^1.2",
-                "ext-dom": "*",
-                "ext-json": "*",
-                "ext-mbstring": "*",
-                "php": "^8.0",
-                "psr/container": "^1.0|^2.0",
-                "psr/http-factory": "^1.0",
-                "psr/http-message": "^1.0|^2.0",
-                "psr/http-server-handler": "^1.0",
-                "psr/http-server-middleware": "^1.0",
-                "psr/log": "^1.1|^2.0|^3.0",
-                "yiisoft/friendly-exception": "^1.0",
-                "yiisoft/http": "^1.2",
-                "yiisoft/injector": "^1.0"
+                "php": ">=7.1.0"
             },
             "require-dev": {
-                "httpsoft/http-message": "^1.0.9",
-                "maglnet/composer-require-checker": "^4.4",
-                "phpunit/phpunit": "^9.5",
-                "rector/rector": "^1.0",
-                "roave/infection-static-analysis-plugin": "^1.16",
-                "spatie/phpunit-watcher": "^1.23",
-                "vimeo/psalm": "^4.30|^5.25",
-                "yiisoft/di": "^1.1",
-                "yiisoft/test-support": "^1.3"
+                "phpunit/phpunit": "~8.5 || ~9.6 || ~10.5 || ~11.5"
+            },
+            "suggest": {
+                "ext-intl": "Use Intl for transliterator_transliterate() support"
             },
             "type": "library",
-            "extra": {
-                "config-plugin": {
-                    "di-web": "di-web.php"
-                },
-                "config-plugin-options": {
-                    "source-directory": "config"
-                }
-            },
             "autoload": {
                 "psr-4": {
-                    "Yiisoft\\ErrorHandler\\": "src"
+                    "voku\\": "src/voku/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "BSD-3-Clause"
+                "MIT"
             ],
-            "description": "Yii Error Handling Library",
-            "homepage": "https://www.yiiframework.com/",
+            "authors": [
+                {
+                    "name": "Lars Moelleken",
+                    "homepage": "https://www.moelleken.org/"
+                }
+            ],
+            "description": "Portable ASCII library - performance optimized (ascii) string functions for php.",
+            "homepage": "https://github.com/voku/portable-ascii",
             "keywords": [
-                "PSR-11",
-                "error-handler",
-                "psr-15",
-                "psr-3",
-                "psr-7",
-                "yiisoft"
+                "ascii",
+                "clean",
+                "php"
             ],
             "support": {
-                "chat": "https://t.me/yii3en",
-                "forum": "https://www.yiiframework.com/forum/",
-                "irc": "ircs://irc.libera.chat:6697/yii",
-                "issues": "https://github.com/yiisoft/error-handler/issues?state=open",
-                "source": "https://github.com/yiisoft/error-handler",
-                "wiki": "https://www.yiiframework.com/wiki/"
+                "issues": "https://github.com/voku/portable-ascii/issues",
+                "source": "https://github.com/voku/portable-ascii/tree/2.1.1"
             },
             "funding": [
                 {
-                    "url": "https://github.com/sponsors/yiisoft",
+                    "url": "https://www.paypal.me/moelleken",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/voku",
                     "type": "github"
                 },
                 {
-                    "url": "https://opencollective.com/yiisoft",
-                    "type": "opencollective"
+                    "url": "https://opencollective.com/portable-ascii",
+                    "type": "open_collective"
+                },
+                {
+                    "url": "https://www.patreon.com/voku",
+                    "type": "patreon"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/voku/portable-ascii",
+                    "type": "tidelift"
                 }
             ],
-            "time": "2024-07-11T12:16:20+00:00"
+            "time": "2026-04-26T05:33:54+00:00"
         },
         {
             "name": "yiisoft/friendly-exception",
@@ -10580,154 +10660,6 @@
                 }
             ],
             "time": "2025-11-28T14:51:44+00:00"
-        },
-        {
-            "name": "yiisoft/http",
-            "version": "1.3.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/yiisoft/http.git",
-                "reference": "8949fa6ab32b943c3e45794fceec220ddfa1e5e4"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/yiisoft/http/zipball/8949fa6ab32b943c3e45794fceec220ddfa1e5e4",
-                "reference": "8949fa6ab32b943c3e45794fceec220ddfa1e5e4",
-                "shasum": ""
-            },
-            "require": {
-                "ext-mbstring": "*",
-                "php": "7.4.* || 8.0 - 8.5"
-            },
-            "require-dev": {
-                "bamarni/composer-bin-plugin": "^1.8.2",
-                "maglnet/composer-require-checker": "^3.8 || ^4.3",
-                "phpunit/phpunit": "^9.6.22",
-                "rector/rector": "^2.0.10",
-                "spatie/phpunit-watcher": "^1.23.6"
-            },
-            "type": "library",
-            "extra": {
-                "bamarni-bin": {
-                    "bin-links": true,
-                    "forward-command": true,
-                    "target-directory": "tools"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Yiisoft\\Http\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "BSD-3-Clause"
-            ],
-            "description": "Constants and PSR-7 PhpStorm meta for HTTP protocol headers, methods and statuses",
-            "homepage": "https://www.yiiframework.com/",
-            "keywords": [
-                "header",
-                "http",
-                "method",
-                "psr-17",
-                "psr-7",
-                "status"
-            ],
-            "support": {
-                "chat": "https://t.me/yii3en",
-                "forum": "https://www.yiiframework.com/forum/",
-                "irc": "ircs://irc.libera.chat:6697/yii",
-                "issues": "https://github.com/yiisoft/http/issues?state=open",
-                "source": "https://github.com/yiisoft/http",
-                "wiki": "https://www.yiiframework.com/wiki/"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/sponsors/yiisoft",
-                    "type": "github"
-                },
-                {
-                    "url": "https://opencollective.com/yiisoft",
-                    "type": "opencollective"
-                }
-            ],
-            "time": "2025-11-25T09:08:29+00:00"
-        },
-        {
-            "name": "yiisoft/injector",
-            "version": "1.2.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/yiisoft/injector.git",
-                "reference": "d3f718256b734933670ad11143cca724d340fc90"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/yiisoft/injector/zipball/d3f718256b734933670ad11143cca724d340fc90",
-                "reference": "d3f718256b734933670ad11143cca724d340fc90",
-                "shasum": ""
-            },
-            "require": {
-                "php": "7.4 - 8.5"
-            },
-            "require-dev": {
-                "bamarni/composer-bin-plugin": "^1.8.3",
-                "maglnet/composer-require-checker": "^3.8 || ^4.2",
-                "phpbench/phpbench": "^1.1",
-                "phpunit/phpunit": "^9.5",
-                "psr/container": "^1.0 || ^2.0",
-                "rector/rector": "^2.0.10",
-                "spatie/phpunit-watcher": "^1.23",
-                "yiisoft/test-support": "^1.4 || ^3.1"
-            },
-            "suggest": {
-                "psr/container": "For automatic resolving of dependencies"
-            },
-            "type": "library",
-            "extra": {
-                "bamarni-bin": {
-                    "bin-links": true,
-                    "forward-command": true,
-                    "target-directory": "tools"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Yiisoft\\Injector\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "BSD-3-Clause"
-            ],
-            "description": "PSR-11 compatible injector. Executes a callable and makes an instances by injecting dependencies from a given DI container.",
-            "homepage": "https://www.yiiframework.com/",
-            "keywords": [
-                "PSR-11",
-                "dependency injection",
-                "di",
-                "injector",
-                "reflection"
-            ],
-            "support": {
-                "chat": "https://t.me/yii3en",
-                "forum": "https://www.yiiframework.com/forum/",
-                "irc": "ircs://irc.libera.chat:6697/yii",
-                "issues": "https://github.com/yiisoft/injector/issues?state=open",
-                "source": "https://github.com/yiisoft/injector",
-                "wiki": "https://www.yiiframework.com/wiki/"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/sponsors/yiisoft",
-                    "type": "github"
-                },
-                {
-                    "url": "https://opencollective.com/yiisoft",
-                    "type": "opencollective"
-                }
-            ],
-            "time": "2025-12-01T11:14:17+00:00"
         }
     ],
     "packages-dev": [
@@ -11133,6 +11065,53 @@
                 "source": "https://github.com/PHP-CS-Fixer/shim/tree/v3.95.1"
             },
             "time": "2026-04-12T17:00:34+00:00"
+        },
+        {
+            "name": "phpstan/phpdoc-parser",
+            "version": "2.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phpstan/phpdoc-parser.git",
+                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/a004701b11273a26cd7955a61d67a7f1e525a45a",
+                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "doctrine/annotations": "^2.0",
+                "nikic/php-parser": "^5.3.0",
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpstan/extension-installer": "^1.0",
+                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^9.6",
+                "symfony/process": "^5.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPStan\\PhpDocParser\\": [
+                        "src/"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPDoc parser with support for nullable, intersection and generic types",
+            "support": {
+                "issues": "https://github.com/phpstan/phpdoc-parser/issues",
+                "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.2"
+            },
+            "time": "2026-01-25T14:56:51+00:00"
         },
         {
             "name": "phpstan/phpstan",
@@ -13125,6 +13104,131 @@
                 }
             ],
             "time": "2025-12-08T11:19:18+00:00"
+        },
+        {
+            "name": "yiisoft/injector",
+            "version": "1.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/yiisoft/injector.git",
+                "reference": "d3f718256b734933670ad11143cca724d340fc90"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/yiisoft/injector/zipball/d3f718256b734933670ad11143cca724d340fc90",
+                "reference": "d3f718256b734933670ad11143cca724d340fc90",
+                "shasum": ""
+            },
+            "require": {
+                "php": "7.4 - 8.5"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8.3",
+                "maglnet/composer-require-checker": "^3.8 || ^4.2",
+                "phpbench/phpbench": "^1.1",
+                "phpunit/phpunit": "^9.5",
+                "psr/container": "^1.0 || ^2.0",
+                "rector/rector": "^2.0.10",
+                "spatie/phpunit-watcher": "^1.23",
+                "yiisoft/test-support": "^1.4 || ^3.1"
+            },
+            "suggest": {
+                "psr/container": "For automatic resolving of dependencies"
+            },
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": true,
+                    "forward-command": true,
+                    "target-directory": "tools"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Yiisoft\\Injector\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "description": "PSR-11 compatible injector. Executes a callable and makes an instances by injecting dependencies from a given DI container.",
+            "homepage": "https://www.yiiframework.com/",
+            "keywords": [
+                "PSR-11",
+                "dependency injection",
+                "di",
+                "injector",
+                "reflection"
+            ],
+            "support": {
+                "chat": "https://t.me/yii3en",
+                "forum": "https://www.yiiframework.com/forum/",
+                "irc": "ircs://irc.libera.chat:6697/yii",
+                "issues": "https://github.com/yiisoft/injector/issues?state=open",
+                "source": "https://github.com/yiisoft/injector",
+                "wiki": "https://www.yiiframework.com/wiki/"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/yiisoft",
+                    "type": "github"
+                },
+                {
+                    "url": "https://opencollective.com/yiisoft",
+                    "type": "opencollective"
+                }
+            ],
+            "time": "2025-12-01T11:14:17+00:00"
+        },
+        {
+            "name": "yoga-loka/openapi-tools",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tools/openapi",
+                "reference": "c63b4c4ca7c0b60f42e9d835c7e95f82e9f01ff3"
+            },
+            "require": {
+                "nikic/php-parser": "v5.7.0",
+                "nyholm/psr7": "^1.8",
+                "php": ">=8.5 <8.6",
+                "phpstan/phpdoc-parser": "2.3.2",
+                "spiral/framework": "^3.16",
+                "symfony/finder": "v8.0.8",
+                "symfony/yaml": "v8.0.10"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1.54",
+                "phpunit/phpunit": "^13.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tools\\OpenApi\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tools\\OpenApi\\Tests\\": "tests"
+                }
+            },
+            "scripts": {
+                "phpstan": [
+                    "../../vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "../../vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Static OpenAPI generator for typed Spiral HTTP layers",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "yoga-loka/phpstan-rules",

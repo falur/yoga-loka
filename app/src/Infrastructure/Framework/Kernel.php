@@ -33,7 +33,6 @@ use Spiral\Twig\Bootloader\TwigBootloader;
 use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
-use Spiral\YiiErrorHandler\Bootloader\YiiErrorHandlerBootloader;
 
 class Kernel extends \Spiral\Framework\Kernel
 {
@@ -55,10 +54,10 @@ class Kernel extends \Spiral\Framework\Kernel
         return [
             // Логирование и обработка исключений
             MonologBootloader::class,
-            YiiErrorHandlerBootloader::class,
             Bootloader\ExceptionHandlerBootloader::class,
 
             // Логи приложения
+            Bootloader\ConfigBootloader::class,
             Bootloader\LoggingBootloader::class,
 
             // RoadRunner
@@ -78,6 +77,7 @@ class Kernel extends \Spiral\Framework\Kernel
 
             // HTTP-расширения
             HttpBootloader::class,
+            Framework\Http\ErrorHandlerBootloader::class,
             Framework\Http\RouterBootloader::class,
             Framework\Http\JsonPayloadsBootloader::class,
             Framework\Http\CookiesBootloader::class,
@@ -146,6 +146,7 @@ class Kernel extends \Spiral\Framework\Kernel
 
             // Консольные команды
             Framework\CommandBootloader::class,
+            Bootloader\OpenApiBootloader::class,
             RoadRunnerBridge\CommandBootloader::class,
             CycleBridge\CommandBootloader::class,
             ScaffolderBootloader::class,
@@ -164,9 +165,6 @@ class Kernel extends \Spiral\Framework\Kernel
     public function defineAppBootloaders(): array
     {
         return [
-            // DTO конфигурации приложения
-            Bootloader\ConfigBootloader::class,
-
             // Доменный обработчик приложения
             Bootloader\AppBootloader::class,
         ];

@@ -1,0 +1,5 @@
+services:
+    -
+        class: Tools\OpenApi\PHPStan\Rules\OpenApiAttributeRule
+        tags:
+            - phpstan.rules.rule

@@ -43,16 +43,16 @@ final class ConfigMapperTest extends TestCase
             ],
         ]);
 
-        $config = $mapper->map(section: 'cache', targetClass: CacheConfig::class);
+        $config = $mapper->map(section: CacheConfig::configName(), targetClass: CacheConfig::class);
 
-        $this->assertSame('rr-local', $config->default);
-        $this->assertSame('rr-local', $config->aliases['blog-data']);
-        $this->assertInstanceOf(CacheAliasConfig::class, $config->aliases['user-data']);
-        $this->assertSame('user_', $config->aliases['user-data']->prefix);
-        $this->assertSame('roadrunner', $config->storages['rr-local']->type);
-        $this->assertSame('local', $config->storages['rr-local']->driver);
-        $this->assertSame('/tmp/cache', $config->storages['file']->path);
-        $this->assertSame(CacheStorageConfig::class, $config->typeAliases['file']);
+        self::assertSame('rr-local', $config->default);
+        self::assertSame('rr-local', $config->aliases['blog-data']);
+        self::assertInstanceOf(CacheAliasConfig::class, $config->aliases['user-data']);
+        self::assertSame('user_', $config->aliases['user-data']->prefix);
+        self::assertSame('roadrunner', $config->storages['rr-local']->type);
+        self::assertSame('local', $config->storages['rr-local']->driver);
+        self::assertSame('/tmp/cache', $config->storages['file']->path);
+        self::assertSame(CacheStorageConfig::class, $config->typeAliases['file']);
     }
 
     public function testThrowsReadableExceptionForInvalidConfig(): void
@@ -68,7 +68,7 @@ final class ConfigMapperTest extends TestCase
         $this->expectExceptionMessage('Не удалось преобразовать раздел конфигурации `cache`');
         $this->expectExceptionMessage(CacheConfig::class);
 
-        $mapper->map(section: 'cache', targetClass: CacheConfig::class);
+        $mapper->map(section: CacheConfig::configName(), targetClass: CacheConfig::class);
     }
 
     public function testNormalizesCacheConfig(): void
@@ -85,11 +85,11 @@ final class ConfigMapperTest extends TestCase
 
         $normalized = $mapper->normalize($config);
 
-        $this->assertSame('local', $normalized['default']);
-        $this->assertArrayHasKey('aliases', $normalized);
-        $this->assertArrayHasKey('storages', $normalized);
-        $this->assertArrayHasKey('typeAliases', $normalized);
-        $this->assertSame('array', $normalized['storages']['local']['type']);
+        self::assertSame('local', $normalized['default']);
+        self::assertArrayHasKey('aliases', $normalized);
+        self::assertArrayHasKey('storages', $normalized);
+        self::assertArrayHasKey('typeAliases', $normalized);
+        self::assertSame('array', $normalized['storages']['local']['type']);
     }
 
     /**
@@ -100,13 +100,13 @@ final class ConfigMapperTest extends TestCase
         $configurator = $this->createMock(ConfiguratorInterface::class);
         $configurator
             ->method('getConfig')
-            ->with('cache')
+            ->with(CacheConfig::configName())
             ->willReturn($config);
 
         return new ConfigMapper(
             configurator: $configurator,
-            mapper: (new MapperBuilder())->mapper(),
-            normalizer: (new NormalizerBuilder())->normalizer(Format::array()),
+            mapper: new MapperBuilder()->mapper(),
+            normalizer: new NormalizerBuilder()->normalizer(Format::array()),
         );
     }
 }

@@ -12,16 +12,16 @@ return [
      * DSN транспорта, который используется для отправки писем.
      * @see https://symfony.com/doc/current/mailer.html#using-built-in-transports
      */
-    'dsn' => env('MAILER_DSN', 'smtp://user:pass@mailhog:25'),
+    'dsn' => \env('MAILER_DSN', 'smtp://user:pass@mailhog:25'),
 
     /**
      * Глобальный адрес отправителя.
      */
-    'from' => env('MAILER_FROM', 'Spiral <sendit@local.host>'),
+    'from' => \env('MAILER_FROM', 'Spiral <sendit@local.host>'),
 
     /**
      * Подключение и очередь для отправки писем через queue.
      */
-    'queueConnection' => env('MAILER_QUEUE_CONNECTION'),
-    'queue' => env('MAILER_QUEUE', 'local'),
+    'queueConnection' => \env('MAILER_QUEUE_CONNECTION'),
+    'queue' => \env('MAILER_QUEUE', 'local'),
 ];

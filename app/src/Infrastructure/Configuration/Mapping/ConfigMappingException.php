@@ -13,13 +13,25 @@ final class ConfigMappingException extends \RuntimeException
         $messages = [];
 
         foreach ($error->messages() as $message) {
-            $messages[] = 'путь `' . $message->path() . '`, ожидалось `'
-                . $message->expectedSignature() . '`, получено `' . $message->sourceValue() . '`';
+            $messages[] = \strtr(
+                string: 'путь `{path}`, ожидалось `{expected}`, получено `{actual}`',
+                from: [
+                    '{path}' => $message->path(),
+                    '{expected}' => $message->expectedSignature(),
+                    '{actual}' => $message->sourceValue(),
+                ],
+            );
         }
 
         return new self(
-            message: 'Не удалось преобразовать раздел конфигурации `' . $section . '` в `' . $targetClass . '`: '
-                . (\implode(separator: '; ', array: $messages) ?: $error->getMessage()),
+            message: \strtr(
+                string: 'Не удалось преобразовать раздел конфигурации `{section}` в `{targetClass}`: {details}',
+                from: [
+                    '{section}' => $section,
+                    '{targetClass}' => $targetClass,
+                    '{details}' => \implode(separator: '; ', array: $messages) ?: $error->getMessage(),
+                ],
+            ),
             previous: $error,
         );
     }

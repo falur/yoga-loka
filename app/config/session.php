@@ -10,16 +10,16 @@ use Spiral\Session\Handler\CacheHandler;
  * @link https://spiral.dev/docs/basics-session
  */
 return [
-    'lifetime' => (int) env('SESSION_LIFETIME', 86400),
-    'cookie' => env('SESSION_COOKIE', 'sid'),
+    'lifetime' => (int) \env('SESSION_LIFETIME', 86400),
+    'cookie' => \env('SESSION_COOKIE', 'sid'),
     'secure' => true,
     'sameSite' => null,
     'handler' => new Autowire(
         CacheHandler::class,
         [
-            'storage' => env('SESSION_CACHE_STORAGE', 'redis'),
-            'ttl' => (int) env('SESSION_LIFETIME', 86400),
-            'prefix' => env('SESSION_CACHE_PREFIX', 'session:'),
+            'storage' => \env('SESSION_CACHE_STORAGE', 'redis'),
+            'ttl' => (int) \env('SESSION_LIFETIME', 86400),
+            'prefix' => \env('SESSION_CACHE_PREFIX', 'session:'),
         ],
     ),
 ];

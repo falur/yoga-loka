@@ -23,3 +23,7 @@ services:
         class: Tools\PHPStan\Rules\DisallowLooseComparisonRule
         tags:
             - phpstan.rules.rule
+    -
+        class: Tools\PHPStan\Rules\DisallowMagicScalarLiteralRule
+        tags:
+            - phpstan.rules.rule

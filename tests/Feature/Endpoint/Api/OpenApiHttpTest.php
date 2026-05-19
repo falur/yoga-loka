@@ -51,14 +51,26 @@ final class OpenApiHttpTest extends TestCase
 
         $response->assertNotFound();
         $response->assertHasHeader('Content-Type', 'application/json; charset=utf-8');
-        $response->assertBodyContains('OpenAPI YAML');
+        $response->assertBodySame('{"message":"OpenAPI YAML ещё не сгенерирован.","code":404}');
     }
 
     #[Config('openapi.swaggerEnabled', false)]
-    public function testSwaggerRoutesReturnNotFoundWhenDisabled(): void
+    public function testSwaggerUiRouteReturnsJsonErrorWhenDisabled(): void
     {
         $this->fakeHttp()
             ->get('/api/docs')
-            ->assertNotFound();
+            ->assertNotFound()
+            ->assertHasHeader('Content-Type', 'application/json; charset=utf-8')
+            ->assertBodySame('{"message":"Swagger UI выключен.","code":404}');
+    }
+
+    #[Config('openapi.swaggerEnabled', false)]
+    public function testSwaggerYamlRouteReturnsJsonErrorWhenDisabled(): void
+    {
+        $this->fakeHttp()
+            ->get('/api/docs/openapi.yml')
+            ->assertNotFound()
+            ->assertHasHeader('Content-Type', 'application/json; charset=utf-8')
+            ->assertBodySame('{"message":"Swagger UI выключен.","code":404}');
     }
 }

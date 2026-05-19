@@ -161,6 +161,23 @@ response wrappers и вызывает пакет через команду `open
 записывается в `public/openapi/openapi.yml`, а Swagger UI по `/api/docs` читает
 тот же файл через route `/api/docs/openapi.yml`.
 
+## API-ошибки
+
+Общая обработка API-ошибок живёт в переносимом Composer-пакете
+`tools/api-error` с namespace `Tools\ApiError`. Пакет зависит от
+`tools/openapi`, потому что возвращает `ErrorResponse` и
+`ValidationErrorResponse`.
+
+Доменные исключения остаются в приложении в `App\Domain\Exception` и явно
+расширяют `\DomainException`. `Tools\ApiError\Interceptor\ApiExceptionInterceptor`
+превращает такие исключения в JSON `{"message":"...","code":...}`. Ошибки Spiral
+Filter рендерятся через `Tools\ApiError\Filter\ApiValidationErrorsRenderer` в
+JSON `{"message":"Ошибка валидации","code":422,"errors":[...]}`.
+
+`ApiExceptionInterceptor` работает только внутри цепочки controller/action.
+Ошибки router, bootstrap и middleware, которые произошли раньше, остаются в зоне
+стандартного Spiral error handler.
+
 ### Поток консольной команды
 
 ```text
@@ -343,7 +360,7 @@ API           -> Filter DTO, Resource, Response
 Configuration -> app/config -> typed config DTO
 Persistence   -> Repository -> Infrastructure/Cycle -> Cycle ORM
 Events        -> Application Event DTO -> Infrastructure/Outbox -> publisher
-Errors        -> Domain exception -> endpoint/interceptor -> ErrorResponse
+Errors        -> Domain exception -> tools/api-error -> tools/openapi ErrorResponse
 Logging       -> Bus middleware / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested
 ```

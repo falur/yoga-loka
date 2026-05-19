@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3f535914a62540a1bad3ae84760ad49f",
+    "content-hash": "94342db7394171196117d1f259d58f46",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -4102,6 +4102,53 @@
                 }
             ],
             "time": "2025-12-27T19:41:33+00:00"
+        },
+        {
+            "name": "phpstan/phpdoc-parser",
+            "version": "2.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phpstan/phpdoc-parser.git",
+                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/a004701b11273a26cd7955a61d67a7f1e525a45a",
+                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "doctrine/annotations": "^2.0",
+                "nikic/php-parser": "^5.3.0",
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpstan/extension-installer": "^1.0",
+                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^9.6",
+                "symfony/process": "^5.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPStan\\PhpDocParser\\": [
+                        "src/"
+                    ]
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPDoc parser with support for nullable, intersection and generic types",
+            "support": {
+                "issues": "https://github.com/phpstan/phpdoc-parser/issues",
+                "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.2"
+            },
+            "time": "2026-01-25T14:56:51+00:00"
         },
         {
             "name": "psr/cache",
@@ -10660,6 +10707,102 @@
                 }
             ],
             "time": "2025-11-28T14:51:44+00:00"
+        },
+        {
+            "name": "yoga-loka/api-error-tools",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tools/api-error",
+                "reference": "095dd306a43703b14affe71321cfeb0a00d70345"
+            },
+            "require": {
+                "php": ">=8.5 <8.6",
+                "psr/http-message": "^2.0",
+                "psr/log": "^3.0",
+                "spiral/framework": "^3.16",
+                "yoga-loka/openapi-tools": "dev-main"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1.54",
+                "phpunit/phpunit": "^13.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tools\\ApiError\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tools\\ApiError\\Tests\\": "tests"
+                }
+            },
+            "scripts": {
+                "phpstan": [
+                    "../../vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "../../vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "API error handling tools for typed Spiral HTTP layers",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "yoga-loka/openapi-tools",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tools/openapi",
+                "reference": "c63b4c4ca7c0b60f42e9d835c7e95f82e9f01ff3"
+            },
+            "require": {
+                "nikic/php-parser": "v5.7.0",
+                "nyholm/psr7": "^1.8",
+                "php": ">=8.5 <8.6",
+                "phpstan/phpdoc-parser": "2.3.2",
+                "spiral/framework": "^3.16",
+                "symfony/finder": "v8.0.8",
+                "symfony/yaml": "v8.0.10"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1.54",
+                "phpunit/phpunit": "^13.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tools\\OpenApi\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tools\\OpenApi\\Tests\\": "tests"
+                }
+            },
+            "scripts": {
+                "phpstan": [
+                    "../../vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "../../vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Static OpenAPI generator for typed Spiral HTTP layers",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         }
     ],
     "packages-dev": [
@@ -11065,53 +11208,6 @@
                 "source": "https://github.com/PHP-CS-Fixer/shim/tree/v3.95.1"
             },
             "time": "2026-04-12T17:00:34+00:00"
-        },
-        {
-            "name": "phpstan/phpdoc-parser",
-            "version": "2.3.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/phpstan/phpdoc-parser.git",
-                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/a004701b11273a26cd7955a61d67a7f1e525a45a",
-                "reference": "a004701b11273a26cd7955a61d67a7f1e525a45a",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^7.4 || ^8.0"
-            },
-            "require-dev": {
-                "doctrine/annotations": "^2.0",
-                "nikic/php-parser": "^5.3.0",
-                "php-parallel-lint/php-parallel-lint": "^1.2",
-                "phpstan/extension-installer": "^1.0",
-                "phpstan/phpstan": "^2.0",
-                "phpstan/phpstan-phpunit": "^2.0",
-                "phpstan/phpstan-strict-rules": "^2.0",
-                "phpunit/phpunit": "^9.6",
-                "symfony/process": "^5.2"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PHPStan\\PhpDocParser\\": [
-                        "src/"
-                    ]
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "PHPDoc parser with support for nullable, intersection and generic types",
-            "support": {
-                "issues": "https://github.com/phpstan/phpdoc-parser/issues",
-                "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.2"
-            },
-            "time": "2026-01-25T14:56:51+00:00"
         },
         {
             "name": "phpstan/phpstan",
@@ -13182,55 +13278,6 @@
             "time": "2025-12-01T11:14:17+00:00"
         },
         {
-            "name": "yoga-loka/openapi-tools",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tools/openapi",
-                "reference": "c63b4c4ca7c0b60f42e9d835c7e95f82e9f01ff3"
-            },
-            "require": {
-                "nikic/php-parser": "v5.7.0",
-                "nyholm/psr7": "^1.8",
-                "php": ">=8.5 <8.6",
-                "phpstan/phpdoc-parser": "2.3.2",
-                "spiral/framework": "^3.16",
-                "symfony/finder": "v8.0.8",
-                "symfony/yaml": "v8.0.10"
-            },
-            "require-dev": {
-                "phpstan/phpstan": "^2.1.54",
-                "phpunit/phpunit": "^13.1"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Tools\\OpenApi\\": "src"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Tools\\OpenApi\\Tests\\": "tests"
-                }
-            },
-            "scripts": {
-                "phpstan": [
-                    "../../vendor/bin/phpstan analyse"
-                ],
-                "test": [
-                    "../../vendor/bin/phpunit"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Static OpenAPI generator for typed Spiral HTTP layers",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
-        },
-        {
             "name": "yoga-loka/phpstan-rules",
             "version": "dev-main",
             "dist": {
@@ -13276,7 +13323,10 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {},
+    "stability-flags": {
+        "yoga-loka/api-error-tools": 20,
+        "yoga-loka/openapi-tools": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

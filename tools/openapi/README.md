@@ -15,8 +15,8 @@
       }
     }
   ],
-  "require-dev": {
-    "yoga-loka/openapi-tools": "*"
+  "require": {
+    "yoga-loka/openapi-tools": "dev-main"
   }
 }
 ```
@@ -82,6 +82,7 @@ public function show(): DataResponse
 - `CollectionResponse<T>` — список без пагинации.
 - `PaginationResponse<T>` — список с `PaginationMetaResponse`.
 - `ErrorResponse` — JSON-ошибка с `message` и `code`.
+- `ValidationErrorResponse` — JSON-ошибка валидации с `message`, `code` и списком `errors`.
 - `HtmlResponse` — HTML-ответ.
 - `FileContentResponse` — готовый файловый/текстовый content в body, отдаётся inline.
 - `FileResponse` — локальный файл по path, отдаётся как download.
@@ -104,6 +105,21 @@ return (new DataResponse(data: $resource))
     );
 ```
 
+Filter-валидация может использовать `ValidationErrorResponse`, чтобы сохранить общий формат ошибки и список найденных ошибок:
+
+```json
+{
+  "message": "Ошибка валидации",
+  "code": 422,
+  "errors": [
+    {
+      "field": "email",
+      "message": "Некорректный email"
+    }
+  ]
+}
+```
+
 `FileContentResponse` по умолчанию выставляет `Content-Disposition: inline`; `FileResponse` по умолчанию выставляет `Content-Disposition: attachment; filename="..."` и `Content-Length`, если размер файла доступен.
 Генератор OpenAPI берёт media type из аргумента `contentType: ContentType::*`: для `FileContentResponse` схема ответа — `type: string`, для `FileResponse` — `type: string, format: binary`.
 
@@ -115,9 +131,10 @@ return new FileContentResponse(content: $yaml, contentType: ContentType::Yaml);
 return new FileResponse(path: $path, contentType: ContentType::Pdf, filename: 'invoice.pdf');
 ```
 
-Чтобы Spiral отдавал response DTO как HTTP-ответы, зарегистрируйте пакетный interceptor последним в domain pipeline:
+Чтобы Spiral отдавал response DTO как HTTP-ответы, зарегистрируйте `HttpResponseInterceptor` в domain pipeline. Если подключён `tools/api-error`, `HttpResponseInterceptor` должен стоять перед `ApiExceptionInterceptor`:
 
 ```php
+use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
 use Tools\OpenApi\Response\Interceptor\HttpResponseInterceptor;
 
 protected const array INTERCEPTORS = [
@@ -125,6 +142,7 @@ protected const array INTERCEPTORS = [
     GridInterceptor::class,
     GuardInterceptor::class,
     HttpResponseInterceptor::class,
+    ApiExceptionInterceptor::class,
 ];
 ```
 

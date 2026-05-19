@@ -69,7 +69,11 @@ final class ConfigBootloader extends Bootloader
             ->sortByName();
 
         foreach ($finder as $file) {
-            $configClass = self::CONFIGURATION_NAMESPACE_PREFIX . \class_basename($file->getRelativePathname());
+            $configClass = self::CONFIGURATION_NAMESPACE_PREFIX . \str_replace(
+                search: ['/', '.php'],
+                replace: ['\\', ''],
+                subject: $file->getRelativePathname(),
+            );
 
             if (!\is_subclass_of(object_or_class: $configClass, class: TypedConfig::class)) {
                 continue;

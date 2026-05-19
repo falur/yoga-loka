@@ -9,6 +9,7 @@ use Spiral\Cycle\Interceptor\CycleInterceptor;
 use Spiral\DataGrid\Interceptor\GridInterceptor;
 use Spiral\Domain\GuardInterceptor;
 use Spiral\Interceptors\HandlerInterface;
+use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
 use Tools\OpenApi\Response\Interceptor\HttpResponseInterceptor;
 
 /**
@@ -21,6 +22,7 @@ final class AppBootloader extends DomainBootloader
         GridInterceptor::class,
         GuardInterceptor::class,
         HttpResponseInterceptor::class,
+        ApiExceptionInterceptor::class,
     ];
 
     #[\Override]

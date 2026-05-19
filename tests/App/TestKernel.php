@@ -7,8 +7,18 @@ namespace Tests\App;
 use App\Infrastructure\Framework\Kernel;
 use Spiral\Testing\TestableKernelInterface;
 use Spiral\Testing\Traits\TestableKernel;
+use Tests\App\Bootloader\ApiErrorTestRoutesBootloader;
 
 class TestKernel extends Kernel implements TestableKernelInterface
 {
     use TestableKernel;
+
+    #[\Override]
+    public function defineBootloaders(): array
+    {
+        return [
+            ...parent::defineBootloaders(),
+            ApiErrorTestRoutesBootloader::class,
+        ];
+    }
 }

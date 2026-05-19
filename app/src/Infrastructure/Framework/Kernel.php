@@ -33,6 +33,7 @@ use Spiral\Twig\Bootloader\TwigBootloader;
 use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
+use Tools\ApiError\Bootloader\ApiErrorBootloader;
 
 class Kernel extends \Spiral\Framework\Kernel
 {
@@ -157,6 +158,7 @@ class Kernel extends \Spiral\Framework\Kernel
             PrototypeBootloader::class,
 
             // Группы маршрутов и middleware
+            ApiErrorBootloader::class,
             Bootloader\RoutesBootloader::class,
         ];
     }

@@ -175,8 +175,11 @@ Filter рендерятся через `Tools\ApiError\Filter\ApiValidationError
 JSON `{"message":"Ошибка валидации","code":422,"errors":[...]}`.
 
 `ApiExceptionInterceptor` работает только внутри цепочки controller/action.
-Ошибки router, bootstrap и middleware, которые произошли раньше, остаются в зоне
-стандартного Spiral error handler.
+Ненайденные маршруты возникают раньше controller/action, поэтому их обрабатывает
+`Tools\ApiError\Middleware\RouteNotFoundMiddleware` в глобальной HTTP-цепочке.
+Он возвращает JSON `{"message":"Маршрут не найден.","code":404}`. Ошибки
+bootstrap и middleware, не связанные с router 404, остаются в зоне стандартного
+Spiral error handler.
 
 ### Поток консольной команды
 
@@ -360,7 +363,7 @@ API           -> Filter DTO, Resource, Response
 Configuration -> app/config -> typed config DTO
 Persistence   -> Repository -> Infrastructure/Cycle -> Cycle ORM
 Events        -> Application Event DTO -> Infrastructure/Outbox -> publisher
-Errors        -> Domain exception -> tools/api-error -> tools/openapi ErrorResponse
+Errors        -> Domain exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
 Logging       -> Bus middleware / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested
 ```

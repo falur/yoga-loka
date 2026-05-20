@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Endpoint\Api;
 
 use App\Infrastructure\Framework\Bootloader\AppBootloader;
+use App\Infrastructure\Framework\Bootloader\RoutesBootloader;
 use Spiral\Filters\ErrorsRendererInterface;
+use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Tests\TestCase;
 use Tools\ApiError\Filter\ApiValidationErrorsRenderer;
 use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
+use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
 use Tools\OpenApi\Response\Enum\ContentType;
 use Tools\OpenApi\Response\Enum\HttpHeader;
-use Tools\OpenApi\Response\Enum\HttpStatus;
 use Tools\OpenApi\Response\Interceptor\HttpResponseInterceptor;
 
 final class ApiErrorHttpTest extends TestCase
@@ -62,11 +64,32 @@ final class ApiErrorHttpTest extends TestCase
         self::assertGreaterThan($httpResponseInterceptorPosition, $apiExceptionInterceptorPosition);
     }
 
-    public function testUnknownRouteStaysOutsideApiExceptionInterceptor(): void
+    public function testUnknownRouteReturnsJsonRouteNotFoundError(): void
     {
         $response = $this->fakeHttp()->getJson('/test/api/errors/missing');
 
-        $response->assertStatus(HttpStatus::NotFound->value);
-        $response->assertBodyNotSame('{"message":"Тестовый ресурс не найден.","code":404}');
+        $response->assertNotFound();
+        $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
+        $response->assertBodySame('{"message":"Маршрут не найден.","code":404}');
+    }
+
+    public function testWrongMethodReturnsJsonRouteNotFoundError(): void
+    {
+        $response = $this->fakeHttp()->postJson('/test/api/errors/domain');
+
+        $response->assertNotFound();
+        $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
+        $response->assertBodySame('{"message":"Маршрут не найден.","code":404}');
+    }
+
+    public function testRouteNotFoundMiddlewareIsRegisteredAfterErrorHandlerMiddleware(): void
+    {
+        $middleware = (new \ReflectionClass(RoutesBootloader::class))
+            ->getMethod('globalMiddleware')
+            ->invoke(new RoutesBootloader());
+
+        self::assertIsArray($middleware);
+        self::assertSame(ErrorHandlerMiddleware::class, $middleware[0] ?? null);
+        self::assertSame(RouteNotFoundMiddleware::class, $middleware[1] ?? null);
     }
 }

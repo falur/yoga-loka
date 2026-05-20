@@ -14,6 +14,7 @@ use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Spiral\Http\Middleware\JsonPayloadMiddleware;
 use Spiral\Router\Bootloader\AnnotatedRoutesBootloader;
 use Spiral\Session\Middleware\SessionMiddleware;
+use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
 
 /**
  * Настраивает маршруты и middleware приложения.
@@ -31,6 +32,7 @@ final class RoutesBootloader extends BaseRoutesBootloader
     {
         return [
             ErrorHandlerMiddleware::class,
+            RouteNotFoundMiddleware::class,
             DumperMiddleware::class,
             JsonPayloadMiddleware::class,
             HttpCollector::class,

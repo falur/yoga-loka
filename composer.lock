@@ -10714,11 +10714,12 @@
             "dist": {
                 "type": "path",
                 "url": "tools/api-error",
-                "reference": "095dd306a43703b14affe71321cfeb0a00d70345"
+                "reference": "5b52d4f889e23ab105baa891f7df2465fc3c62d7"
             },
             "require": {
                 "php": ">=8.5 <8.6",
                 "psr/http-message": "^2.0",
+                "psr/http-server-middleware": "^1.0",
                 "psr/log": "^3.0",
                 "spiral/framework": "^3.16",
                 "yoga-loka/openapi-tools": "dev-main"

@@ -1,6 +1,6 @@
 # API Error Tools
 
-`yoga-loka/api-error-tools` превращает доменные исключения и ошибки Spiral Filter в единый JSON-формат API.
+`yoga-loka/api-error-tools` превращает доменные исключения, ошибки Spiral Filter и ненайденные HTTP-маршруты в единый JSON-формат API.
 
 ## Подключение
 
@@ -34,6 +34,32 @@ return [
     ApiErrorBootloader::class,
     RoutesBootloader::class,
 ];
+```
+
+## HTTP middleware
+
+`RouteNotFoundMiddleware` ловит `Spiral\Router\Exception\RouteNotFoundException` и возвращает JSON 404:
+
+```json
+{
+  "message": "Маршрут не найден.",
+  "code": 404
+}
+```
+
+Middleware нужно поставить в глобальную HTTP-цепочку сразу после `Spiral\Http\Middleware\ErrorHandlerMiddleware`.
+
+```php
+use Spiral\Http\Middleware\ErrorHandlerMiddleware;
+use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
+
+protected function globalMiddleware(): array
+{
+    return [
+        ErrorHandlerMiddleware::class,
+        RouteNotFoundMiddleware::class,
+    ];
+}
 ```
 
 ## Interceptors

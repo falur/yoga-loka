@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tools\OpenApi;
 
+use Spiral\Translator\TranslatorInterface;
 use Tools\OpenApi\Config\OpenApiGeneratorConfig;
 use Tools\OpenApi\Logging\DebugLogger;
 use Tools\OpenApi\Parser\PhpAstParser;
@@ -15,6 +16,7 @@ use Tools\OpenApi\Writer\YamlWriter;
 final readonly class OpenApiGenerator
 {
     public function __construct(
+        private TranslatorInterface $translator,
         private FileScanner $fileScanner = new FileScanner(),
         private PhpAstParser $phpAstParser = new PhpAstParser(),
         private YamlWriter $yamlWriter = new YamlWriter(),
@@ -38,7 +40,10 @@ final readonly class OpenApiGenerator
         $classes = $this->phpAstParser->parse($sourceFiles, $config->apiNamespace);
         $logger->debug(\sprintf('Найдено классов внутри API namespace: %d.', \count($classes)));
 
-        [$spec, $operationCount, $schemaCount] = new SpecBuilder($logger)->build($classes, $config);
+        [$spec, $operationCount, $schemaCount] = new SpecBuilder(
+            logger: $logger,
+            translator: $this->translator,
+        )->build($classes, $config);
         $this->yamlWriter->write($spec, $config->outputFile);
 
         $logger->debug(\sprintf('OpenAPI YAML записан: %s.', $config->outputFile));

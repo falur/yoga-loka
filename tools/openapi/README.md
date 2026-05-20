@@ -28,7 +28,8 @@ use Tools\OpenApi\Config\OpenApiGeneratorConfig;
 use Tools\OpenApi\Config\ResponseWrapperMapping;
 use Tools\OpenApi\OpenApiGenerator;
 
-(new OpenApiGenerator())->generate(new OpenApiGeneratorConfig(
+/** @var \Spiral\Translator\TranslatorInterface $translator */
+(new OpenApiGenerator(translator: $translator))->generate(new OpenApiGeneratorConfig(
     projectRoot: __DIR__,
     sourcePaths: [__DIR__ . '/app/src/Endpoint/Api/V1'],
     apiNamespace: 'App\\Endpoint\\Api\\V1',
@@ -44,6 +45,28 @@ use Tools\OpenApi\OpenApiGenerator;
     ),
 ));
 ```
+
+## Bootloader и переводы
+
+`OpenApiToolsBootloader` подключает каталог переводов `tools/openapi/locale` и создаёт `OpenApiGenerator` с текущим `Spiral\Translator\TranslatorInterface`.
+
+```php
+use Tools\OpenApi\Bootloader\OpenApiToolsBootloader;
+
+return [
+    OpenApiToolsBootloader::class,
+    OpenApiBootloader::class,
+];
+```
+
+Стандартные описания response переводятся на языке генерации YAML:
+
+| Ключ | Locale `en` | Locale `ru` |
+|---|---|---|
+| `yoga_loka.openapi.successful_response` | `Successful response.` | `Успешный ответ.` |
+| `yoga_loka.openapi.api_error` | `API error.` | `Ошибка API.` |
+
+OpenAPI YAML — статический файл, поэтому для другого языка его нужно сгенерировать при другом текущем locale.
 
 ## Метаданные операции
 

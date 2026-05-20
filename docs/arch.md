@@ -161,6 +161,12 @@ response wrappers и вызывает пакет через команду `open
 записывается в `public/openapi/openapi.yml`, а Swagger UI по `/api/docs` читает
 тот же файл через route `/api/docs/openapi.yml`.
 
+`tools/openapi` использует Spiral translator только для стандартных описаний
+response по ключам `yoga_loka.openapi.successful_response` и
+`yoga_loka.openapi.api_error`. Описания из `#[OpenApi(description: ...)]` и
+PHPDoc остаются текстом приложения. YAML статический, поэтому язык выбирается во
+время команды генерации.
+
 ## API-ошибки
 
 Общая обработка API-ошибок живёт в переносимом Composer-пакете
@@ -171,15 +177,24 @@ response wrappers и вызывает пакет через команду `open
 Доменные исключения остаются в приложении в `App\Domain\Exception` и явно
 расширяют `\DomainException`. `Tools\ApiError\Interceptor\ApiExceptionInterceptor`
 превращает такие исключения в JSON `{"message":"...","code":...}`. Ошибки Spiral
-Filter рендерятся через `Tools\ApiError\Filter\ApiValidationErrorsRenderer` в
-JSON `{"message":"Ошибка валидации","code":422,"errors":[...]}`.
+Filter рендерятся через `Tools\ApiError\Filter\ApiValidationErrorsRenderer` по
+ключу `yoga_loka.api_error.validation_error` в JSON
+`{"message":"Validation error","code":422,"errors":[...]}` или
+`{"message":"Ошибка валидации","code":422,"errors":[...]}` в зависимости от
+текущего locale.
 
 `ApiExceptionInterceptor` работает только внутри цепочки controller/action.
 Ненайденные маршруты возникают раньше controller/action, поэтому их обрабатывает
 `Tools\ApiError\Middleware\RouteNotFoundMiddleware` в глобальной HTTP-цепочке.
-Он возвращает JSON `{"message":"Маршрут не найден.","code":404}`. Ошибки
-bootstrap и middleware, не связанные с router 404, остаются в зоне стандартного
-Spiral error handler.
+Он переводит ключ `yoga_loka.api_error.route_not_found` и возвращает JSON
+`{"message":"Route not found.","code":404}` или
+`{"message":"Маршрут не найден.","code":404}` в зависимости от текущего locale.
+Ошибки bootstrap и middleware, не связанные с router 404, остаются в зоне
+стандартного Spiral error handler.
+
+`tools/api-error` и `tools/openapi` только читают текущий locale Spiral
+translator. Выбор языка пользователя по HTTP-заголовкам, профилю или другому
+признаку остаётся задачей request-слоя приложения.
 
 ### Поток консольной команды
 

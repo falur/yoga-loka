@@ -9,6 +9,7 @@ use Spiral\Filters\Exception\ValidationException as FilterValidationException;
 use Spiral\Interceptors\Context\CallContextInterface;
 use Spiral\Interceptors\HandlerInterface;
 use Spiral\Interceptors\InterceptorInterface;
+use Spiral\Translator\TranslatorInterface;
 use Tools\OpenApi\Response\Enum\HttpStatus;
 use Tools\OpenApi\Response\ErrorResponse;
 
@@ -16,10 +17,10 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
 {
     private const int CLIENT_ERROR_MIN = 400;
     private const int CLIENT_ERROR_MAX = 499;
-    private const string INTERNAL_SERVER_ERROR_MESSAGE = 'Внутренняя ошибка сервера';
 
     public function __construct(
         private LoggerInterface $logger,
+        private TranslatorInterface $translator,
     ) {}
 
     public function intercept(CallContextInterface $context, HandlerInterface $handler): mixed
@@ -75,7 +76,7 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
         ]);
 
         return $this->errorResponse(
-            message: self::INTERNAL_SERVER_ERROR_MESSAGE,
+            message: $this->translator->trans(id: 'yoga_loka.api_error.internal_server_error'),
             status: HttpStatus::InternalServerError,
         );
     }

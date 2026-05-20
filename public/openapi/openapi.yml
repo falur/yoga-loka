@@ -13,10 +13,10 @@ paths:
       parameters: {  }
       responses:
         200:
-          description: 'Успешный ответ.'
+          description: 'Successful response.'
           content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/HealthResource' } }, required: [data] } } }
         default:
-          description: 'Ошибка API.'
+          description: 'API error.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
 components:
   schemas:

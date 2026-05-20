@@ -8,6 +8,7 @@ use App\Infrastructure\Framework\Bootloader\AppBootloader;
 use App\Infrastructure\Framework\Bootloader\RoutesBootloader;
 use Spiral\Filters\ErrorsRendererInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
+use Spiral\Translator\TranslatorInterface;
 use Tests\TestCase;
 use Tools\ApiError\Filter\ApiValidationErrorsRenderer;
 use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
@@ -27,8 +28,23 @@ final class ApiErrorHttpTest extends TestCase
         $response->assertBodySame('{"message":"Тестовый ресурс не найден.","code":404}');
     }
 
-    public function testApiFilterValidationReturnsJsonErrorWithErrors(): void
+    public function testApiFilterValidationReturnsEnglishJsonErrorWithErrors(): void
     {
+        $response = $this->fakeHttp()->postJson('/test/api/errors/filter', [
+            'age' => 'abc',
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
+        $response->assertBodySame(
+            '{"message":"Validation error","code":422,"errors":[{"field":"age","message":"Возраст должен быть числом"}]}',
+        );
+    }
+
+    public function testApiFilterValidationReturnsRussianJsonErrorWithErrors(): void
+    {
+        $this->getContainer()->get(TranslatorInterface::class)->setLocale('ru');
+
         $response = $this->fakeHttp()->postJson('/test/api/errors/filter', [
             'age' => 'abc',
         ]);
@@ -64,8 +80,19 @@ final class ApiErrorHttpTest extends TestCase
         self::assertGreaterThan($httpResponseInterceptorPosition, $apiExceptionInterceptorPosition);
     }
 
-    public function testUnknownRouteReturnsJsonRouteNotFoundError(): void
+    public function testUnknownRouteReturnsEnglishJsonRouteNotFoundError(): void
     {
+        $response = $this->fakeHttp()->getJson('/test/api/errors/missing');
+
+        $response->assertNotFound();
+        $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
+        $response->assertBodySame('{"message":"Route not found.","code":404}');
+    }
+
+    public function testUnknownRouteReturnsRussianJsonRouteNotFoundError(): void
+    {
+        $this->getContainer()->get(TranslatorInterface::class)->setLocale('ru');
+
         $response = $this->fakeHttp()->getJson('/test/api/errors/missing');
 
         $response->assertNotFound();
@@ -73,13 +100,13 @@ final class ApiErrorHttpTest extends TestCase
         $response->assertBodySame('{"message":"Маршрут не найден.","code":404}');
     }
 
-    public function testWrongMethodReturnsJsonRouteNotFoundError(): void
+    public function testWrongMethodReturnsEnglishJsonRouteNotFoundError(): void
     {
         $response = $this->fakeHttp()->postJson('/test/api/errors/domain');
 
         $response->assertNotFound();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
-        $response->assertBodySame('{"message":"Маршрут не найден.","code":404}');
+        $response->assertBodySame('{"message":"Route not found.","code":404}');
     }
 
     public function testRouteNotFoundMiddlewareIsRegisteredAfterErrorHandlerMiddleware(): void

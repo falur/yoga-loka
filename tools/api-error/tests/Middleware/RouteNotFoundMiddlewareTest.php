@@ -15,17 +15,42 @@ use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
 use Spiral\Router\Exception\RouteNotFoundException;
 use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
+use Tools\ApiError\Tests\Support\FakeTranslator;
 use Tools\OpenApi\Response\Enum\ContentType;
 use Tools\OpenApi\Response\Enum\HttpHeader;
 use Tools\OpenApi\Response\Enum\HttpStatus;
 
 final class RouteNotFoundMiddlewareTest extends TestCase
 {
-    public function testRouteNotFoundExceptionReturnsJson404(): void
+    public function testRouteNotFoundExceptionReturnsEnglishJson404(): void
+    {
+        $this->assertRouteNotFoundResponse(
+            translator: self::englishTranslator(),
+            expectedBody: '{"message":"Route not found.","code":404}',
+        );
+    }
+
+    public function testRouteNotFoundExceptionReturnsRussianJson404(): void
+    {
+        $this->assertRouteNotFoundResponse(
+            translator: new FakeTranslator(
+                locale: 'ru',
+                messages: [
+                    'yoga_loka.api_error.route_not_found' => 'Маршрут не найден.',
+                ],
+            ),
+            expectedBody: '{"message":"Маршрут не найден.","code":404}',
+        );
+    }
+
+    private function assertRouteNotFoundResponse(FakeTranslator $translator, string $expectedBody): void
     {
         $request = new ServerRequest(method: 'GET', uri: '/missing');
 
-        $response = (new RouteNotFoundMiddleware(logger: new NullLogger()))->process(
+        $response = (new RouteNotFoundMiddleware(
+            logger: new NullLogger(),
+            translator: $translator,
+        ))->process(
             request: $request,
             handler: new RouteNotFoundMiddlewareFixtureHandler(
                 response: new Response(),
@@ -35,14 +60,17 @@ final class RouteNotFoundMiddlewareTest extends TestCase
 
         self::assertSame(HttpStatus::NotFound->value, $response->getStatusCode());
         self::assertSame(ContentType::Json->value, $response->getHeaderLine(HttpHeader::ContentType->value));
-        self::assertSame('{"message":"Маршрут не найден.","code":404}', (string) $response->getBody());
+        self::assertSame($expectedBody, (string) $response->getBody());
     }
 
     public function testSuccessfulResponsePassesThrough(): void
     {
         $expectedResponse = new Response(status: HttpStatus::Accepted->value, body: 'ok');
 
-        $response = (new RouteNotFoundMiddleware(logger: new NullLogger()))->process(
+        $response = (new RouteNotFoundMiddleware(
+            logger: new NullLogger(),
+            translator: self::englishTranslator(),
+        ))->process(
             request: new ServerRequest(method: 'GET', uri: '/exists'),
             handler: new RouteNotFoundMiddlewareFixtureHandler(response: $expectedResponse),
         );
@@ -52,7 +80,10 @@ final class RouteNotFoundMiddlewareTest extends TestCase
 
     public function testOtherThrowableIsNotCaught(): void
     {
-        $middleware = new RouteNotFoundMiddleware(logger: new NullLogger());
+        $middleware = new RouteNotFoundMiddleware(
+            logger: new NullLogger(),
+            translator: self::englishTranslator(),
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Сервис недоступен');
@@ -79,7 +110,10 @@ final class RouteNotFoundMiddlewareTest extends TestCase
             body: 'body-secret',
         );
 
-        (new RouteNotFoundMiddleware(logger: $logger))->process(
+        (new RouteNotFoundMiddleware(
+            logger: $logger,
+            translator: self::englishTranslator(),
+        ))->process(
             request: $request,
             handler: new RouteNotFoundMiddlewareFixtureHandler(
                 response: new Response(),
@@ -106,6 +140,16 @@ final class RouteNotFoundMiddlewareTest extends TestCase
         self::assertStringNotContainsString('body-secret', $logContext);
         self::assertStringNotContainsString('cookie-secret', $logContext);
         self::assertStringNotContainsString('header-secret', $logContext);
+    }
+
+    private static function englishTranslator(): FakeTranslator
+    {
+        return new FakeTranslator(
+            locale: 'en',
+            messages: [
+                'yoga_loka.api_error.route_not_found' => 'Route not found.',
+            ],
+        );
     }
 }
 

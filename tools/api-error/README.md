@@ -25,7 +25,7 @@
 
 ## Bootloader
 
-`ApiErrorBootloader` привязывает `Spiral\Filters\ErrorsRendererInterface` к `ApiValidationErrorsRenderer`. Его нужно подключить до bootloader-а маршрутов, чтобы `ValidationHandlerMiddleware` получил JSON renderer ошибок Filter.
+`ApiErrorBootloader` подключает каталог переводов `tools/api-error/locale`, привязывает `Spiral\Filters\ErrorsRendererInterface` к `ApiValidationErrorsRenderer` и создаёт классы пакета с `Spiral\Translator\TranslatorInterface`. Его нужно подключить до bootloader-а маршрутов, чтобы `ValidationHandlerMiddleware` получил JSON renderer ошибок Filter.
 
 ```php
 use Tools\ApiError\Bootloader\ApiErrorBootloader;
@@ -36,13 +36,27 @@ return [
 ];
 ```
 
+## Переводы
+
+Пакет использует текущий locale Spiral translator. Переводчик обязателен и передаётся через `ApiErrorBootloader`.
+
+Каталог переводов: `tools/api-error/locale`.
+
+| Ключ | Locale `en` | Locale `ru` |
+|---|---|---|
+| `yoga_loka.api_error.route_not_found` | `Route not found.` | `Маршрут не найден.` |
+| `yoga_loka.api_error.validation_error` | `Validation error` | `Ошибка валидации` |
+| `yoga_loka.api_error.internal_server_error` | `Internal server error` | `Внутренняя ошибка сервера` |
+
+Пакет не переводит сообщения доменных исключений приложения и сообщения конкретных полей Filter-валидации.
+
 ## HTTP middleware
 
-`RouteNotFoundMiddleware` ловит `Spiral\Router\Exception\RouteNotFoundException` и возвращает JSON 404:
+`RouteNotFoundMiddleware` ловит `Spiral\Router\Exception\RouteNotFoundException` и возвращает JSON 404. Текст `message` зависит от текущего locale:
 
 ```json
 {
-  "message": "Маршрут не найден.",
+  "message": "Route not found.",
   "code": 404
 }
 ```
@@ -91,7 +105,7 @@ protected const array INTERCEPTORS = [
 
 ```json
 {
-  "message": "Ошибка валидации",
+  "message": "Validation error",
   "code": 422,
   "errors": [
     {
@@ -101,5 +115,7 @@ protected const array INTERCEPTORS = [
   ]
 }
 ```
+
+Текст `message` в ошибке Spiral Filter зависит от текущего locale. Тексты внутри `errors` пакет не переводит.
 
 Пакет не зависит от `App\`. Доменные исключения остаются в приложении, например `App\Domain\Exception\NotFoundException`.

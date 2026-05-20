@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tools\OpenApi\Spec;
 
+use Spiral\Translator\TranslatorInterface;
 use Tools\OpenApi\Config\OpenApiGeneratorConfig;
 use Tools\OpenApi\Exception\OpenApiGenerationException;
 use Tools\OpenApi\Logging\DebugLogger;
@@ -17,6 +18,7 @@ final readonly class SpecBuilder
 {
     public function __construct(
         private DebugLogger $logger,
+        private TranslatorInterface $translator,
     ) {}
 
     /**
@@ -135,7 +137,7 @@ final readonly class SpecBuilder
             'responses' => [
                 '200' => $this->successResponse($classMetadata, $methodMetadata, $schemaBuilder, $config),
                 'default' => [
-                    'description' => 'Ошибка API.',
+                    'description' => $this->translator->trans(id: 'yoga_loka.openapi.api_error'),
                     'content' => [
                         'application/json' => [
                             'schema' => $this->errorResponseSchema(config: $config),
@@ -165,7 +167,7 @@ final readonly class SpecBuilder
     ): array {
         if ($methodMetadata->fileResponse !== null) {
             return [
-                'description' => 'Успешный ответ.',
+                'description' => $this->translator->trans(id: 'yoga_loka.openapi.successful_response'),
                 'content' => [
                     $this->mediaType($methodMetadata->fileResponse->contentType) => [
                         'schema' => $methodMetadata->fileResponse->binary
@@ -185,7 +187,7 @@ final readonly class SpecBuilder
         }
 
         return [
-            'description' => 'Успешный ответ.',
+            'description' => $this->translator->trans(id: 'yoga_loka.openapi.successful_response'),
             'content' => [
                 'application/json' => [
                     'schema' => $this->responseSchema($genericReturnType->wrapperClass, $genericReturnType->resourceClass, $schemaBuilder, $config),

@@ -13,6 +13,7 @@ use Tools\OpenApi\Response\CollectionResponse;
 use Tools\OpenApi\Response\DataResponse;
 use Tools\OpenApi\Response\ErrorResponse;
 use Tools\OpenApi\Response\PaginationResponse;
+use Tools\OpenApi\Tests\Support\FakeTranslator;
 
 final class OpenApiGeneratorTest extends TestCase
 {
@@ -20,7 +21,53 @@ final class OpenApiGeneratorTest extends TestCase
     {
         $outputFile = __DIR__ . '/../../runtime/openapi-fixture.yml';
 
-        $result = new OpenApiGenerator()->generate(new OpenApiGeneratorConfig(
+        $result = new OpenApiGenerator(
+            translator: self::englishTranslator(),
+        )->generate($this->generatorConfig(outputFile: $outputFile));
+
+        self::assertSame(4, $result->operationCount);
+        self::assertFileExists($outputFile);
+
+        $spec = Yaml::parseFile($outputFile);
+
+        self::assertIsArray($spec);
+        $this->assertGeneratedSpec(
+            spec: $spec,
+            successDescription: 'Successful response.',
+            errorDescription: 'API error.',
+        );
+    }
+
+    public function testFixtureProjectGeneratesRussianResponseDescriptions(): void
+    {
+        $outputFile = __DIR__ . '/../../runtime/openapi-fixture-ru.yml';
+
+        $result = new OpenApiGenerator(
+            translator: new FakeTranslator(
+                locale: 'ru',
+                messages: [
+                    'yoga_loka.openapi.successful_response' => 'Успешный ответ.',
+                    'yoga_loka.openapi.api_error' => 'Ошибка API.',
+                ],
+            ),
+        )->generate($this->generatorConfig(outputFile: $outputFile));
+
+        self::assertSame(4, $result->operationCount);
+        self::assertFileExists($outputFile);
+
+        $spec = Yaml::parseFile($outputFile);
+
+        self::assertIsArray($spec);
+        $this->assertGeneratedSpec(
+            spec: $spec,
+            successDescription: 'Успешный ответ.',
+            errorDescription: 'Ошибка API.',
+        );
+    }
+
+    private function generatorConfig(string $outputFile): OpenApiGeneratorConfig
+    {
+        return new OpenApiGeneratorConfig(
             projectRoot: __DIR__ . '/../..',
             sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/Api/V1'],
             apiNamespace: 'Tools\\OpenApi\\Tests\\Fixtures\\Endpoint\\Api\\V1',
@@ -34,21 +81,24 @@ final class OpenApiGeneratorTest extends TestCase
                 paginationResponseClass: PaginationResponse::class,
                 errorResponseClass: ErrorResponse::class,
             ),
-        ));
+        );
+    }
 
-        self::assertSame(4, $result->operationCount);
-        self::assertFileExists($outputFile);
-
-        $spec = Yaml::parseFile($outputFile);
-
-        self::assertIsArray($spec);
-        $this->assertGeneratedSpec($spec);
+    private static function englishTranslator(): FakeTranslator
+    {
+        return new FakeTranslator(
+            locale: 'en',
+            messages: [
+                'yoga_loka.openapi.successful_response' => 'Successful response.',
+                'yoga_loka.openapi.api_error' => 'API error.',
+            ],
+        );
     }
 
     /**
      * @param array<mixed> $spec
      */
-    private function assertGeneratedSpec(array $spec): void
+    private function assertGeneratedSpec(array $spec, string $successDescription, string $errorDescription): void
     {
         self::assertSame('3.1.0', $spec['openapi'] ?? null);
 
@@ -72,12 +122,32 @@ final class OpenApiGeneratorTest extends TestCase
         self::assertSame('health', $healthGet['operationId'] ?? null);
         self::assertSame('api_v1_users_search', $usersGet['operationId'] ?? null);
         self::assertSame('query', $firstUsersParameter['name'] ?? null);
+        $this->assertStandardResponseDescriptions($healthGet, $successDescription, $errorDescription);
+        $this->assertStandardResponseDescriptions($usersGet, $successDescription, $errorDescription);
+        $this->assertStandardResponseDescriptions($openApiExportGet, $successDescription, $errorDescription);
+        $this->assertStandardResponseDescriptions($reportExportGet, $successDescription, $errorDescription);
         $this->assertFileContentResponse($openApiExportGet);
         $this->assertFileResponse($reportExportGet);
         self::assertArrayHasKey('HealthResource', $schemas);
         self::assertArrayHasKey('UserResource', $schemas);
         self::assertArrayHasKey('ErrorResponse', $schemas);
         self::assertArrayNotHasKey('/internal-docs', $paths);
+    }
+
+    /**
+     * @param array<mixed> $operation
+     */
+    private function assertStandardResponseDescriptions(
+        array $operation,
+        string $successDescription,
+        string $errorDescription,
+    ): void {
+        $responses = $this->arrayValue($operation, 'responses');
+        $successResponse = $this->arrayValue($responses, 200);
+        $errorResponse = $this->arrayValue($responses, 'default');
+
+        self::assertSame($successDescription, $successResponse['description'] ?? null);
+        self::assertSame($errorDescription, $errorResponse['description'] ?? null);
     }
 
     /**

@@ -10,15 +10,15 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Router\Exception\RouteNotFoundException;
+use Spiral\Translator\TranslatorInterface;
 use Tools\OpenApi\Response\Enum\HttpStatus;
 use Tools\OpenApi\Response\ErrorResponse;
 
 final readonly class RouteNotFoundMiddleware implements MiddlewareInterface
 {
-    private const string MESSAGE = 'Маршрут не найден.';
-
     public function __construct(
         private LoggerInterface $logger,
+        private TranslatorInterface $translator,
     ) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -34,7 +34,7 @@ final readonly class RouteNotFoundMiddleware implements MiddlewareInterface
             ]);
 
             return new ErrorResponse(
-                message: self::MESSAGE,
+                message: $this->translator->trans(id: 'yoga_loka.api_error.route_not_found'),
                 code: HttpStatus::NotFound->value,
             )->withStatus(HttpStatus::NotFound)->toResponse();
         }

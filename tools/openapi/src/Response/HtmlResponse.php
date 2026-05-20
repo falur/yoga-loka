@@ -13,8 +13,6 @@ final class HtmlResponse implements ConvertsToHttpResponse
 {
     use HasHttpResponseMetadata;
 
-    private const string CONTENT_DISPOSITION_INLINE = 'inline';
-
     public function __construct(
         private readonly string $html,
     ) {}
@@ -35,7 +33,7 @@ final class HtmlResponse implements ConvertsToHttpResponse
     {
         return [
             HttpHeader::ContentType->value => [ContentType::Html->value],
-            HttpHeader::ContentDisposition->value => [self::CONTENT_DISPOSITION_INLINE],
+            HttpHeader::ContentDisposition->value => ['inline'],
         ];
     }
 }

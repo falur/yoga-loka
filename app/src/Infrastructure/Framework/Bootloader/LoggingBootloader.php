@@ -19,10 +19,6 @@ use Spiral\Monolog\Config\MonologConfig;
  */
 final class LoggingBootloader extends Bootloader
 {
-    private const string HTTP_LOG_FILE = 'logs/http.log';
-
-    private const string ERROR_LOG_FILE = 'logs/error.log';
-    private const string DEBUG_LOG_FILE = 'logs/debug.log';
     private const int ERROR_LOG_MAX_FILES = 25;
 
     public function __construct(
@@ -38,7 +34,7 @@ final class LoggingBootloader extends Bootloader
                 \sprintf(
                     '%s/%s',
                     $this->directories->get(DirectoryAlias::Runtime->value),
-                    self::HTTP_LOG_FILE,
+                    'logs/http.log',
                 ),
             ),
         );
@@ -50,7 +46,7 @@ final class LoggingBootloader extends Bootloader
                 filename: \sprintf(
                     '%s/%s',
                     $this->directories->get(DirectoryAlias::Runtime->value),
-                    self::ERROR_LOG_FILE,
+                    'logs/error.log',
                 ),
                 level: Level::Error,
                 maxFiles: self::ERROR_LOG_MAX_FILES,
@@ -65,7 +61,7 @@ final class LoggingBootloader extends Bootloader
                 filename: \sprintf(
                     '%s/%s',
                     $this->directories->get(DirectoryAlias::Runtime->value),
-                    self::DEBUG_LOG_FILE,
+                    'logs/debug.log',
                 ),
             ),
         );

@@ -16,7 +16,6 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
 {
     private const int CLIENT_ERROR_MIN = 400;
     private const int CLIENT_ERROR_MAX = 499;
-    private const string INTERNAL_SERVER_ERROR_MESSAGE = 'Внутренняя ошибка сервера';
 
     public function __construct(
         private LoggerInterface $logger,
@@ -75,7 +74,7 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
         ]);
 
         return $this->errorResponse(
-            message: self::INTERNAL_SERVER_ERROR_MESSAGE,
+            message: 'Внутренняя ошибка сервера',
             status: HttpStatus::InternalServerError,
         );
     }

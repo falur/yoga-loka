@@ -409,5 +409,7 @@ protected const array INTERCEPTORS = [
 ## Проверка пакета в YogaLoka
 
 ```bash
-composer tools:openapi:qa
+composer -d tools/openapi install
+composer -d tools/openapi phpstan
+composer -d tools/openapi test
 ```

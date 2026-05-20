@@ -89,3 +89,4 @@
 
 - **PHPStan**: локальная проверка запускается командой `composer phpstan`.
 - **PHPStan tooling**: живёт отдельным Composer-пакетом в `tools/phpstan`. Его тесты и fixtures должны оставаться внутри этого пакета, а не в корневом `tests/`.
+- **Tools-пакеты изолированы**: каждый пакет в `tools/*` является отдельным Composer-пакетом со своим `composer.json`, локальным `vendor/`, package-local `bootstrap.php`, `phpunit.xml` и `phpstan.neon`. Bootstrap и Composer scripts внутри `tools/*` не должны ссылаться на корневой `../../vendor` или `../../vendor/bin`. Для проверки пакета используется `composer -d tools/<package> install`, затем `composer -d tools/<package> test` и `composer -d tools/<package> phpstan`.

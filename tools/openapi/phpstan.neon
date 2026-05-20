@@ -1,6 +1,6 @@
 parameters:
     level: max
-    tmpDir: ../../runtime/phpstan-openapi
+    tmpDir: runtime/phpstan
     paths:
         - src
         - tests

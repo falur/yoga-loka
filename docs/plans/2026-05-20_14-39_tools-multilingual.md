@@ -48,9 +48,9 @@ sources:
 - Каталоги переводов хранить рядом с пакетами: `tools/api-error/locale/` и `tools/openapi/locale/`.
 - Для каждого пакета добавить каталоги `en` и `ru` с доменом `messages`, потому что `LOCALE` по умолчанию равен `en`, а текущие русские тексты нужно сохранить для `ru`.
 - Ключами переводов использовать стабильные имена с префиксом владельца и пакета, например `yoga_loka.api_error.route_not_found`. Это снижает риск пересечения с обычными пользовательскими строками.
-- Конструкторы `tools/api-error` расширять обратимо: добавить необязательный `?TranslatorInterface $translator = null` после существующих аргументов, чтобы текущие `new ...(logger: ...)` в тестах и внешнем коде не сломались.
-- В `tools/api-error` всё равно настроить DI через `ApiErrorBootloader`, чтобы приложение получало реальные экземпляры с `TranslatorInterface`, а не fallback.
-- Конструктор `OpenApiGenerator` сохранить совместимым с текущим `new OpenApiGenerator()`: добавить необязательный переводчик и использовать английский fallback, если генератор создан вне Spiral DI.
+- По уточнению пользователя после старта реализации переводчик обязателен: классы `tools/api-error` и `OpenApiGenerator` создаются с `TranslatorInterface`, fallback без переводчика не поддерживается.
+- В `tools/api-error` настроить DI через `ApiErrorBootloader`, чтобы приложение получало реальные экземпляры с `TranslatorInterface`.
+- Конструктор `OpenApiGenerator` принимает обязательный `TranslatorInterface`; создание без Spiral DI возможно только при явной передаче переводчика.
 - Новый `OpenApiToolsBootloader` должен явно зависеть от `I18nBootloader` и создавать `OpenApiGenerator` через factory с текущим `TranslatorInterface`.
 - Эта задача не внедряет выбор языка пользователя по HTTP-заголовкам или профилю. `tools` читают тот locale, который приложение уже выставило в Spiral translator; если приложение ничего не выставило, используется `LOCALE`.
 - Доменные сообщения приложения не переводить внутри `tools/api-error`: текст из `\DomainException` остаётся ответственностью приложения.
@@ -115,8 +115,8 @@ OpenAPI YAML меняет только стандартные описания r
 - В файлах `messages.php` добавить ключи `yoga_loka.api_error.route_not_found`, `yoga_loka.api_error.validation_error`, `yoga_loka.api_error.internal_server_error`.
 - В `ApiErrorBootloader` добавить `init(I18nBootloader $i18n): void` и вызвать `$i18n->addDirectory(__DIR__ . '/../../locale')`.
 - В `ApiErrorBootloader` добавить factory-привязки для `RouteNotFoundMiddleware`, `ApiValidationErrorsRenderer` и `ApiExceptionInterceptor`, чтобы DI передавал `Spiral\Translator\TranslatorInterface`.
-- В `RouteNotFoundMiddleware`, `ApiValidationErrorsRenderer` и `ApiExceptionInterceptor` добавить необязательный `?TranslatorInterface $translator = null` после существующих аргументов.
-- Заменить захардкоженные пользовательские сообщения пакета на приватный метод перевода: при наличии `$translator` вызвать `$translator->trans(...)`, при `null` вернуть английский ключ как готовый fallback-текст.
+- В `RouteNotFoundMiddleware`, `ApiValidationErrorsRenderer` и `ApiExceptionInterceptor` добавить обязательный `TranslatorInterface $translator` после существующих аргументов.
+- Заменить захардкоженные пользовательские сообщения пакета на вызов `$translator->trans(...)` по стабильным ключам.
 - Оставить debug-, warning- и error-логи на русском.
 - Оставить сообщения доменных исключений без перевода.
 - Оставить field-level сообщения Filter-валидации без перевода внутри пакета.
@@ -156,11 +156,11 @@ OpenAPI YAML меняет только стандартные описания r
 - В bootloader добавить `init(I18nBootloader $i18n): void` и вызвать `$i18n->addDirectory(__DIR__ . '/../../locale')`.
 - В bootloader настроить factory для создания `OpenApiGenerator` с текущим `Spiral\Translator\TranslatorInterface`.
 - Зарегистрировать `OpenApiToolsBootloader` в `app/src/Infrastructure/Framework/Kernel.php` рядом с интернационализацией и до bootloader-а консольной команды OpenAPI.
-- Добавить в `OpenApiGenerator` необязательный `?TranslatorInterface $translator = null`, не ломая текущий `new OpenApiGenerator()`.
+- Добавить в `OpenApiGenerator` обязательный `TranslatorInterface $translator`.
 - Передать `TranslatorInterface` из `OpenApiGenerator` в `SpecBuilder`.
 - В `SpecBuilder` заменить строки `Ошибка API.` и `Успешный ответ.` на переводы по ключам.
-- Если переводчик не передан, `SpecBuilder` возвращает английский ключ как готовый fallback-текст.
-- Сохранить возможность запускать unit-тесты `tools/openapi` без полного приложения: в тестах передавать тестовый переводчик явно для ru-сценария и проверять fallback для `new OpenApiGenerator()`.
+- Если генератор создаётся без полного приложения, тесты и внешний код передают тестовый или реальный `TranslatorInterface` явно.
+- Сохранить возможность запускать unit-тесты `tools/openapi` без полного приложения: в тестах передавать тестовый переводчик явно для en- и ru-сценариев.
 - Обновить `tools/openapi/tests/Generator/OpenApiGeneratorTest.php`: проверить английские описания по умолчанию и русские описания при locale `ru`.
 - Добавить интеграционный тест команды `openapi:generate`, чтобы доказать, что генератор в приложении использует текущий Spiral translator.
 - В интеграционном тесте команды явно выставить `TranslatorInterface::setLocale('ru')` после boot.
@@ -173,7 +173,7 @@ OpenAPI YAML меняет только стандартные описания r
 Сценарии тестирования:
 - При locale `en` в YAML есть `Successful response.` и `API error.`.
 - При locale `ru` в YAML есть `Успешный ответ.` и `Ошибка API.`.
-- `new OpenApiGenerator()` без DI продолжает работать и отдаёт английские описания.
+- `new OpenApiGenerator(translator: ...)` без полного приложения продолжает работать и отдаёт описания на языке переданного переводчика.
 - Команда `openapi:generate` в приложении при locale `ru` пишет русские стандартные описания в тестовый YAML-файл внутри `runtime/`.
 - Описания из `#[OpenApi(description: ...)]` и PHPDoc summary остаются как в коде приложения.
 - Генерация YAML по-прежнему находит те же операции и схемы.
@@ -261,7 +261,7 @@ OpenAPI YAML меняет только стандартные описания r
 ### После моделей
 - **+ Добавлено:** точное подключение каталогов через `init(I18nBootloader $i18n)` и `$i18n->addDirectory(...)`.
 - **+ Добавлено:** factory-привязки в bootloader-ах, чтобы приложение получало экземпляры с `TranslatorInterface`.
-- **+ Добавлено:** обратимая совместимость конструкторов `tools/api-error` и `OpenApiGenerator` через необязательный переводчик и английский fallback.
+- **~ Изменено после уточнения пользователя:** переводчик стал обязательным для `tools/api-error` и `OpenApiGenerator`; fallback без переводчика не поддерживается.
 - **+ Добавлено:** явное ручное переключение locale в ru feature- и command-тестах после базового `setUp`.
 - **+ Добавлено:** безопасный output-файл `runtime/openapi-i18n-test.yml` для интеграционного теста `openapi:generate`.
 - **~ Изменено после уточнения пользователя:** ключи переводов стали стабильными именами вида `yoga_loka.<package>.<message>`, чтобы они не пересекались с обычными пользовательскими строками.

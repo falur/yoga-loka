@@ -10223,16 +10223,16 @@
         },
         {
             "name": "symfony/yaml",
-            "version": "v8.0.10",
+            "version": "v8.0.12",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/yaml.git",
-                "reference": "aa9ee60c41d9b20a2468c41ff0a32e2a7405ac05"
+                "reference": "2a36f4b8405d41fa31799b06874dbd45c1b16c30"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/yaml/zipball/aa9ee60c41d9b20a2468c41ff0a32e2a7405ac05",
-                "reference": "aa9ee60c41d9b20a2468c41ff0a32e2a7405ac05",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/2a36f4b8405d41fa31799b06874dbd45c1b16c30",
+                "reference": "2a36f4b8405d41fa31799b06874dbd45c1b16c30",
                 "shasum": ""
             },
             "require": {
@@ -10274,7 +10274,7 @@
             "description": "Loads and dumps YAML files",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/yaml/tree/v8.0.10"
+                "source": "https://github.com/symfony/yaml/tree/v8.0.12"
             },
             "funding": [
                 {
@@ -10294,7 +10294,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-05T08:10:04+00:00"
+            "time": "2026-05-20T07:22:03+00:00"
         },
         {
             "name": "temporal/sdk",
@@ -10714,7 +10714,7 @@
             "dist": {
                 "type": "path",
                 "url": "tools/api-error",
-                "reference": "5b52d4f889e23ab105baa891f7df2465fc3c62d7"
+                "reference": "99a82ae9e4270d6f3ec9f139a4b955eca0ea58c2"
             },
             "require": {
                 "php": ">=8.5 <8.6",
@@ -10741,10 +10741,10 @@
             },
             "scripts": {
                 "phpstan": [
-                    "../../vendor/bin/phpstan analyse"
+                    "vendor/bin/phpstan analyse"
                 ],
                 "test": [
-                    "../../vendor/bin/phpunit"
+                    "vendor/bin/phpunit"
                 ]
             },
             "license": [
@@ -10762,7 +10762,7 @@
             "dist": {
                 "type": "path",
                 "url": "tools/openapi",
-                "reference": "c63b4c4ca7c0b60f42e9d835c7e95f82e9f01ff3"
+                "reference": "1c1f944654da1155376e641a620b76fe2778bf54"
             },
             "require": {
                 "nikic/php-parser": "v5.7.0",
@@ -10771,7 +10771,7 @@
                 "phpstan/phpdoc-parser": "2.3.2",
                 "spiral/framework": "^3.16",
                 "symfony/finder": "v8.0.8",
-                "symfony/yaml": "v8.0.10"
+                "symfony/yaml": "v8.0.12"
             },
             "require-dev": {
                 "phpstan/phpstan": "^2.1.54",
@@ -10790,10 +10790,10 @@
             },
             "scripts": {
                 "phpstan": [
-                    "../../vendor/bin/phpstan analyse"
+                    "vendor/bin/phpstan analyse"
                 ],
                 "test": [
-                    "../../vendor/bin/phpunit"
+                    "vendor/bin/phpunit"
                 ]
             },
             "license": [
@@ -13284,7 +13284,7 @@
             "dist": {
                 "type": "path",
                 "url": "tools/phpstan",
-                "reference": "c9f52abe3ad7155a6942b2e39ad56cd59e97fba7"
+                "reference": "9a740d578376f5021b2bd1fe1df7c9cdcee3a3ad"
             },
             "require": {
                 "php": ">=8.5 <8.6",
@@ -13306,10 +13306,10 @@
             },
             "scripts": {
                 "phpstan": [
-                    "phpstan analyse"
+                    "vendor/bin/phpstan analyse"
                 ],
                 "test": [
-                    "phpunit"
+                    "vendor/bin/phpunit"
                 ]
             },
             "license": [

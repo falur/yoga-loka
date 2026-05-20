@@ -35,8 +35,15 @@
         }
     ],
     "scripts": {
-        "phpstan": "../../vendor/bin/phpstan analyse",
-        "test": "../../vendor/bin/phpunit"
+        "phpstan": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/phpunit"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true,
+            "spiral/composer-publish-plugin": true
+        }
     },
     "minimum-stability": "dev",
     "prefer-stable": true

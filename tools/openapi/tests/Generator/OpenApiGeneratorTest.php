@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tools\OpenApi\Tests\Generator;
 
 use PHPUnit\Framework\TestCase;
+use Spiral\Translator\TranslatorInterface;
 use Symfony\Component\Yaml\Yaml;
 use Tools\OpenApi\Config\OpenApiGeneratorConfig;
 use Tools\OpenApi\Config\ResponseWrapperMapping;
@@ -17,6 +18,21 @@ use Tools\OpenApi\Tests\Support\FakeTranslator;
 
 final class OpenApiGeneratorTest extends TestCase
 {
+    public function testGeneratorRequiresTranslator(): void
+    {
+        $constructor = (new \ReflectionClass(OpenApiGenerator::class))->getConstructor();
+        self::assertNotNull($constructor);
+
+        $parameter = $constructor->getParameters()[0] ?? null;
+        self::assertNotNull($parameter);
+        self::assertSame('translator', $parameter->getName());
+        self::assertFalse($parameter->isOptional());
+
+        $type = $parameter->getType();
+        self::assertInstanceOf(\ReflectionNamedType::class, $type);
+        self::assertSame(TranslatorInterface::class, $type->getName());
+    }
+
     public function testFixtureProjectGeneratesOpenApiYaml(): void
     {
         $outputFile = __DIR__ . '/../../runtime/openapi-fixture.yml';

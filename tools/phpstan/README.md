@@ -9,7 +9,9 @@ composer phpstan
 Проверки самого пакета:
 
 ```bash
-composer tools:phpstan:qa
+composer -d tools/phpstan install
+composer -d tools/phpstan phpstan
+composer -d tools/phpstan test
 ```
 
 ## Подключение
@@ -390,4 +392,4 @@ final class Pagination
 3. Добавить unit-тест в `tests/Unit/PHPStan`.
 4. Добавить fixtures с разрешёнными и запрещёнными кейсами.
 5. Описать правило в этом README: что делает, исключения, нюансы.
-6. Запустить `composer tools:phpstan:qa` и корневой `composer phpstan`.
+6. Запустить `composer -d tools/phpstan phpstan`, `composer -d tools/phpstan test` и корневой `composer phpstan`.

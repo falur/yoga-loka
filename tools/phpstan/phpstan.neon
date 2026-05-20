@@ -3,7 +3,7 @@ includes:
 
 parameters:
     level: max
-    tmpDir: ../../runtime/phpstan-rules
+    tmpDir: runtime/phpstan
     paths:
         - src
     phpVersion: 80506

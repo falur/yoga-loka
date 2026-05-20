@@ -10,7 +10,7 @@
         "phpstan/phpdoc-parser": "2.3.2",
         "spiral/framework": "^3.16",
         "symfony/finder": "v8.0.8",
-        "symfony/yaml": "v8.0.10"
+        "symfony/yaml": "v8.0.12"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.1.54",
@@ -27,8 +27,15 @@
         }
     },
     "scripts": {
-        "phpstan": "../../vendor/bin/phpstan analyse",
-        "test": "../../vendor/bin/phpunit"
+        "phpstan": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/phpunit"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true,
+            "spiral/composer-publish-plugin": true
+        }
     },
     "minimum-stability": "dev",
     "prefer-stable": true

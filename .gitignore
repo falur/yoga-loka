@@ -1,8 +1,10 @@
 /.*/
 !/.github
 /vendor
+/tools/*/vendor
 /runtime/
 */runtime/
+/tools/*/runtime/
 
 /rr*
 /protoc-gen-php-grpc*

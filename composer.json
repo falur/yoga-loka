@@ -98,14 +98,6 @@
             "@phpstan",
             "@test",
             "@test-coverage"
-        ],
-        "tools:phpstan:qa": [
-            "phpstan analyse -c tools/phpstan/phpstan.neon",
-            "phpunit -c tools/phpstan/phpunit.xml"
-        ],
-        "tools:openapi:qa": [
-            "phpstan analyse -c tools/openapi/phpstan.neon",
-            "phpunit -c tools/openapi/phpunit.xml"
         ]
     },
     "minimum-stability": "dev",

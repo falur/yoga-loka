@@ -71,6 +71,75 @@ final readonly class GetUserProfileQuery
 }
 ```
 
+## Typed config
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Configuration\Payment;
+
+use App\Infrastructure\Configuration\TypedConfig;
+
+final readonly class PaymentConfig implements TypedConfig
+{
+    public static function configName(): string
+    {
+        return 'payment';
+    }
+
+    /**
+     * @param array<string, PaymentProviderConfig> $providers
+     */
+    public function __construct(
+        public string $default,
+        public array $providers,
+    ) {}
+}
+```
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Configuration\Payment;
+
+final readonly class PaymentProviderConfig
+{
+    public function __construct(
+        public string $dsn,
+        public bool $sandbox,
+    ) {}
+}
+```
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Infrastructure\Configuration;
+
+use App\Infrastructure\Configuration\Mapping\ConfigMapper;
+use App\Infrastructure\Configuration\Payment\PaymentConfig;
+use Tests\TestCase;
+
+final class PaymentConfigTest extends TestCase
+{
+    public function testPaymentConfigMapsFromConfigurator(): void
+    {
+        $config = $this->getContainer()
+            ->get(ConfigMapper::class)
+            ->map(section: PaymentConfig::configName(), targetClass: PaymentConfig::class);
+
+        self::assertSame('stripe', $config->default);
+        self::assertArrayHasKey('stripe', $config->providers);
+    }
+}
+```
+
 ## Обработчик запроса
 
 ```php

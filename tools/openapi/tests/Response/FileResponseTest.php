@@ -16,26 +16,21 @@ use Tools\OpenApi\Response\HttpHeaderValue;
 
 final class FileResponseTest extends TestCase
 {
-    private const string FILE_BODY = 'file body';
-    private const string FILE_NAME = 'export.txt';
-    private const string CONTENT_DISPOSITION_INLINE = 'inline';
-    private const string CONTENT_DISPOSITION_ATTACHMENT = 'attachment; filename="export.txt"';
-
     public function testFileContentResponseBuildsInlineResponse(): void
     {
-        $httpResponse = new FileContentResponse(content: self::FILE_BODY, contentType: ContentType::PlainText)
+        $httpResponse = new FileContentResponse(content: 'file body', contentType: ContentType::PlainText)
             ->withStatus(HttpStatus::Created)
             ->toResponse();
 
         self::assertSame(HttpStatus::Created->value, $httpResponse->getStatusCode());
         self::assertSame(ContentType::PlainText->value, $httpResponse->getHeaderLine(HttpHeader::ContentType->value));
-        self::assertSame(self::CONTENT_DISPOSITION_INLINE, $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
-        self::assertSame(self::FILE_BODY, (string) $httpResponse->getBody());
+        self::assertSame('inline', $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
+        self::assertSame('file body', (string) $httpResponse->getBody());
     }
 
     public function testFileContentResponseCanReplaceDefaultHeaders(): void
     {
-        $httpResponse = new FileContentResponse(content: self::FILE_BODY, contentType: ContentType::PlainText)
+        $httpResponse = new FileContentResponse(content: 'file body', contentType: ContentType::PlainText)
             ->setHeaders(new HttpHeaderValue(name: HttpHeader::CacheControl, value: 'no-store'))
             ->toResponse();
 
@@ -52,16 +47,16 @@ final class FileResponseTest extends TestCase
             $httpResponse = new FileResponse(
                 path: $temporaryFilePath,
                 contentType: ContentType::PlainText,
-                filename: self::FILE_NAME,
+                filename: 'export.txt',
             )
                 ->withStatus(HttpStatus::Accepted)
                 ->toResponse();
 
             self::assertSame(HttpStatus::Accepted->value, $httpResponse->getStatusCode());
             self::assertSame(ContentType::PlainText->value, $httpResponse->getHeaderLine(HttpHeader::ContentType->value));
-            self::assertSame(self::CONTENT_DISPOSITION_ATTACHMENT, $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
-            self::assertSame((string) \strlen(self::FILE_BODY), $httpResponse->getHeaderLine(HttpHeader::ContentLength->value));
-            self::assertSame(self::FILE_BODY, (string) $httpResponse->getBody());
+            self::assertSame('attachment; filename="export.txt"', $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
+            self::assertSame((string) \strlen('file body'), $httpResponse->getHeaderLine(HttpHeader::ContentLength->value));
+            self::assertSame('file body', (string) $httpResponse->getBody());
         } finally {
             \unlink($temporaryFilePath);
         }
@@ -74,7 +69,7 @@ final class FileResponseTest extends TestCase
         new FileResponse(
             path: __DIR__ . '/../Fixtures/missing-file.txt',
             contentType: ContentType::PlainText,
-            filename: self::FILE_NAME,
+            filename: 'export.txt',
         )->toResponse();
     }
 
@@ -83,7 +78,7 @@ final class FileResponseTest extends TestCase
         $httpResponse = new HtmlResponse(html: '<html></html>')->toResponse();
 
         self::assertSame(ContentType::Html->value, $httpResponse->getHeaderLine(HttpHeader::ContentType->value));
-        self::assertSame(self::CONTENT_DISPOSITION_INLINE, $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
+        self::assertSame('inline', $httpResponse->getHeaderLine(HttpHeader::ContentDisposition->value));
         self::assertSame('<html></html>', (string) $httpResponse->getBody());
     }
 
@@ -95,7 +90,7 @@ final class FileResponseTest extends TestCase
             self::fail('Не удалось создать временный файл.');
         }
 
-        if (\file_put_contents($temporaryFilePath, self::FILE_BODY) === false) {
+        if (\file_put_contents($temporaryFilePath, 'file body') === false) {
             self::fail('Не удалось записать временный файл.');
         }
 

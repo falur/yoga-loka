@@ -10,7 +10,7 @@ final readonly class CacheConfig implements TypedConfig
 {
     public static function configName(): string
     {
-        return 'cache'; // @phpstan-ignore project.magicScalarLiteral
+        return 'cache';
     }
 
     /**

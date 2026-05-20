@@ -14,8 +14,6 @@ final class FileResponse implements ConvertsToHttpResponse
 {
     use HasHttpResponseMetadata;
 
-    private const string CONTENT_DISPOSITION_ATTACHMENT_TEMPLATE = 'attachment; filename="%s"';
-
     public function __construct(
         private readonly string $path,
         private readonly ContentType $contentType,
@@ -49,7 +47,7 @@ final class FileResponse implements ConvertsToHttpResponse
         $headers = [
             HttpHeader::ContentType->value => [$this->contentType->value],
             HttpHeader::ContentDisposition->value => [\sprintf(
-                self::CONTENT_DISPOSITION_ATTACHMENT_TEMPLATE,
+                'attachment; filename="%s"',
                 \addcslashes($this->filename, '\\"'),
             )],
         ];

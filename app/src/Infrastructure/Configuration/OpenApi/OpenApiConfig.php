@@ -16,7 +16,7 @@ final readonly class OpenApiConfig implements TypedConfig
 {
     public static function configName(): string
     {
-        return 'openapi'; // @phpstan-ignore project.magicScalarLiteral
+        return 'openapi';
     }
 
     public function __construct(

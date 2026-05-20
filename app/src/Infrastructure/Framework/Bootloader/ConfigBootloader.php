@@ -7,6 +7,7 @@ namespace App\Infrastructure\Framework\Bootloader;
 use App\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Infrastructure\Configuration\TypedConfig;
 use App\Infrastructure\Framework\DirectoryAlias;
+use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;
 use CuyZ\Valinor\NormalizerBuilder;
@@ -32,7 +33,11 @@ final class ConfigBootloader extends Bootloader
     {
         return new ConfigMapper(
             configurator: $configurator,
-            mapper: new MapperBuilder()->mapper(),
+            mapper: new MapperBuilder()
+                ->configureWith(new ConvertKeysToCamelCase())
+                ->allowPermissiveTypes()
+                ->allowScalarValueCasting()
+                ->mapper(),
             normalizer: new NormalizerBuilder()->normalizer(Format::array()),
         );
     }

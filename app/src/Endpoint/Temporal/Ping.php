@@ -20,6 +20,6 @@ class Ping
     #[WorkflowMethod(name: 'ping')]
     public function handle(): string
     {
-        return 'pong'; // @phpstan-ignore project.magicScalarLiteral
+        return 'pong';
     }
 }

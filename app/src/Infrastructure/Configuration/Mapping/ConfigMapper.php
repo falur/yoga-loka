@@ -38,6 +38,16 @@ final readonly class ConfigMapper
                 targetClass: $targetClass,
                 error: $error,
             );
+        } catch (\Throwable $error) {
+            if (!$error instanceof InvalidConfigValueException) {
+                throw $error;
+            }
+
+            throw ConfigMappingException::fromInvalidConfigValue(
+                section: $section,
+                targetClass: $targetClass,
+                error: $error,
+            );
         }
     }
 

@@ -38,6 +38,7 @@ final class DisallowMagicScalarLiteralRuleTest extends RuleTestCase
             'project.magicScalarLiteral',
             'project.magicScalarLiteral',
             'project.magicScalarLiteral',
+            'project.magicScalarLiteral',
         ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
 
         $this->analyse([$file], [
@@ -51,6 +52,7 @@ final class DisallowMagicScalarLiteralRuleTest extends RuleTestCase
             ['Magic scalar literal is forbidden in runtime code. Move it to an enum, class constant or value object.', 21],
             ['Magic scalar literal is forbidden in runtime code. Move it to an enum, class constant or value object.', 21],
             ['Magic scalar literal is forbidden in runtime code. Move it to an enum, class constant or value object.', 21],
+            ['Magic scalar literal is forbidden in runtime code. Move it to an enum, class constant or value object.', 51],
         ]);
     }
 

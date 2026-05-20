@@ -23,6 +23,7 @@ final class DisallowMagicScalarLiteralRule implements Rule
 {
     private const string ERROR_MESSAGE = 'Magic scalar literal is forbidden in runtime code. Move it to an enum, class constant or value object.';
     private const string ERROR_IDENTIFIER = 'project.magicScalarLiteral';
+    private const string TYPED_CONFIG_INTERFACE = 'App\\Infrastructure\\Configuration\\TypedConfig';
 
     /**
      * @param list<string> $analysedPathFragments
@@ -158,6 +159,10 @@ final class DisallowMagicScalarLiteralRule implements Rule
             return true;
         }
 
+        if ($this->isAllowedTypedConfigNameReturn(node: $node, ancestors: $ancestors, scope: $scope)) {
+            return true;
+        }
+
         if ($this->isAllowedParameterDefault(node: $node, ancestors: $ancestors)) {
             return true;
         }
@@ -206,6 +211,40 @@ final class DisallowMagicScalarLiteralRule implements Rule
         }
 
         return \str_ends_with(haystack: $classReflection->getName(), needle: 'Exception');
+    }
+
+    /**
+     * @param list<Node> $ancestors
+     */
+    private function isAllowedTypedConfigNameReturn(Node $node, array $ancestors, Scope $scope): bool
+    {
+        if (!$node instanceof Scalar\String_) {
+            return false;
+        }
+
+        $return = $this->nearestReturn(ancestors: $ancestors);
+
+        if (!$return instanceof Stmt\Return_ || $return->expr !== $node) {
+            return false;
+        }
+
+        $method = $this->nearestClassMethod(ancestors: $ancestors);
+
+        if (!$method instanceof Stmt\ClassMethod) {
+            return false;
+        }
+
+        if (!$method->isPublic() || !$method->isStatic() || $method->name->toString() !== 'configName') {
+            return false;
+        }
+
+        if (!$method->returnType instanceof Node\Identifier || \strtolower(string: $method->returnType->toString()) !== 'string') {
+            return false;
+        }
+
+        $classReflection = $scope->getClassReflection();
+
+        return $classReflection !== null && $classReflection->implementsInterface(self::TYPED_CONFIG_INTERFACE);
     }
 
     /**
@@ -516,6 +555,38 @@ final class DisallowMagicScalarLiteralRule implements Rule
             }
 
             return $ancestors[$index - 1] ?? null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<Node> $ancestors
+     */
+    private function nearestReturn(array $ancestors): ?Stmt\Return_
+    {
+        for ($index = \count(value: $ancestors) - 1; $index >= 0; $index--) {
+            $ancestor = $ancestors[$index];
+
+            if ($ancestor instanceof Stmt\Return_) {
+                return $ancestor;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<Node> $ancestors
+     */
+    private function nearestClassMethod(array $ancestors): ?Stmt\ClassMethod
+    {
+        for ($index = \count(value: $ancestors) - 1; $index >= 0; $index--) {
+            $ancestor = $ancestors[$index];
+
+            if ($ancestor instanceof Stmt\ClassMethod) {
+                return $ancestor;
+            }
         }
 
         return null;

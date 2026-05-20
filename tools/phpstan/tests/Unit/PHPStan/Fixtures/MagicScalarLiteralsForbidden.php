@@ -43,3 +43,11 @@ final class MagicScalarLiteralStringBuilder
         return $this;
     }
 }
+
+final class MagicScalarFakeConfig
+{
+    public static function configName(): string
+    {
+        return 'fake_config';
+    }
+}

@@ -372,6 +372,7 @@ final class Pagination
 - Сообщения console/logger methods: `alert`, `comment`, `debug`, `error`, `info`, `line`, `log`, `warning`, `write`, `writeln`.
 - Пути view-шаблонов: `$views->render(path: 'swagger/index')`.
 - Имена методов в callable tuple: `[self::class, 'handle']`.
+- Прямой возврат имени секции из `public static configName(): string` в классах, которые реализуют `App\Infrastructure\Configuration\TypedConfig`.
 - Аргументы технических функций из allow-list: `array_key_exists`, `count`, `dirname`, `explode`, `file_get_contents`, `implode`, `in_array`, `is_file`, `is_dir`, `json_encode`, `ltrim`, `mkdir`, `preg_match`, `rtrim`, `sprintf`, `str_contains`, `str_ends_with`, `str_replace`, `str_starts_with`, `strtolower`, `strtr`, `substr`, `trim`.
 
 Нюансы:

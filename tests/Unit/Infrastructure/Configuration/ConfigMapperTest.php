@@ -9,6 +9,7 @@ use App\Infrastructure\Configuration\Cache\CacheConfig;
 use App\Infrastructure\Configuration\Cache\CacheStorageConfig;
 use App\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Infrastructure\Configuration\Mapping\ConfigMappingException;
+use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;
 use CuyZ\Valinor\NormalizerBuilder;
@@ -58,7 +59,7 @@ final class ConfigMapperTest extends TestCase
     public function testThrowsReadableExceptionForInvalidConfig(): void
     {
         $mapper = $this->mapperFor([
-            'default' => 123,
+            'default' => [],
             'aliases' => [],
             'storages' => [],
             'typeAliases' => [],
@@ -69,6 +70,48 @@ final class ConfigMapperTest extends TestCase
         $this->expectExceptionMessage(CacheConfig::class);
 
         $mapper->map(section: CacheConfig::configName(), targetClass: CacheConfig::class);
+    }
+
+    public function testThrowsSafeExceptionWithoutSecretValue(): void
+    {
+        $mapper = $this->mapperForSection(
+            section: 'secret',
+            config: [
+                'dsn' => 'smtp://secret-user:secret-password@mailpit:1025',
+            ],
+        );
+
+        try {
+            $mapper->map(section: 'secret', targetClass: ConfigMapperSecretProbe::class);
+        } catch (ConfigMappingException $exception) {
+            $message = $exception->getMessage();
+
+            self::assertStringContainsString('Не удалось преобразовать раздел конфигурации `secret`', $message);
+            self::assertStringContainsString(ConfigMapperSecretProbe::class, $message);
+            self::assertStringContainsString('dsn', $message);
+            self::assertStringContainsString('ожидалось `int`', $message);
+            self::assertStringContainsString('получено `string`', $message);
+            self::assertStringNotContainsString('smtp://secret-user:secret-password@mailpit:1025', $message);
+            self::assertStringNotContainsString('secret-password', $message);
+
+            return;
+        }
+
+        self::fail('Ожидалось безопасное исключение маппинга.');
+    }
+
+    public function testConvertsSnakeCaseKeysToCamelCase(): void
+    {
+        $mapper = $this->mapperForSection(
+            section: 'storage',
+            config: [
+                'use_path_style_endpoint' => true,
+            ],
+        );
+
+        $config = $mapper->map(section: 'storage', targetClass: ConfigMapperSnakeCaseProbe::class);
+
+        self::assertTrue($config->usePathStyleEndpoint);
     }
 
     public function testNormalizesCacheConfig(): void
@@ -97,16 +140,42 @@ final class ConfigMapperTest extends TestCase
      */
     private function mapperFor(array $config): ConfigMapper
     {
+        return $this->mapperForSection(section: CacheConfig::configName(), config: $config);
+    }
+
+    /**
+     * @param array<array-key, mixed> $config
+     */
+    private function mapperForSection(string $section, array $config): ConfigMapper
+    {
         $configurator = $this->createMock(ConfiguratorInterface::class);
         $configurator
             ->method('getConfig')
-            ->with(CacheConfig::configName())
+            ->with($section)
             ->willReturn($config);
 
         return new ConfigMapper(
             configurator: $configurator,
-            mapper: new MapperBuilder()->mapper(),
+            mapper: new MapperBuilder()
+                ->configureWith(new ConvertKeysToCamelCase())
+                ->allowPermissiveTypes()
+                ->allowScalarValueCasting()
+                ->mapper(),
             normalizer: new NormalizerBuilder()->normalizer(Format::array()),
         );
     }
+}
+
+final readonly class ConfigMapperSecretProbe
+{
+    public function __construct(
+        public int $dsn,
+    ) {}
+}
+
+final readonly class ConfigMapperSnakeCaseProbe
+{
+    public function __construct(
+        public bool $usePathStyleEndpoint,
+    ) {}
 }

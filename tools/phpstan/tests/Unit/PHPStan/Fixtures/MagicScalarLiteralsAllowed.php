@@ -2,7 +2,18 @@
 
 declare(strict_types=1);
 
+namespace App\Infrastructure\Configuration;
+
+if (!\interface_exists(TypedConfig::class)) {
+    interface TypedConfig
+    {
+        public static function configName(): string;
+    }
+}
+
 namespace Tools\PHPStan\Tests\Unit\PHPStan\Fixtures;
+
+use App\Infrastructure\Configuration\TypedConfig;
 
 #[MagicScalarAttribute('/api/v1/health', 'GET')]
 final class MagicScalarLiteralsAllowed
@@ -80,6 +91,14 @@ final class MagicScalarLiteralsAllowed
     private function call(callable $operation): string
     {
         return $operation();
+    }
+}
+
+final readonly class MagicScalarTypedConfig implements TypedConfig
+{
+    public static function configName(): string
+    {
+        return 'typed_config';
     }
 }
 

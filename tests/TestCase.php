@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use App\Infrastructure\Framework\DirectoryAlias;
+use App\Shared\Infrastructure\Framework\DirectoryAlias;
 use Spiral\Config\ConfiguratorInterface;
 use Spiral\Config\Patch\Set;
 use Spiral\Core\Container;

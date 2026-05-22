@@ -118,4 +118,4 @@ protected const array INTERCEPTORS = [
 
 Текст `message` в ошибке Spiral Filter зависит от текущего locale. Тексты внутри `errors` пакет не переводит.
 
-Пакет не зависит от `App\`. Доменные исключения остаются в приложении, например `App\Domain\Exception\NotFoundException`.
+Пакет не зависит от `App\`. Доменные исключения остаются в приложении, например `App\Shared\Domain\Exception\NotFoundException`. Исключения без поддерживаемого 4xx-кода возвращаются как обычная 500-ошибка без внутреннего сообщения.

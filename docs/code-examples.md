@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Command\Auth\Login;
+namespace App\Modules\Auth\Application\Command\Auth\Login;
 
 final readonly class LoginCommand
 {
@@ -25,11 +25,11 @@ final readonly class LoginCommand
 
 declare(strict_types=1);
 
-namespace App\Application\Command\Auth\Login;
+namespace App\Modules\Auth\Application\Command\Auth\Login;
 
-use App\Domain\Exception\AuthenticationException;
-use App\Domain\ValueObject\Email;
-use App\Repository\UserRepository;
+use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\User\Domain\ValueObject\Email;
+use App\Modules\User\Repository\UserRepository;
 
 final readonly class LoginHandler
 {
@@ -61,7 +61,7 @@ final readonly class LoginHandler
 
 declare(strict_types=1);
 
-namespace App\Application\Query\User\GetUserProfile;
+namespace App\Modules\User\Application\Query\User\GetUserProfile;
 
 final readonly class GetUserProfileQuery
 {
@@ -78,9 +78,9 @@ final readonly class GetUserProfileQuery
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Configuration\Payment;
+namespace App\Shared\Infrastructure\Configuration\Payment;
 
-use App\Infrastructure\Configuration\TypedConfig;
+use App\Shared\Infrastructure\Configuration\TypedConfig;
 
 final readonly class PaymentConfig implements TypedConfig
 {
@@ -104,7 +104,7 @@ final readonly class PaymentConfig implements TypedConfig
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Configuration\Payment;
+namespace App\Shared\Infrastructure\Configuration\Payment;
 
 final readonly class PaymentProviderConfig
 {
@@ -120,10 +120,10 @@ final readonly class PaymentProviderConfig
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Infrastructure\Configuration;
+namespace Tests\Unit\Shared\Infrastructure\Configuration;
 
-use App\Infrastructure\Configuration\Mapping\ConfigMapper;
-use App\Infrastructure\Configuration\Payment\PaymentConfig;
+use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
+use App\Shared\Infrastructure\Configuration\Payment\PaymentConfig;
 use Tests\TestCase;
 
 final class PaymentConfigTest extends TestCase
@@ -147,11 +147,11 @@ final class PaymentConfigTest extends TestCase
 
 declare(strict_types=1);
 
-namespace App\Application\Query\User\GetUserProfile;
+namespace App\Modules\User\Application\Query\User\GetUserProfile;
 
-use App\Domain\Entity\User;
-use App\Domain\Exception\NotFoundException;
-use App\Repository\UserRepository;
+use App\Modules\User\Domain\Entity\User;
+use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\User\Repository\UserRepository;
 
 final readonly class GetUserProfileHandler
 {
@@ -174,13 +174,13 @@ final readonly class GetUserProfileHandler
 
 declare(strict_types=1);
 
-namespace App\Endpoint\Api\V1\Controller;
+namespace App\Modules\User\Presentation\Http\Controller;
 
-use App\Application\Query\User\GetUserProfile\GetUserProfileHandler;
-use App\Application\Query\User\GetUserProfile\GetUserProfileQuery;
-use App\Endpoint\Api\V1\Resource\UserResource;
-use App\Endpoint\Api\V1\Response\DataResponse;
-use App\Infrastructure\Bus\QueryBusInterface;
+use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileHandler;
+use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileQuery;
+use App\Modules\User\Presentation\Http\Resource\UserResource;
+use Tools\OpenApi\Response\DataResponse;
+use App\Shared\Infrastructure\Bus\QueryBusInterface;
 use Spiral\Router\Annotation\Route;
 
 final readonly class UserController
@@ -214,16 +214,16 @@ final readonly class UserController
 
 declare(strict_types=1);
 
-namespace App\Domain\Entity;
+namespace App\Modules\User\Domain\Entity;
 
-use App\Domain\Trait\HasTimestamps;
-use App\Domain\Trait\HasUuid;
-use App\Domain\ValueObject\DisplayName;
-use App\Domain\ValueObject\Email;
-use App\Domain\ValueObject\PasswordHash;
-use App\Domain\ValueObject\Username;
-use App\Infrastructure\Cycle\ValueObjectCast;
-use App\Repository\UserRepository;
+use App\Shared\Domain\Trait\HasTimestamps;
+use App\Shared\Domain\ValueObject\UserId;
+use App\Modules\User\Domain\ValueObject\DisplayName;
+use App\Modules\User\Domain\ValueObject\Email;
+use App\Modules\User\Domain\ValueObject\PasswordHash;
+use App\Modules\User\Domain\ValueObject\Username;
+use App\Modules\User\Infrastructure\Cycle\UserValueObjectTypecast;
+use App\Modules\User\Repository\UserRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\ORM\Parser\Typecast;
@@ -232,12 +232,14 @@ use Cycle\ORM\Parser\Typecast;
     role: 'user',
     table: 'users',
     repository: UserRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
+    typecast: [Typecast::class, UserValueObjectTypecast::class],
 )]
 class User
 {
-    use HasUuid;
     use HasTimestamps;
+
+    #[Column(type: 'uuid', primary: true, typecast: UserId::class)]
+    public private(set) UserId $id;
 
     #[Column(type: 'string', typecast: Email::class)]
     public private(set) Email $email;
@@ -258,12 +260,12 @@ class User
         DisplayName $name,
     ): self {
         $user = new self();
-        $user->initUuid();
-        $user->initTimestamps();
+        $user->id = UserId::generate();
         $user->email = $email;
         $user->passwordHash = $passwordHash;
         $user->username = $username;
         $user->name = $name;
+        $user->initializeTimestamps();
 
         return $user;
     }
@@ -283,9 +285,9 @@ class User
 
 declare(strict_types=1);
 
-namespace App\Domain\ValueObject;
+namespace App\Modules\User\Domain\ValueObject;
 
-use App\Domain\Exception\ValidationException;
+use App\Shared\Domain\Exception\InvalidDomainValueException;
 
 final readonly class Email implements \Stringable, \JsonSerializable
 {
@@ -298,15 +300,15 @@ final readonly class Email implements \Stringable, \JsonSerializable
         $email = \mb_strtolower(\trim($value));
 
         if (!\filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new ValidationException('Некорректный email');
+            throw new InvalidDomainValueException('Некорректный email');
         }
 
         return new self($email);
     }
 
-    public static function fromDatabase(string $value): self
+    public function value(): string
     {
-        return new self($value);
+        return $this->value;
     }
 
     public function equals(self $email): bool
@@ -333,11 +335,11 @@ final readonly class Email implements \Stringable, \JsonSerializable
 
 declare(strict_types=1);
 
-namespace App\Repository;
+namespace App\Modules\User\Repository;
 
-use App\Domain\Entity\User;
-use App\Domain\ValueObject\Email;
-use App\Domain\ValueObject\Username;
+use App\Modules\User\Domain\Entity\User;
+use App\Modules\User\Domain\ValueObject\Email;
+use App\Modules\User\Domain\ValueObject\Username;
 use Cycle\ORM\Select\Repository;
 
 /**
@@ -347,12 +349,12 @@ final class UserRepository extends Repository
 {
     public function findByEmail(Email $email): ?User
     {
-        return $this->findOne(['email' => (string) $email]);
+        return $this->findOne(['email' => $email->value()]);
     }
 
     public function findByUsername(Username $username): ?User
     {
-        return $this->findOne(['username' => $username]);
+        return $this->findOne(['username' => $username->value()]);
     }
 
     public function existsByUsername(Username $username): bool
@@ -369,9 +371,10 @@ final class UserRepository extends Repository
 
 declare(strict_types=1);
 
-namespace App\Endpoint\Api\V1\Resource;
+namespace App\Modules\User\Presentation\Http\Resource;
 
-use App\Domain\Entity\User;
+use App\Modules\User\Domain\Entity\User;
+use App\Shared\Presentation\Http\Resource\AbstractResource;
 
 final readonly class UserResource extends AbstractResource
 {

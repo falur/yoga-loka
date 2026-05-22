@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\App\Bootloader;
 
-use App\Infrastructure\Framework\Bootloader\RoutesBootloader as AppRoutesBootloader;
+use App\Shared\Infrastructure\Framework\Bootloader\RoutesBootloader as AppRoutesBootloader;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Router\Loader\Configurator\RoutingConfigurator;
-use Tests\App\Endpoint\Api\ApiErrorTestController;
+use Tests\App\Modules\System\Http\ApiErrorTestController;
 
 final class ApiErrorTestRoutesBootloader extends Bootloader
 {
@@ -16,6 +16,12 @@ final class ApiErrorTestRoutesBootloader extends Bootloader
         $routes
             ->add(name: 'test.api.error.domain', pattern: '/test/api/errors/domain')
             ->action(controller: ApiErrorTestController::class, action: 'domain')
+            ->methods(methods: 'GET')
+            ->group(group: AppRoutesBootloader::GROUP_API);
+
+        $routes
+            ->add(name: 'test.api.error.invalid-domain-value', pattern: '/test/api/errors/invalid-domain-value')
+            ->action(controller: ApiErrorTestController::class, action: 'invalidDomainValue')
             ->methods(methods: 'GET')
             ->group(group: AppRoutesBootloader::GROUP_API);
 

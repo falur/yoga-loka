@@ -93,7 +93,7 @@ return [
          * @link https://spiral.dev/docs/queue-jobs#job-handler-registry
          */
         'handlers' => [
-            // 'ping' => \App\Endpoint\Job\Ping::class
+            // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
         ],
 
         /**
@@ -104,7 +104,7 @@ return [
          */
         'serializers' => [
             // 'ping' => 'json',
-            // \App\Endpoint\Job\Ping::class => 'json',
+            // \App\Modules\System\Presentation\Job\Ping::class => 'json',
         ],
     ],
 

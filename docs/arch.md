@@ -5,9 +5,158 @@
 YogaLoka - API-first backend для мобильного приложения на PHP 8.5, Spiral
 Framework, RoadRunner и Cycle ORM.
 
-Приложение работает как единый монолит: один runtime, один deploy и один код
-приложения. Физические bounded contexts не выделены. Домены группируются внутри
-текущих слоёв по предметной области и действию.
+Приложение работает как модульный монолит: один runtime, один deploy и один код
+приложения. Код группируется в модули по предметной области.
+
+## Модули
+
+Проект устроен как модульный монолит с прагматичным DDD-подходом.
+
+Бизнес-логика живёт в `Domain`. Важные значения оформляются как
+`ValueObject`, сущности содержат поведение, а технические детали вынесены в
+`Infrastructure`.
+
+DDD-паттерны не вводятся автоматически. Aggregate, Domain Service, Domain Event,
+отдельная read model или anti-corruption layer добавляются только когда они
+решают реальную проблему в коде.
+
+Модуль - это отдельная область приложения: `Media`, `User`, `Feed`, `Auth`.
+
+Структура нового модуля:
+
+```text
+Modules/
+  Media/
+    Domain/
+    Application/
+      Contract/
+    Repository/
+    Infrastructure/
+      Cycle/
+      FileService/
+    Presentation/
+```
+
+Назначение слоёв:
+
+```text
+Domain         - бизнес-логика модуля.
+Application    - сценарии модуля и контракты для технических зависимостей.
+Repository     - доступ к БД своего модуля через доменные методы.
+Infrastructure - технические реализации контрактов, Cycle typecast, S3, внешние сервисы.
+Presentation   - HTTP-контроллеры, фильтры запросов и другие входы.
+```
+
+Правила связей:
+
+```text
+Domain не зависит от других слоёв.
+
+Application может использовать:
+- свой Domain;
+- свой Repository;
+- свои Contract;
+- Application других модулей.
+
+Infrastructure реализует Contract своего модуля.
+
+Presentation вызывает Application своего модуля.
+```
+
+Контракты лежат в:
+
+```text
+Modules/{Module}/Application/Contract
+```
+
+Имена контрактов заканчиваются на `Contract`.
+
+Примеры:
+
+```text
+MediaFileServiceContract
+```
+
+Репозитории лежат в:
+
+```text
+Modules/{Module}/Repository
+```
+
+Пример:
+
+```text
+MediaRepository
+```
+
+Репозитории не являются публичным API модуля. `Application` своего модуля может
+использовать свои репозитории напрямую, но другие модули не обращаются к ним.
+
+Технические реализации контрактов лежат в `Infrastructure`:
+
+```text
+Infrastructure/
+  Cycle/        # typecast и другие классы для Cycle ORM
+  FileService/  # техническая работа с файлами
+```
+
+Примеры:
+
+```text
+S3MediaFileService
+```
+
+Общий доменный код, который не принадлежит одному модулю, лежит в `Shared`.
+
+Пример:
+
+```text
+Shared/
+  Domain/
+    Exception/
+    Trait/
+    ValueObject/
+  Presentation/
+    Http/
+      Resource/
+```
+
+Другие модули могут обращаться только к `Application`.
+
+Хорошо:
+
+```text
+User/Application -> Media/Application
+```
+
+Плохо:
+
+```text
+User/Application -> Media/Infrastructure
+User/Infrastructure -> Media/Infrastructure
+User -> media_files table
+User -> MediaRepository
+```
+
+Пример:
+
+```text
+User/Application/SetAvatar
+  -> Media/Application/CheckMediaIsImage
+  -> User/Domain/User::setAvatar
+```
+
+`Media` не должен знать про аватар. Аватар - это часть `User`.
+
+`Media` должен давать только свои сценарии:
+
+```text
+CreateMedia
+DeleteMedia
+CheckMediaExists
+CheckMediaIsImage
+GetMediaUrl
+```
 
 ## Локальный Docker-runtime
 
@@ -39,58 +188,36 @@ app/
     migrations/                   # Cycle ORM миграции
   locale/                         # Переводы
   src/
-    Endpoint/                     # Внешние входы в систему
-      Api/
-        V1/                       # Версия REST API /api/v1
-          Controller/             # HTTP controllers
-          Filter/                 # Spiral Filter DTO для HTTP request
-            {Area}/
-          Resource/               # API resources: Entity/DTO -> JSON representation
-          Response/               # Типизированные API responses
-          Middleware/             # HTTP middleware версии API
-          Interceptor/            # API interceptors версии API
-          Attribute/              # PHP attributes для API metadata
-      Console/                    # Console commands
-      Job/                        # Queue job handlers
-        Payload/                  # Payload DTO для jobs
-      Temporal/                   # Temporal workflows и activities
+    Modules/
+      Media/
+        Domain/                   # Entity, ValueObject, Enum, доменные коллекции
+        Application/              # Command/Query сценарии модуля
+          Contract/               # Контракты технических сервисов, *Contract
+        Repository/               # Cycle repositories с доменными методами
+        Infrastructure/
+          Cycle/                  # Typecast и другие классы Cycle ORM
+          FileService/            # Реализации файловых сервисов
+        Presentation/             # HTTP, console, queue, Temporal входы модуля
 
-    Application/                  # Use-case слой приложения
-      Command/                    # CQRS Commands - операции записи
-        {Area}/                   # Auth, User, Post, Follow и т.д.
-          {Action}/               # Login, RegisterUser, UpdateUserProfile
-            {Action}Command.php
-            {Action}Handler.php
-            {Action}Result.php
-      Query/                      # CQRS Queries - операции чтения
-        {Area}/
-          {Action}/
-            {Action}Query.php
-            {Action}Handler.php
-      Event/                      # DTO интеграционных событий для outbox
+      System/
+        Presentation/
+          Http/                   # Health, Swagger UI, OpenAPI YAML route
+          Console/                # openapi:* команды
+          Temporal/               # технические workflow
 
-    Domain/                       # Доменная модель
-      Entity/                     # Cycle ORM entities с доменным поведением
-      ValueObject/                # Email, PasswordHash, Username, Slug
-      Enum/                       # Статусы, роли, типы
-      Exception/                  # ValidationException, NotFoundException и т.д.
-      Service/                    # Доменная логика вне одной Entity
-      Trait/                      # Общие entity traits
-
-    Repository/                   # Cycle ORM repositories с доменными методами
-
-    Infrastructure/               # Технические адаптеры и интеграции
-      Bus/                        # CommandBus/QueryBus и middleware pipeline
-        Middleware/
-      Configuration/              # Типизированные config DTO и ConfigMapper
-      Cycle/                      # Typecast, Select helpers, ORM utilities
-      Framework/                  # Spiral Kernel, bootloaders, routes
-        Bootloader/
-      Http/                       # HTTP clients для внешних сервисов
-      Logging/                    # Логирование и handlers
-      Outbox/                     # Хранилище, сериализация и публикация outbox-событий
-      Queue/                      # Queue infrastructure
-      Storage/                    # Storage adapters
+    Shared/
+      Domain/
+        Exception/                # Общие доменные исключения
+        Trait/                    # Общие доменные трейты
+        ValueObject/              # Общие базовые VO и общие идентификаторы
+      Presentation/
+        Http/
+          Resource/               # Общие базовые API-ресурсы
+      Infrastructure/
+        Cache/
+        Configuration/            # Типизированные config DTO и ConfigMapper
+        Cycle/                    # Общие typecast-классы
+        Framework/                # Spiral Kernel, bootloaders, routes
 ```
 
 ## Правила зависимостей
@@ -98,11 +225,12 @@ app/
 Внешние слои могут зависеть от внутренних, внутренние не зависят от внешних.
 
 ```text
-Endpoint       -> Application, Infrastructure/Bus, Resource, Response
-Application    -> Domain, Repository, infrastructure ports
-Repository     -> Domain, Infrastructure/Cycle, Cycle ORM
-Infrastructure -> framework/runtime libraries, external libraries, adapter DTO
-Domain         -> PHP standard library, Domain classes
+Presentation   -> Application своего модуля, Response/Resource, framework attributes
+Application    -> Domain, Repository своего модуля, Contract своего модуля
+Repository     -> Domain, Cycle ORM
+Infrastructure -> Contract своего модуля, framework/runtime libraries, external libraries
+Domain         -> PHP standard library, свой Domain, Shared/Domain
+Shared         -> общий доменный и инфраструктурный код без привязки к одному модулю
 ```
 
 ## Взаимодействие слоёв
@@ -113,19 +241,19 @@ Domain         -> PHP standard library, Domain classes
 HTTP Request
   -> RoadRunner
     -> Spiral HTTP middleware
-      -> Endpoint\Api\V1\Controller
-        -> Endpoint\Api\V1\Filter
-        -> Application\Command DTO
+      -> Modules/{Module}/Presentation/Http/Controller
+        -> Modules/{Module}/Presentation/Http/Filter
+        -> Modules/{Module}/Application/Command DTO
         -> CommandBus::dispatch(callable)
           -> LoggingMiddleware
           -> TransactionalMiddleware
           -> Handler::handle(Command)
-            -> Domain ValueObject
-            -> Domain Entity
-            -> Repository
+            -> Modules/{Module}/Domain ValueObject
+            -> Modules/{Module}/Domain Entity
+            -> Modules/{Module}/Repository
             -> EntityManager::run()
-        -> Endpoint\Api\V1\Resource
-        -> Endpoint\Api\V1\Response
+        -> Modules/{Module}/Presentation/Http/Resource
+        -> Response
       -> JSON Response
 ```
 
@@ -135,15 +263,15 @@ HTTP Request
 HTTP Request
   -> RoadRunner
     -> Spiral HTTP middleware
-      -> Endpoint\Api\V1\Controller
-        -> Endpoint\Api\V1\Filter
-        -> Application\Query DTO
+      -> Modules/{Module}/Presentation/Http/Controller
+        -> Modules/{Module}/Presentation/Http/Filter
+        -> Modules/{Module}/Application/Query DTO
         -> QueryBus::dispatch(callable)
           -> LoggingMiddleware
           -> Handler::handle(Query)
-            -> Repository read method
-        -> Endpoint\Api\V1\Resource
-        -> Endpoint\Api\V1\Response
+            -> Modules/{Module}/Repository read method
+        -> Modules/{Module}/Presentation/Http/Resource
+        -> Response
       -> JSON Response
 ```
 
@@ -151,7 +279,7 @@ HTTP Request
 
 API-документация генерируется автоматически из типизированного HTTP-слоя:
 контроллеров, Filter DTO, Response DTO, Resource-классов, enum-ов и API
-attributes в `Endpoint\Api\V1`. OpenAPI-спецификация строится из кода, а
+attributes в `Modules/{Module}/Presentation/Http`. OpenAPI-спецификация строится из кода, а
 Swagger используется как UI для её просмотра.
 
 Генератор OpenAPI живёт в переносимом Composer-пакете `tools/openapi` с
@@ -174,11 +302,15 @@ PHPDoc остаются текстом приложения. YAML статиче
 `tools/openapi`, потому что возвращает `ErrorResponse` и
 `ValidationErrorResponse`.
 
-Доменные исключения остаются в приложении в `App\Domain\Exception` и явно
-расширяют `\DomainException`. `Tools\ApiError\Interceptor\ApiExceptionInterceptor`
-превращает такие исключения в JSON `{"message":"...","code":...}`. Ошибки Spiral
-Filter рендерятся через `Tools\ApiError\Filter\ApiValidationErrorsRenderer` по
-ключу `yoga_loka.api_error.validation_error` в JSON
+Общие доменные исключения остаются в приложении в `App\Shared\Domain\Exception` и явно
+расширяют `\DomainException`. Ожидаемые клиентские ошибки с кодами 4xx
+`Tools\ApiError\Interceptor\ApiExceptionInterceptor` превращает в JSON
+`{"message":"...","code":...}` без логирования. Доменные исключения без
+поддерживаемого 4xx-кода, включая `InvalidDomainValueException`, считаются
+внутренними ошибками: HTTP-ответ получает обычное сообщение 500, а исходное
+сообщение исключения пользователю не отдаётся. Ошибки Spiral Filter рендерятся через
+`Tools\ApiError\Filter\ApiValidationErrorsRenderer` по ключу
+`yoga_loka.api_error.validation_error` в JSON
 `{"message":"Validation error","code":422,"errors":[...]}` или
 `{"message":"Ошибка валидации","code":422,"errors":[...]}` в зависимости от
 текущего locale.
@@ -201,7 +333,7 @@ translator. Выбор языка пользователя по HTTP-загол�
 ```text
 Console command
   -> input arguments/options
-  -> Application\Command DTO
+  -> Modules/{Module}/Application/Command DTO
   -> CommandBus::dispatch(callable)
   -> Handler
   -> console output
@@ -214,9 +346,9 @@ Console command не содержит бизнес-логику. Он тольк
 
 ```text
 Queue payload
-  -> Endpoint\Job handler
+  -> Modules/{Module}/Presentation/Job handler
   -> Payload DTO
-  -> Application\Command DTO
+  -> Modules/{Module}/Application/Command DTO
   -> CommandBus::dispatch(callable)
   -> Handler
 ```
@@ -228,8 +360,8 @@ Application Handler.
 
 ```text
 Temporal Workflow / Activity
-  -> Endpoint\Temporal adapter
-  -> Application\Command или Query
+  -> Modules/{Module}/Presentation/Temporal adapter
+  -> Modules/{Module}/Application Command или Query
   -> Bus
   -> Handler
 ```
@@ -241,7 +373,8 @@ adapter, как HTTP controller или queue job.
 
 CQRS используется на уровне use-case-ов: Command изменяет состояние, Query читает
 данные. Каждый use-case живёт в отдельной папке действия внутри
-`Application/Command/{Area}/{Action}` или `Application/Query/{Area}/{Action}`.
+`Modules/{Module}/Application/Command/{Area}/{Action}` или
+`Modules/{Module}/Application/Query/{Area}/{Action}`.
 
 Command flow:
 
@@ -310,7 +443,7 @@ push-уведомления, webhooks и любые интеграции, кот
 
 ```text
 HTTP / Console / Job / Temporal
-  -> Application Command Handler
+  -> Modules/{Module}/Application Command Handler
     -> Domain Entity / Repository
     -> EntityManager::run()
     -> OutboxEventStore::add(IntegrationEvent DTO)
@@ -347,9 +480,10 @@ Outbox worker является техническим входом, как об�
 
 ## Правила доменной модели
 
-`Domain` содержит Entity, ValueObject, Enum, доменные исключения и доменные
-сервисы. Он не зависит от HTTP, Application Handler, Repository, framework,
-request и config.
+`Domain` модуля содержит Entity, ValueObject, Enum, доменные коллекции и
+доменные сервисы. Общие исключения и трейты лежат в `Shared\Domain`.
+Domain не зависит от HTTP, Application Handler, Repository, framework, request
+и config.
 
 Entity создаётся через `create()`, меняется через доменные методы и не содержит
 доменные примитивы.
@@ -363,9 +497,10 @@ many values  -> typed domain collection
 `float`, `bool`, `array` или голый `Collection` для доменных данных. `bool`
 разрешён только как return type чистого predicate-метода.
 
-ValueObject валидирует вход и поддерживает ORM hydration через typecast.
+ValueObject валидирует вход и не зависит от ORM. Восстановление из БД и запись
+в БД выполняются инфраструктурным typecast-слоем.
 Repository скрывает Cycle API и возвращает доменные типы. Доменные исключения
-всплывают до endpoint/interceptor boundary.
+всплывают до presentation/interceptor boundary.
 
 ## Примеры кода
 
@@ -374,11 +509,12 @@ Repository скрывает Cycle API и возвращает доменные �
 ## Границы и контроль качества
 
 ```text
-API           -> Filter DTO, Resource, Response
-Configuration -> app/config -> typed config DTO
-Persistence   -> Repository -> Infrastructure/Cycle -> Cycle ORM
-Events        -> Application Event DTO -> Infrastructure/Outbox -> publisher
-Errors        -> Domain exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
+API           -> Modules/{Module}/Presentation/Http -> Filter DTO, Resource, Response
+Configuration -> app/config -> Shared/Infrastructure/Configuration
+Persistence   -> Modules/{Module}/Repository -> Cycle ORM
+Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
+Events        -> Modules/{Module}/Application Event DTO -> Infrastructure/Outbox -> publisher
+Errors        -> Shared/Domain/Exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
 Logging       -> Bus middleware / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested
 ```

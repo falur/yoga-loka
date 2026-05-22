@@ -41,24 +41,8 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
         $status = $this->supportedClientStatus($exception);
 
         if ($status === null) {
-            $this->logger->warning('Доменная ошибка без корректного HTTP-кода.', [
-                'exceptionClass' => $exception::class,
-                'exceptionCode' => $exception->getCode(),
-                'message' => $exception->getMessage(),
-            ]);
-
-            return $this->errorResponse(
-                message: $exception->getMessage(),
-                status: HttpStatus::BadRequest,
-            );
+            return $this->unexpectedExceptionResponse($exception);
         }
-
-        $this->logger->debug('API вернул ожидаемую клиентскую ошибку.', [
-            'exceptionClass' => $exception::class,
-            'exceptionCode' => $exception->getCode(),
-            'status' => $status->value,
-            'message' => $exception->getMessage(),
-        ]);
 
         return $this->errorResponse(
             message: $exception->getMessage(),

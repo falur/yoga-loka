@@ -81,5 +81,23 @@ return [
             'server' => 's3',
             'bucket' => \env('S3_TEST_BUCKET', 'yoga-loka-test'),
         ],
+        'media-upload' => [
+            'server' => \env('MEDIA_UPLOAD_STORAGE_SERVER', 's3'),
+            'bucket' => \env('MEDIA_UPLOAD_STORAGE_BUCKET', 'media-upload'),
+            'prefix' => \env('MEDIA_UPLOAD_STORAGE_PREFIX', null),
+            'visibility' => 'private',
+        ],
+        'media-private' => [
+            'server' => \env('MEDIA_PRIVATE_STORAGE_SERVER', 's3'),
+            'bucket' => \env('MEDIA_PRIVATE_STORAGE_BUCKET', 'media-private'),
+            'prefix' => \env('MEDIA_PRIVATE_STORAGE_PREFIX', null),
+            'visibility' => 'private',
+        ],
+        'media-public' => [
+            'server' => \env('MEDIA_PUBLIC_STORAGE_SERVER', 's3'),
+            'bucket' => \env('MEDIA_PUBLIC_STORAGE_BUCKET', 'media-public'),
+            'prefix' => \env('MEDIA_PUBLIC_STORAGE_PREFIX', null),
+            'visibility' => 'public',
+        ],
     ],
 ];

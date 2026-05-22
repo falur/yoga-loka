@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tools\ApiError\Tests\Interceptor;
 
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LoggerTrait;
 use Psr\Log\NullLogger;
 use Spiral\Filters\Exception\ValidationException as FilterValidationException;
 use Spiral\Interceptors\Context\CallContextInterface;
@@ -68,22 +70,37 @@ final class ApiExceptionInterceptorTest extends TestCase
         );
     }
 
-    public function testDomainExceptionWithZeroCodeMapsTo400(): void
+    public function testDomainExceptionWithClientCodeDoesNotLog(): void
+    {
+        $logger = new ApiExceptionInterceptorCountingLogger();
+
+        $this->assertExceptionMapsToResponse(
+            exception: new \DomainException(message: 'Некорректное значение', code: HttpStatus::UnprocessableEntity->value),
+            expectedStatus: HttpStatus::UnprocessableEntity,
+            expectedBody: '{"message":"Некорректное значение","code":422}',
+            translator: self::englishTranslator(),
+            logger: $logger,
+        );
+
+        self::assertSame(0, $logger->recordsCount);
+    }
+
+    public function testDomainExceptionWithZeroCodeMapsTo500WithoutInternalMessage(): void
     {
         $this->assertExceptionMapsToResponse(
             exception: new \DomainException(message: 'Доменная ошибка'),
-            expectedStatus: HttpStatus::BadRequest,
-            expectedBody: '{"message":"Доменная ошибка","code":400}',
+            expectedStatus: HttpStatus::InternalServerError,
+            expectedBody: '{"message":"Internal server error","code":500}',
             translator: self::englishTranslator(),
         );
     }
 
-    public function testDomainExceptionWithUnsupported4xxCodeMapsTo400(): void
+    public function testDomainExceptionWithUnsupported4xxCodeMapsTo500WithoutInternalMessage(): void
     {
         $this->assertExceptionMapsToResponse(
             exception: new \DomainException(message: 'Неподдерживаемая ошибка', code: 499),
-            expectedStatus: HttpStatus::BadRequest,
-            expectedBody: '{"message":"Неподдерживаемая ошибка","code":400}',
+            expectedStatus: HttpStatus::InternalServerError,
+            expectedBody: '{"message":"Internal server error","code":500}',
             translator: self::englishTranslator(),
         );
     }
@@ -135,9 +152,10 @@ final class ApiExceptionInterceptorTest extends TestCase
         HttpStatus $expectedStatus,
         string $expectedBody,
         FakeTranslator $translator,
+        ?LoggerInterface $logger = null,
     ): void {
         $interceptor = new ApiExceptionInterceptor(
-            logger: new NullLogger(),
+            logger: $logger ?? new NullLogger(),
             translator: $translator,
         );
         $response = $interceptor->intercept(
@@ -174,5 +192,22 @@ final readonly class ApiExceptionInterceptorFixtureHandler implements HandlerInt
     public function handle(CallContextInterface $context): mixed
     {
         throw $this->exception;
+    }
+}
+
+final class ApiExceptionInterceptorCountingLogger implements LoggerInterface
+{
+    use LoggerTrait;
+
+    public int $recordsCount = 0;
+
+    /**
+     * @param mixed $level
+     * @param array<array-key, mixed> $context
+     */
+    #[\Override]
+    public function log($level, string|\Stringable $message, array $context = []): void
+    {
+        ++$this->recordsCount;
     }
 }

@@ -142,7 +142,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yoga_loka}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yoga_loka_password}
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_BUCKETS: yoga-loka yoga-loka-test
+      MINIO_BUCKETS: yoga-loka yoga-loka-test media-upload media-private media-public
     volumes:
       - ./minio/ensure-buckets.sh:/usr/local/bin/ensure-buckets.sh:ro
     entrypoint: ["bash", "/usr/local/bin/ensure-buckets.sh"]

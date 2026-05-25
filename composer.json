@@ -34,6 +34,7 @@
         "spiral/twig-bridge": "^2.0.1",
         "swagger-api/swagger-ui": "v5.32.6",
         "yoga-loka/api-error-tools": "dev-main",
+        "yoga-loka/cqrs-tools": "dev-main",
         "yoga-loka/openapi-tools": "dev-main"
     },
     "require-dev": {
@@ -72,6 +73,13 @@
         {
             "type": "path",
             "url": "tools/api-error",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "tools/cqrs",
             "options": {
                 "symlink": true
             }

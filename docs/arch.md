@@ -244,9 +244,7 @@ HTTP Request
       -> Modules/{Module}/Presentation/Http/Controller
         -> Modules/{Module}/Presentation/Http/Filter
         -> Modules/{Module}/Application/Command DTO
-        -> CommandBus::dispatch(callable)
-          -> LoggingMiddleware
-          -> TransactionalMiddleware
+        -> CommandBus::dispatch(command, handler)
           -> Handler::handle(Command)
             -> Modules/{Module}/Domain ValueObject
             -> Modules/{Module}/Domain Entity
@@ -266,8 +264,7 @@ HTTP Request
       -> Modules/{Module}/Presentation/Http/Controller
         -> Modules/{Module}/Presentation/Http/Filter
         -> Modules/{Module}/Application/Query DTO
-        -> QueryBus::dispatch(callable)
-          -> LoggingMiddleware
+        -> QueryBus::dispatch(query, handler)
           -> Handler::handle(Query)
             -> Modules/{Module}/Repository read method
         -> Modules/{Module}/Presentation/Http/Resource
@@ -334,8 +331,8 @@ translator. Выбор языка пользователя по HTTP-загол�
 Console command
   -> input arguments/options
   -> Modules/{Module}/Application/Command DTO
-  -> CommandBus::dispatch(callable)
-  -> Handler
+  -> CommandBus::dispatch(command, handler)
+  -> Handler::handle(Command)
   -> console output
 ```
 
@@ -349,8 +346,8 @@ Queue payload
   -> Modules/{Module}/Presentation/Job handler
   -> Payload DTO
   -> Modules/{Module}/Application/Command DTO
-  -> CommandBus::dispatch(callable)
-  -> Handler
+  -> CommandBus::dispatch(command, handler)
+  -> Handler::handle(Command)
 ```
 
 Job handler - технический адаптер очереди. Бизнес-сценарий находится в
@@ -380,7 +377,7 @@ Command flow:
 
 ```text
 Command DTO
-  -> CommandBus::dispatch(callable)
+  -> CommandBus::dispatch(command, handler)
   -> Handler::handle(Command)
   -> Domain types
   -> Entity
@@ -392,7 +389,7 @@ Query flow:
 
 ```text
 Query DTO
-  -> QueryBus::dispatch(callable)
+  -> QueryBus::dispatch(query, handler)
   -> Handler::handle(Query)
   -> Repository read method
   -> Entity / typed collection / Result DTO / PaginatedResult<T>
@@ -403,36 +400,55 @@ Entity. Примитивы не передаются в `Entity::create()` и д
 
 Command Handler возвращает Entity, Result DTO или `void`. Query Handler
 возвращает Entity, типизированную коллекцию, Result DTO или `PaginatedResult<T>`.
-Query не изменяет состояние и не оборачивается в транзакцию по умолчанию.
+Query не изменяет состояние и не оборачивается в транзакцию. Если Query
+Handler помечен `#[Transactional]`, это ошибка контракта.
 
 Data Grid не используется как бизнесовый Query-слой. Фильтрация и сортировка в
 Query Handler должны быть явными.
 
 ## Архитектура шины
 
-Bus принимает `callable`, а не Command/Query объект. Return type берётся из
-`Handler::handle()`, поэтому PHPStan и IDE видят точный тип результата без
-ручного приведения.
+Инфраструктура шины живёт в локальном Composer-пакете `tools/cqrs` с namespace
+`Tools\Cqrs`. Приложение подключает `Tools\Cqrs\CommandBusInterface` и
+`Tools\Cqrs\QueryBusInterface` через Spiral DI-контейнер. Прикладные Command,
+Query и Handler остаются в модулях приложения.
+
+Bus принимает DTO и first-class callable на `Handler::handle(...)`. Return type
+берётся из `Handler::handle()`, поэтому PHPStan и IDE видят точный тип
+результата без ручного приведения.
 
 ```php
 /**
+ * @template TCommand of object
  * @template TResult
- * @param callable(): TResult $operation
+ * @param TCommand $command
+ * @param callable(TCommand): TResult $handler
  * @return TResult
  */
-public function dispatch(callable $operation);
+public function dispatch(object $command, callable $handler);
 ```
 
 ```text
-CommandBus: LoggingMiddleware -> TransactionalMiddleware -> callable
-QueryBus:   LoggingMiddleware -> callable
+CommandBus: Command DTO -> Handler::handle(Command)
+QueryBus:   Query DTO -> Handler::handle(Query)
 ```
 
-`TransactionalMiddleware` используется только для Command. `EntityManager::run()`
-остаётся в Handler-е, чтобы сценарий явно управлял моментом flush.
+`#[Transactional]` на `Handler::handle()` включает транзакцию для Command. Если
+атрибута нет, Command выполняется без транзакции. `#[NonTransactional]` не
+используется.
 
-`LoggingMiddleware` логирует имя операции и время выполнения. Имя операции
-извлекается из callable через reflection по захваченным переменным.
+`#[LogOperation]` на `Handler::handle()` включает debug-лог старта и времени
+выполнения операции. Если атрибута нет, operation-log не пишется.
+
+CQRS-bus не проверяет конкретные классы атрибутов. Он собирает все атрибуты
+`Handler::handle()`, которые наследуются от
+`Tools\Cqrs\Attribute\HandlerMiddlewareAttribute`, берёт из них middleware-класс
+и создаёт middleware через контейнер. Зависимости вроде `LoggerInterface` или
+`DatabaseInterface` получает сам middleware через constructor injection, а не
+executor.
+
+Lifecycle hooks и after-commit callbacks не входят в CQRS-bus. Внешние
+побочные эффекты идут через transactional outbox.
 
 ## События и outbox
 
@@ -447,7 +463,7 @@ HTTP / Console / Job / Temporal
     -> Domain Entity / Repository
     -> EntityManager::run()
     -> OutboxEventStore::add(IntegrationEvent DTO)
-  -> commit транзакции CommandBus
+  -> commit транзакции, если Handler помечен #[Transactional]
 
 Outbox worker
   -> забирает pending outbox-события
@@ -515,7 +531,7 @@ Persistence   -> Modules/{Module}/Repository -> Cycle ORM
 Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
 Events        -> Modules/{Module}/Application Event DTO -> Infrastructure/Outbox -> publisher
 Errors        -> Shared/Domain/Exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
-Logging       -> Bus middleware / infrastructure adapters
+Logging       -> CQRS attributes / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested
 ```
 

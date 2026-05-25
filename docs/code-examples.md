@@ -180,7 +180,7 @@ use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileHandler
 use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileQuery;
 use App\Modules\User\Presentation\Http\Resource\UserResource;
 use Tools\OpenApi\Response\DataResponse;
-use App\Shared\Infrastructure\Bus\QueryBusInterface;
+use Tools\Cqrs\QueryBusInterface;
 use Spiral\Router\Annotation\Route;
 
 final readonly class UserController
@@ -194,12 +194,13 @@ final readonly class UserController
         GetUserProfileHandler $getUserProfileHandler,
         QueryBusInterface $queryBus,
     ): DataResponse {
+        $query = new GetUserProfileQuery(
+            userId: $id,
+        );
+
         $user = $queryBus->dispatch(
-            static fn() => $getUserProfileHandler->handle(
-                new GetUserProfileQuery(
-                    userId: $id,
-                ),
-            ),
+            query: $query,
+            handler: $getUserProfileHandler->handle(...),
         );
 
         return new DataResponse(UserResource::fromEntity($user));

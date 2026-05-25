@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "94342db7394171196117d1f259d58f46",
+    "content-hash": "9fab9dc6aeb24c995ed108861d13b6ff",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -10757,6 +10757,54 @@
             }
         },
         {
+            "name": "yoga-loka/cqrs-tools",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tools/cqrs",
+                "reference": "fd4b46834411b58e1c348c05deaff00200a9520d"
+            },
+            "require": {
+                "cycle/database": "^2.16",
+                "php": ">=8.5 <8.6",
+                "php-http/discovery": "^1.20",
+                "psr/log": "^3.0",
+                "spiral/framework": "^3.16"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1.54",
+                "phpunit/phpunit": "^13.1",
+                "yoga-loka/phpstan-rules": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tools\\Cqrs\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tools\\Cqrs\\Tests\\": "tests"
+                }
+            },
+            "scripts": {
+                "phpstan": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "CQRS bus tools for Spiral applications",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
             "name": "yoga-loka/openapi-tools",
             "version": "dev-main",
             "dist": {
@@ -13326,6 +13374,7 @@
     "minimum-stability": "dev",
     "stability-flags": {
         "yoga-loka/api-error-tools": 20,
+        "yoga-loka/cqrs-tools": 20,
         "yoga-loka/openapi-tools": 20
     },
     "prefer-stable": true,

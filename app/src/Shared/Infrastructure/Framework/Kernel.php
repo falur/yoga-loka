@@ -34,6 +34,7 @@ use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
 use Tools\ApiError\Bootloader\ApiErrorBootloader;
+use Tools\Cqrs\Bootloader\CqrsBootloader;
 use Tools\OpenApi\Bootloader\OpenApiToolsBootloader;
 
 class Kernel extends \Spiral\Framework\Kernel
@@ -127,6 +128,7 @@ class Kernel extends \Spiral\Framework\Kernel
             I18nBootloader::class,
             TranslatedCacheBootloader::class,
             OpenApiToolsBootloader::class,
+            CqrsBootloader::class,
 
             // Почта
             MailerBootloader::class,

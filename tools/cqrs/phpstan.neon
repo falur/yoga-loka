@@ -1,12 +1,12 @@
 includes:
     - vendor/yoga-loka/phpstan-rules/extension.neon
-    - vendor/yoga-loka/cqrs-tools/extension.neon
+    - extension.neon
 
 parameters:
     level: max
     tmpDir: runtime/phpstan
     paths:
-        - app/src
+        - src
     phpVersion: 80506
     bootstrapFiles:
-        - vendor/autoload.php
+        - bootstrap.php

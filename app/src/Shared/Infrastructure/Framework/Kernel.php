@@ -33,9 +33,9 @@ use Spiral\Twig\Bootloader\TwigBootloader;
 use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
-use Tools\ApiError\Bootloader\ApiErrorBootloader;
-use Tools\Cqrs\Bootloader\CqrsBootloader;
-use Tools\OpenApi\Bootloader\OpenApiToolsBootloader;
+use GianTiaga\SpiralApiErrors\Bootloader\ApiErrorBootloader;
+use GianTiaga\SpiralCqrs\Bootloader\CqrsBootloader;
+use GianTiaga\SpiralOpenApi\Bootloader\OpenApiToolsBootloader;
 
 class Kernel extends \Spiral\Framework\Kernel
 {

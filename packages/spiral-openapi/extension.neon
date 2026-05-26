@@ -1,0 +1,5 @@
+services:
+    -
+        class: GianTiaga\SpiralOpenApi\PHPStan\Rules\OpenApiAttributeRule
+        tags:
+            - phpstan.rules.rule

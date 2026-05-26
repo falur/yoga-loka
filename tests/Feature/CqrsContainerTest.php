@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use Tools\Cqrs\CommandBusInterface;
-use Tools\Cqrs\QueryBusInterface;
+use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 final class CqrsContainerTest extends TestCase
 {

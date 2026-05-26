@@ -6,8 +6,8 @@ namespace Tests\Feature\Modules\System\Http;
 
 use Spiral\Testing\Attribute\Config;
 use Tests\TestCase;
-use Tools\OpenApi\Response\Enum\ContentType;
-use Tools\OpenApi\Response\Enum\HttpHeader;
+use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
+use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
 
 final class OpenApiHttpTest extends TestCase
 {

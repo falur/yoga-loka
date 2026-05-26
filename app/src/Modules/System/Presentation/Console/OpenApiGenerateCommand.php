@@ -10,8 +10,8 @@ use Spiral\Boot\DirectoriesInterface;
 use Spiral\Console\Attribute\AsCommand;
 use Spiral\Console\Command;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
-use Tools\OpenApi\Exception\OpenApiException;
-use Tools\OpenApi\OpenApiGenerator;
+use GianTiaga\SpiralOpenApi\Exception\OpenApiException;
+use GianTiaga\SpiralOpenApi\OpenApiGenerator;
 
 #[AsCommand(name: 'openapi:generate', description: 'Сгенерировать OpenAPI YAML из типизированного HTTP-слоя')]
 final class OpenApiGenerateCommand extends Command

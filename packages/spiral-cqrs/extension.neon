@@ -1,0 +1,5 @@
+services:
+    -
+        class: GianTiaga\SpiralCqrs\PHPStan\Rules\RequireCqrsHandlerCallableRule
+        tags:
+            - phpstan.rules.rule

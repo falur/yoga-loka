@@ -1,0 +1,7 @@
+<?php
+
+declare(strict_types=0);
+
+namespace GianTiaga\PhpStanStrictRules\Tests\Unit\PHPStan\Fixtures;
+
+final class StrictTypesDisabled {}

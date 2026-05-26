@@ -1,0 +1,25 @@
+parameters:
+    stubFiles:
+        - stubs/SpiralRoutesBootloader.stub
+
+services:
+    -
+        class: GianTiaga\PhpStanStrictRules\TypeContracts\TypeContractInspector
+    -
+        class: GianTiaga\PhpStanStrictRules\TypeContracts\PhpDocContractTypeCollector
+    -
+        class: GianTiaga\PhpStanStrictRules\Rules\TypeContractRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: GianTiaga\PhpStanStrictRules\Rules\RequireStrictTypesRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: GianTiaga\PhpStanStrictRules\Rules\RequireNamedArgumentsRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: GianTiaga\PhpStanStrictRules\Rules\DisallowLooseComparisonRule
+        tags:
+            - phpstan.rules.rule

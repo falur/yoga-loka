@@ -1,7 +1,0 @@
-<?php
-
-namespace Tools\PHPStan\Tests\Unit\PHPStan\Fixtures;
-
-declare(strict_types=1);
-
-final class StrictTypesAfterNamespace {}

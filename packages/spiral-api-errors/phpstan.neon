@@ -1,0 +1,12 @@
+includes:
+    - vendor/gian-tiaga/phpstan-strict-rules/extension.neon
+
+parameters:
+    level: max
+    tmpDir: runtime/phpstan
+    paths:
+        - src
+        - tests
+    phpVersion: 80506
+    bootstrapFiles:
+        - bootstrap.php

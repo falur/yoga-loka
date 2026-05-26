@@ -1,0 +1,16 @@
+<?php
+
+declare (strict_types=1);
+
+namespace GianTiaga\SpiralOpenApi\Model;
+
+final readonly class RouteMetadata
+{
+    /**
+     * @param list<string> $methods
+     * @param list<string> $middleware
+     */
+    public function __construct(public string $path, public ?string $name, public array $methods, public ?string $group, public array $middleware, public int $priority)
+    {
+    }
+}

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Configuration\OpenApi;
 
 use App\Shared\Infrastructure\Configuration\TypedConfig;
-use Tools\OpenApi\Config\OpenApiGeneratorConfig;
-use Tools\OpenApi\Config\ResponseWrapperMapping;
-use Tools\OpenApi\Response\CollectionResponse;
-use Tools\OpenApi\Response\DataResponse;
-use Tools\OpenApi\Response\ErrorResponse;
-use Tools\OpenApi\Response\PaginationResponse;
+use GianTiaga\SpiralOpenApi\Config\OpenApiGeneratorConfig;
+use GianTiaga\SpiralOpenApi\Config\ResponseWrapperMapping;
+use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
+use GianTiaga\SpiralOpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
+use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 
 final readonly class OpenApiConfig implements TypedConfig
 {

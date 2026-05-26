@@ -1,6 +1,7 @@
 includes:
-    - vendor/yoga-loka/phpstan-rules/extension.neon
-    - vendor/yoga-loka/cqrs-tools/extension.neon
+    - vendor/gian-tiaga/phpstan-strict-rules/extension.neon
+    - vendor/gian-tiaga/spiral-cqrs/extension.neon
+    - vendor/gian-tiaga/spiral-openapi/extension.neon
 
 parameters:
     level: max

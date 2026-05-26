@@ -10,10 +10,10 @@ use App\Shared\Infrastructure\Configuration\OpenApi\OpenApiConfig;
 use App\Shared\Infrastructure\Framework\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;
 use Spiral\Router\Annotation\Route;
-use Tools\OpenApi\Attribute\OpenApi;
-use Tools\OpenApi\Response\Enum\ContentType;
-use Tools\OpenApi\Response\FileContentResponse;
-use Tools\OpenApi\Response\HtmlResponse;
+use GianTiaga\SpiralOpenApi\Attribute\OpenApi;
+use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
+use GianTiaga\SpiralOpenApi\Response\FileContentResponse;
+use GianTiaga\SpiralOpenApi\Response\HtmlResponse;
 
 final readonly class SwaggerController
 {

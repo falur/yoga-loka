@@ -9,8 +9,8 @@ use App\Modules\System\Presentation\Http\Enum\HealthStatus;
 use App\Modules\System\Presentation\Http\Resource\HealthResource;
 use App\Shared\Infrastructure\Configuration\Cache\CacheConfig;
 use Spiral\Router\Annotation\Route;
-use Tools\OpenApi\Attribute\OpenApi;
-use Tools\OpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Attribute\OpenApi;
+use GianTiaga\SpiralOpenApi\Response\DataResponse;
 
 final class HealthController
 {

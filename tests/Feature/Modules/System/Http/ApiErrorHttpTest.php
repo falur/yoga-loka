@@ -10,12 +10,12 @@ use Spiral\Filters\ErrorsRendererInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Spiral\Translator\TranslatorInterface;
 use Tests\TestCase;
-use Tools\ApiError\Filter\ApiValidationErrorsRenderer;
-use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
-use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
-use Tools\OpenApi\Response\Enum\ContentType;
-use Tools\OpenApi\Response\Enum\HttpHeader;
-use Tools\OpenApi\Response\Interceptor\HttpResponseInterceptor;
+use GianTiaga\SpiralApiErrors\Filter\ApiValidationErrorsRenderer;
+use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
+use GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware;
+use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
+use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
+use GianTiaga\SpiralOpenApi\Response\Interceptor\HttpResponseInterceptor;
 
 final class ApiErrorHttpTest extends TestCase
 {

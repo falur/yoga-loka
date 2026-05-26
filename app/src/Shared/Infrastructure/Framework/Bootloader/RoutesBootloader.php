@@ -14,7 +14,7 @@ use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Spiral\Http\Middleware\JsonPayloadMiddleware;
 use Spiral\Router\Bootloader\AnnotatedRoutesBootloader;
 use Spiral\Session\Middleware\SessionMiddleware;
-use Tools\ApiError\Middleware\RouteNotFoundMiddleware;
+use GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware;
 
 /**
  * Настраивает маршруты и middleware приложения.

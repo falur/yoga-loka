@@ -1,5 +1,0 @@
-services:
-    -
-        class: Tools\Cqrs\PHPStan\Rules\RequireCqrsHandlerCallableRule
-        tags:
-            - phpstan.rules.rule

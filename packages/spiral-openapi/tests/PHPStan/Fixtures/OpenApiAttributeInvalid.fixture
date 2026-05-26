@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace GianTiaga\SpiralOpenApi\Tests\PHPStan\Fixtures;
+
+use GianTiaga\SpiralOpenApi\Attribute\OpenApi;
+
+final class OpenApiAttributeInvalid
+{
+    #[OpenApi(id: '')]
+    public function emptyId(): void {}
+
+    #[OpenApi(id: 'invalid id')]
+    public function invalidId(): void {}
+
+    #[OpenApi(id: 'validId')]
+    public function firstValidId(): void {}
+
+    #[OpenApi(id: 'validId')]
+    public function secondValidId(): void {}
+
+    #[OpenApi(id: '', ignore: true)]
+    public function ignoredEmptyId(): void {}
+}

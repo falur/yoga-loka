@@ -279,49 +279,49 @@ API-документация генерируется автоматически
 attributes в `Modules/{Module}/Presentation/Http`. OpenAPI-спецификация строится из кода, а
 Swagger используется как UI для её просмотра.
 
-Генератор OpenAPI живёт в переносимом Composer-пакете `tools/openapi` с
-namespace `Tools\OpenApi`. Приложение не содержит логики статического разбора:
+Генератор OpenAPI живёт в переносимом Composer-пакете `packages/spiral-openapi` с
+namespace `GianTiaga\SpiralOpenApi`. Приложение не содержит логики статического разбора:
 оно только собирает типизированный `OpenApiConfig`, задаёт mapping базовых
 response wrappers и вызывает пакет через команду `openapi:generate`. YAML
 записывается в `public/openapi/openapi.yml`, а Swagger UI по `/api/docs` читает
 тот же файл через route `/api/docs/openapi.yml`.
 
-`tools/openapi` использует Spiral translator только для стандартных описаний
-response по ключам `yoga_loka.openapi.successful_response` и
-`yoga_loka.openapi.api_error`. Описания из `#[OpenApi(description: ...)]` и
+`packages/spiral-openapi` использует Spiral translator только для стандартных описаний
+response по ключам `gian_tiaga.spiral_openapi.successful_response` и
+`gian_tiaga.spiral_openapi.api_error`. Описания из `#[OpenApi(description: ...)]` и
 PHPDoc остаются текстом приложения. YAML статический, поэтому язык выбирается во
 время команды генерации.
 
 ## API-ошибки
 
 Общая обработка API-ошибок живёт в переносимом Composer-пакете
-`tools/api-error` с namespace `Tools\ApiError`. Пакет зависит от
-`tools/openapi`, потому что возвращает `ErrorResponse` и
+`packages/spiral-api-errors` с namespace `GianTiaga\SpiralApiErrors`. Пакет зависит от
+`packages/spiral-openapi`, потому что возвращает `ErrorResponse` и
 `ValidationErrorResponse`.
 
 Общие доменные исключения остаются в приложении в `App\Shared\Domain\Exception` и явно
 расширяют `\DomainException`. Ожидаемые клиентские ошибки с кодами 4xx
-`Tools\ApiError\Interceptor\ApiExceptionInterceptor` превращает в JSON
+`GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor` превращает в JSON
 `{"message":"...","code":...}` без логирования. Доменные исключения без
 поддерживаемого 4xx-кода, включая `InvalidDomainValueException`, считаются
 внутренними ошибками: HTTP-ответ получает обычное сообщение 500, а исходное
 сообщение исключения пользователю не отдаётся. Ошибки Spiral Filter рендерятся через
-`Tools\ApiError\Filter\ApiValidationErrorsRenderer` по ключу
-`yoga_loka.api_error.validation_error` в JSON
+`GianTiaga\SpiralApiErrors\Filter\ApiValidationErrorsRenderer` по ключу
+`gian_tiaga.spiral_api_errors.validation_error` в JSON
 `{"message":"Validation error","code":422,"errors":[...]}` или
 `{"message":"Ошибка валидации","code":422,"errors":[...]}` в зависимости от
 текущего locale.
 
 `ApiExceptionInterceptor` работает только внутри цепочки controller/action.
 Ненайденные маршруты возникают раньше controller/action, поэтому их обрабатывает
-`Tools\ApiError\Middleware\RouteNotFoundMiddleware` в глобальной HTTP-цепочке.
-Он переводит ключ `yoga_loka.api_error.route_not_found` и возвращает JSON
+`GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware` в глобальной HTTP-цепочке.
+Он переводит ключ `gian_tiaga.spiral_api_errors.route_not_found` и возвращает JSON
 `{"message":"Route not found.","code":404}` или
 `{"message":"Маршрут не найден.","code":404}` в зависимости от текущего locale.
 Ошибки bootstrap и middleware, не связанные с router 404, остаются в зоне
 стандартного Spiral error handler.
 
-`tools/api-error` и `tools/openapi` только читают текущий locale Spiral
+`packages/spiral-api-errors` и `packages/spiral-openapi` только читают текущий locale Spiral
 translator. Выбор языка пользователя по HTTP-заголовкам, профилю или другому
 признаку остаётся задачей request-слоя приложения.
 
@@ -408,9 +408,9 @@ Query Handler должны быть явными.
 
 ## Архитектура шины
 
-Инфраструктура шины живёт в локальном Composer-пакете `tools/cqrs` с namespace
-`Tools\Cqrs`. Приложение подключает `Tools\Cqrs\CommandBusInterface` и
-`Tools\Cqrs\QueryBusInterface` через Spiral DI-контейнер. Прикладные Command,
+Инфраструктура шины живёт в локальном Composer-пакете `packages/spiral-cqrs` с namespace
+`GianTiaga\SpiralCqrs`. Приложение подключает `GianTiaga\SpiralCqrs\CommandBusInterface` и
+`GianTiaga\SpiralCqrs\QueryBusInterface` через Spiral DI-контейнер. Прикладные Command,
 Query и Handler остаются в модулях приложения.
 
 Bus принимает DTO и first-class callable на `Handler::handle(...)`. Return type
@@ -442,7 +442,7 @@ QueryBus:   Query DTO -> Handler::handle(Query)
 
 CQRS-bus не проверяет конкретные классы атрибутов. Он собирает все атрибуты
 `Handler::handle()`, которые наследуются от
-`Tools\Cqrs\Attribute\HandlerMiddlewareAttribute`, берёт из них middleware-класс
+`GianTiaga\SpiralCqrs\Attribute\HandlerMiddlewareAttribute`, берёт из них middleware-класс
 и создаёт middleware через контейнер. Зависимости вроде `LoggerInterface` или
 `DatabaseInterface` получает сам middleware через constructor injection, а не
 executor.
@@ -530,7 +530,7 @@ Configuration -> app/config -> Shared/Infrastructure/Configuration
 Persistence   -> Modules/{Module}/Repository -> Cycle ORM
 Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
 Events        -> Modules/{Module}/Application Event DTO -> Infrastructure/Outbox -> publisher
-Errors        -> Shared/Domain/Exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
+Errors        -> Shared/Domain/Exception / router 404 -> packages/spiral-api-errors -> packages/spiral-openapi ErrorResponse
 Logging       -> CQRS attributes / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested
 ```

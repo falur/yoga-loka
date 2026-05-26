@@ -9,8 +9,8 @@ use Spiral\Cycle\Interceptor\CycleInterceptor;
 use Spiral\DataGrid\Interceptor\GridInterceptor;
 use Spiral\Domain\GuardInterceptor;
 use Spiral\Interceptors\HandlerInterface;
-use Tools\ApiError\Interceptor\ApiExceptionInterceptor;
-use Tools\OpenApi\Response\Interceptor\HttpResponseInterceptor;
+use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
+use GianTiaga\SpiralOpenApi\Response\Interceptor\HttpResponseInterceptor;
 
 /**
  * @link https://spiral.dev/docs/http-interceptors

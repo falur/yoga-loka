@@ -179,8 +179,8 @@ namespace App\Modules\User\Presentation\Http\Controller;
 use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileHandler;
 use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileQuery;
 use App\Modules\User\Presentation\Http\Resource\UserResource;
-use Tools\OpenApi\Response\DataResponse;
-use Tools\Cqrs\QueryBusInterface;
+use GianTiaga\SpiralOpenApi\Response\DataResponse;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Spiral\Router\Annotation\Route;
 
 final readonly class UserController

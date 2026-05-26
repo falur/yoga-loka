@@ -1,5 +1,0 @@
-<?php
-
-namespace Tools\PHPStan\Tests\Unit\PHPStan\Fixtures;
-
-final class StrictTypesMissingDeclare {}

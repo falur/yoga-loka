@@ -8,7 +8,7 @@ use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Modules\System\Presentation\Http\Enum\HealthStatus;
 use App\Modules\System\Presentation\Http\Resource\HealthResource;
-use Tools\OpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Response\DataResponse;
 
 final class ApiErrorTestController
 {

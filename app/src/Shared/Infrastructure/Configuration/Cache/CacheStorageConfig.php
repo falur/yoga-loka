@@ -8,10 +8,10 @@ final readonly class CacheStorageConfig
 {
     public function __construct(
         public string $type,
-        public ?string $driver = null,
-        public ?string $path = null,
-        public ?string $dsn = null,
-        public ?string $namespace = null,
-        public ?int $defaultLifetime = null,
+        public string|null $driver = null,
+        public string|null $path = null,
+        public string|null $dsn = null,
+        public string|null $namespace = null,
+        public int|null $defaultLifetime = null,
     ) {}
 }

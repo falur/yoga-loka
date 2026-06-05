@@ -10,7 +10,7 @@ final readonly class DatabaseLoggerConfig
      * @param array<string, string> $drivers
      */
     public function __construct(
-        public ?string $default,
+        public string|null $default,
         public array $drivers,
     ) {}
 }

@@ -12,7 +12,7 @@ final readonly class ScaffolderDefaultDeclarationConfig
     public function __construct(
         public string $namespace,
         public string $postfix,
-        public ?string $class = null,
+        public string|null $class = null,
         public ScaffolderDeclarationOptionsConfig $options = new ScaffolderDeclarationOptionsConfig(),
     ) {}
 }

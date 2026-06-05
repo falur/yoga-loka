@@ -8,6 +8,6 @@ final readonly class QueueConnectionConfig
 {
     public function __construct(
         public string $driver,
-        public ?string $pipeline = null,
+        public string|null $pipeline = null,
     ) {}
 }

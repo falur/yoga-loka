@@ -33,6 +33,8 @@ use Spiral\Twig\Bootloader\TwigBootloader;
 use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
+use App\Modules\Outbox\Infrastructure\Outbox\OutboxBootloader;
+use App\Modules\Outbox\Infrastructure\Outbox\OutboxConsoleBootloader;
 use Tools\ApiError\Bootloader\ApiErrorBootloader;
 use Tools\Cqrs\Bootloader\CqrsBootloader;
 use Tools\OpenApi\Bootloader\OpenApiToolsBootloader;
@@ -129,6 +131,7 @@ class Kernel extends \Spiral\Framework\Kernel
             TranslatedCacheBootloader::class,
             OpenApiToolsBootloader::class,
             CqrsBootloader::class,
+            OutboxBootloader::class,
 
             // Почта
             MailerBootloader::class,
@@ -152,6 +155,7 @@ class Kernel extends \Spiral\Framework\Kernel
             // Консольные команды
             Framework\CommandBootloader::class,
             Bootloader\OpenApiBootloader::class,
+            OutboxConsoleBootloader::class,
             RoadRunnerBridge\CommandBootloader::class,
             CycleBridge\CommandBootloader::class,
             ScaffolderBootloader::class,

@@ -43,7 +43,7 @@ final readonly class SwaggerController
         }
 
         $openApiFile = $this->openApiConfig->outputFile(
-            projectRoot: $this->directories->get(name: DirectoryAlias::Root->value)
+            projectRoot: $this->directories->get(name: DirectoryAlias::Root->value),
         );
 
         if (!\is_file($openApiFile)) {

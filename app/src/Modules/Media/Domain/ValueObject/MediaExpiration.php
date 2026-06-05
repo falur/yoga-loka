@@ -9,7 +9,7 @@ use App\Shared\Domain\Exception\InvalidDomainValueException;
 final readonly class MediaExpiration implements \Stringable, \JsonSerializable
 {
     private function __construct(
-        private ?\DateTimeImmutable $expiresAt,
+        private \DateTimeImmutable|null $expiresAt,
     ) {}
 
     public static function permanent(): self
@@ -22,7 +22,7 @@ final readonly class MediaExpiration implements \Stringable, \JsonSerializable
         return new self(expiresAt: $expiresAt);
     }
 
-    public function value(): ?\DateTimeImmutable
+    public function value(): \DateTimeImmutable|null
     {
         return $this->expiresAt;
     }
@@ -58,7 +58,7 @@ final readonly class MediaExpiration implements \Stringable, \JsonSerializable
     }
 
     #[\Override]
-    public function jsonSerialize(): ?string
+    public function jsonSerialize(): string|null
     {
         return $this->expiresAt?->format(\DateTimeInterface::ATOM);
     }

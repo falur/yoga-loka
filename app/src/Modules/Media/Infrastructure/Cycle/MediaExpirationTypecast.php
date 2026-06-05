@@ -9,9 +9,8 @@ use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 
 final class MediaExpirationTypecast implements ColumnValueTypecast
 {
-    #[\Override]
     public static function castDatabaseValue(
-        bool|int|float|string|\DateTimeInterface|null $value,
+        string|\DateTimeInterface|null $value,
     ): MediaExpiration {
         if ($value === null) {
             return MediaExpiration::permanent();
@@ -25,23 +24,14 @@ final class MediaExpirationTypecast implements ColumnValueTypecast
             return MediaExpiration::temporaryUntil(\DateTimeImmutable::createFromInterface($value));
         }
 
-        if (\is_string($value)) {
-            return MediaExpiration::temporaryUntil(new \DateTimeImmutable($value));
-        }
-
-        throw new \InvalidArgumentException('Дата удаления файла имеет неверный формат.');
+        return MediaExpiration::temporaryUntil(new \DateTimeImmutable($value));
     }
 
-    #[\Override]
     public static function uncastValue(
-        object|null $value,
-    ): ?\DateTimeImmutable {
+        MediaExpiration|null $value,
+    ): \DateTimeImmutable|null {
         if ($value === null) {
             return null;
-        }
-
-        if (!$value instanceof MediaExpiration) {
-            throw new \InvalidArgumentException('Значение должно быть датой удаления файла.');
         }
 
         return $value->value();

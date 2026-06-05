@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\ValueObject;
 
 use App\Shared\Domain\ValueObject\AbstractIntegerValue;
-
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 
 final readonly class MediaProcessingAttempts extends AbstractIntegerValue

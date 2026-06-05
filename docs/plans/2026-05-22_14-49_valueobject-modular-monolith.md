@@ -444,7 +444,7 @@ public static function castDatabaseValue(
 ): object|null;
 
 public static function uncastValue(
-    object|null $value,
+    ConcreteValueObject|null $value,
 ): bool|int|float|string|\DateTimeInterface|null;
 ```
 

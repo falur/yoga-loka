@@ -12,9 +12,9 @@ final readonly class RouteMetadata
      */
     public function __construct(
         public string $path,
-        public ?string $name,
+        public string|null $name,
         public array $methods,
-        public ?string $group,
+        public string|null $group,
         public array $middleware,
         public int $priority,
     ) {}

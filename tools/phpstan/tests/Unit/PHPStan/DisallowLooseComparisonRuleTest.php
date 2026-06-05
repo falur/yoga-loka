@@ -28,7 +28,7 @@ final class DisallowLooseComparisonRuleTest extends RuleTestCase
             'project.looseEqualForbidden',
             'project.looseNotEqualForbidden',
             'project.looseNotEqualForbidden',
-        ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
+        ], \array_map(static fn($error): string|null => $error->getIdentifier(), $errors));
 
         $this->analyse([$file], [
             ['Loose comparison with == is forbidden. Use === instead.', 11],

@@ -13,7 +13,7 @@ trait HasHttpResponseMetadata
     /**
      * @var null|array<string, list<string>>
      */
-    private ?array $headers = null;
+    private array|null $headers = null;
 
     public function withStatus(HttpStatus $status): static
     {

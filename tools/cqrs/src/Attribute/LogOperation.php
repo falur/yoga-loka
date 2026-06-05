@@ -10,7 +10,7 @@ use Tools\Cqrs\Middleware\LogOperationMiddleware;
 final readonly class LogOperation extends HandlerMiddlewareAttribute
 {
     public function __construct(
-        public ?string $name = null,
+        public string|null $name = null,
     ) {}
 
     #[\Override]

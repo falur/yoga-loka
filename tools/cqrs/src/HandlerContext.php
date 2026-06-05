@@ -10,7 +10,7 @@ readonly class HandlerContext
         public \ReflectionFunction $handlerReflection,
     ) {}
 
-    public function operationName(?string $name): string
+    public function operationName(string|null $name): string
     {
         if ($name !== null) {
             return $name;

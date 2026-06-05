@@ -30,7 +30,7 @@ final class RequireNamedArgumentsRule implements Rule
     private const string ERROR_MESSAGE = 'Calls with two or more ordinary arguments must use named arguments.';
     private const string ERROR_IDENTIFIER = 'project.namedArgumentsRequired';
 
-    private ?string $currentFile = null;
+    private string|null $currentFile = null;
 
     /**
      * PHPStan can visit the same nullsafe-call arguments more than once during analysis.

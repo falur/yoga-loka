@@ -32,7 +32,7 @@ final class TypeContractRuleTest extends RuleTestCase
             'project.noArrayShapeType',
             'project.noNestedArrayType',
             'project.noNestedArrayType',
-        ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
+        ], \array_map(static fn($error): string|null => $error->getIdentifier(), $errors));
 
         $this->analyse([__DIR__ . '/Fixtures/ForbiddenContracts.php'], [
             ['Type contracts must not contain nested arrays.', 7],

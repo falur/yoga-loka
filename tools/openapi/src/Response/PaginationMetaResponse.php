@@ -7,7 +7,7 @@ namespace Tools\OpenApi\Response;
 final readonly class PaginationMetaResponse implements \JsonSerializable
 {
     public function __construct(
-        public ?string $nextCursor,
+        public string|null $nextCursor,
         public int $limit,
     ) {}
 

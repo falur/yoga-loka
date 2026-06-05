@@ -35,7 +35,7 @@ final readonly class PhpDocReturnParser
     /**
      * @param array<string, string> $aliases
      */
-    public function parse(?string $docComment, array $aliases, string $namespace): ?GenericReturnType
+    public function parse(string|null $docComment, array $aliases, string $namespace): GenericReturnType|null
     {
         if ($docComment === null) {
             return null;

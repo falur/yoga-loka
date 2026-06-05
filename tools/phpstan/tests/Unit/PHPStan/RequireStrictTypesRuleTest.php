@@ -54,7 +54,7 @@ final class RequireStrictTypesRuleTest extends RuleTestCase
 
         self::assertSame(
             ['project.missingStrictTypes'],
-            \array_map(static fn($error): ?string => $error->getIdentifier(), $errors),
+            \array_map(static fn($error): string|null => $error->getIdentifier(), $errors),
         );
 
         $this->analyse([$file], [

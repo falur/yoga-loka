@@ -62,7 +62,7 @@ final class QueryBusTest extends TestCase
         self::assertNull(actual: (new \ReflectionMethod(QueryBus::class, 'dispatch'))->getReturnType());
     }
 
-    private function queryBus(?TestLogger $logger = null): QueryBus
+    private function queryBus(TestLogger|null $logger = null): QueryBus
     {
         $logger ??= new TestLogger();
 

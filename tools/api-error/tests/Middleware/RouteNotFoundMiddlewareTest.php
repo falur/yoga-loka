@@ -157,7 +157,7 @@ final readonly class RouteNotFoundMiddlewareFixtureHandler implements RequestHan
 {
     public function __construct(
         private ResponseInterface $response,
-        private ?\Throwable $exception = null,
+        private \Throwable|null $exception = null,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface

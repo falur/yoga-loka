@@ -6,7 +6,7 @@ namespace Tools\PHPStan\Tests\Unit\PHPStan\Fixtures;
 
 final class LooseComparisonsForbidden
 {
-    public function run(int $first, string $second, ?string $third): bool
+    public function run(int $first, string $second, string|null $third): bool
     {
         $hasLooseEqual = $first == 1;
         $hasLooseNotEqual = $second != '';

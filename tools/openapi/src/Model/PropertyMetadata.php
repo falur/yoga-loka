@@ -18,7 +18,7 @@ final readonly class PropertyMetadata
         public bool $nullable,
         public bool $hasDefault,
         public string $source,
-        public ?string $listItemType = null,
+        public string|null $listItemType = null,
     ) {}
 
     public function isRequired(): bool

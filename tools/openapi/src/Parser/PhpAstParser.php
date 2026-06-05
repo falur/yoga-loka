@@ -212,7 +212,7 @@ final readonly class PhpAstParser
         return $methods;
     }
 
-    private function parseFileResponse(Stmt\ClassMethod $method): ?FileResponseMetadata
+    private function parseFileResponse(Stmt\ClassMethod $method): FileResponseMetadata|null
     {
         foreach (new NodeFinder()->findInstanceOf($method->stmts ?? [], Expr\New_::class) as $newExpression) {
             if (!$newExpression->class instanceof Name) {
@@ -345,7 +345,7 @@ final readonly class PhpAstParser
         return $parameters;
     }
 
-    private function parseRoute(Stmt\ClassMethod $method): ?RouteMetadata
+    private function parseRoute(Stmt\ClassMethod $method): RouteMetadata|null
     {
         foreach ($this->attributes($method) as $attribute) {
             if (!$this->attributeIs($attribute, 'Spiral\\Router\\Annotation\\Route')) {
@@ -365,7 +365,7 @@ final readonly class PhpAstParser
         return null;
     }
 
-    private function parseOpenApi(Stmt\ClassMethod $method): ?OpenApiMetadata
+    private function parseOpenApi(Stmt\ClassMethod $method): OpenApiMetadata|null
     {
         foreach ($this->attributes($method) as $attribute) {
             if (!$this->attributeIs($attribute, 'Tools\\OpenApi\\Attribute\\OpenApi')) {
@@ -453,7 +453,7 @@ final readonly class PhpAstParser
         return $attributeName === $className || \str_ends_with($attributeName, '\\' . \basename(\str_replace('\\', '/', $className)));
     }
 
-    private function nullableStringArgument(Attribute $attribute, string $name, int $position): ?string
+    private function nullableStringArgument(Attribute $attribute, string $name, int $position): string|null
     {
         $argument = $this->argument($attribute, $name, $position, null);
 
@@ -604,7 +604,7 @@ final readonly class PhpAstParser
         return $className === $apiNamespace || \str_starts_with($className, $apiNamespace . '\\');
     }
 
-    private function summaryFromDocComment(?string $docComment): string
+    private function summaryFromDocComment(string|null $docComment): string
     {
         if ($docComment === null) {
             return '';
@@ -625,7 +625,7 @@ final readonly class PhpAstParser
         return '';
     }
 
-    private function listItemType(?string $docComment): ?string
+    private function listItemType(string|null $docComment): string|null
     {
         if ($docComment === null || !\str_contains($docComment, 'list<')) {
             return null;

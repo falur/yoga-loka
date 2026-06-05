@@ -152,7 +152,7 @@ final class ApiExceptionInterceptorTest extends TestCase
         HttpStatus $expectedStatus,
         string $expectedBody,
         FakeTranslator $translator,
-        ?LoggerInterface $logger = null,
+        LoggerInterface|null $logger = null,
     ): void {
         $interceptor = new ApiExceptionInterceptor(
             logger: $logger ?? new NullLogger(),

@@ -65,7 +65,7 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
         );
     }
 
-    private function supportedClientStatus(\DomainException $exception): ?HttpStatus
+    private function supportedClientStatus(\DomainException $exception): HttpStatus|null
     {
         $status = HttpStatus::tryFrom($exception->getCode());
 

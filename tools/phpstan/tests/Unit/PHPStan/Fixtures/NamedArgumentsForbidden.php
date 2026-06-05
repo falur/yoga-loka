@@ -10,7 +10,7 @@ final class NamedArgumentsForbidden
     /**
      * @return list<string>
      */
-    public function run(?self $maybeSelf): array
+    public function run(self|null $maybeSelf): array
     {
         $results = [];
         $results[] = forbiddenTwo('a', 'b');

@@ -78,7 +78,7 @@ final class RequireCqrsHandlerCallableRule implements Rule
     /**
      * @return class-string<CommandBusInterface>|class-string<QueryBusInterface>|null
      */
-    private function busType(MethodCall $node, Scope $scope): ?string
+    private function busType(MethodCall $node, Scope $scope): string|null
     {
         $callerType = $scope->getType($node->var);
 
@@ -96,7 +96,7 @@ final class RequireCqrsHandlerCallableRule implements Rule
     /**
      * @param list<Arg> $arguments
      */
-    private function handlerArgument(array $arguments): ?Arg
+    private function handlerArgument(array $arguments): Arg|null
     {
         foreach ($arguments as $argument) {
             if ($argument->name instanceof Identifier && $argument->name->toString() === 'handler') {

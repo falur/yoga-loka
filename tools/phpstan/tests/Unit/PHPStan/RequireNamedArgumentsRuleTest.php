@@ -45,7 +45,7 @@ final class RequireNamedArgumentsRuleTest extends RuleTestCase
             'project.namedArgumentsRequired',
             'project.namedArgumentsRequired',
             'project.namedArgumentsRequired',
-        ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
+        ], \array_map(static fn($error): string|null => $error->getIdentifier(), $errors));
     }
 
     public function testReportsExpectedLines(): void

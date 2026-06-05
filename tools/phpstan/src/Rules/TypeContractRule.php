@@ -87,7 +87,7 @@ final class TypeContractRule implements Rule
         return $this->uniqueErrors($errors);
     }
 
-    private function resolveClassName(Node $node, Scope $scope): ?string
+    private function resolveClassName(Node $node, Scope $scope): string|null
     {
         if ($node instanceof ClassLike && $node->namespacedName instanceof Name) {
             return $node->namespacedName->toString();

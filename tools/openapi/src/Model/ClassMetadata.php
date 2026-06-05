@@ -15,7 +15,7 @@ final readonly class ClassMetadata
         public string $filePath,
         public string $className,
         public string $shortName,
-        public ?string $parentClass,
+        public string|null $parentClass,
         public bool $enum,
         public array $methods,
         public array $properties,

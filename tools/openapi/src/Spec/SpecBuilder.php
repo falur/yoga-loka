@@ -266,7 +266,7 @@ final readonly class SpecBuilder
      * @param array<string, ClassMetadata> $classesByName
      * @return null|array<string, mixed>
      */
-    private function requestBody(MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, array $classesByName): ?array
+    private function requestBody(MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, array $classesByName): array|null
     {
         $bodyProperties = [
             ...$this->filterProperties($methodMetadata, PropertyMetadata::SOURCE_BODY, $classesByName),

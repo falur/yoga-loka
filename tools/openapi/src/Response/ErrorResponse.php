@@ -8,6 +8,6 @@ final class ErrorResponse extends AbstractJsonResponse
 {
     public function __construct(
         public readonly string $message,
-        public readonly ?int $code = null,
+        public readonly int|null $code = null,
     ) {}
 }

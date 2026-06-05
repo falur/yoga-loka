@@ -39,7 +39,7 @@ final readonly class FakeTranslator implements TranslatorInterface
      * @param array<array-key, mixed> $parameters
      */
     #[\Override]
-    public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
+    public function trans(string $id, array $parameters = [], string|null $domain = null, string|null $locale = null): string
     {
         return $this->messages[$id] ?? $id;
     }

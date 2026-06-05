@@ -36,7 +36,7 @@ final class RequireCqrsHandlerCallableRuleTest extends RuleTestCase
             'cqrs.handlerCallableRequired',
             'cqrs.transactionalQueryHandler',
         ], actual: \array_map(
-            callback: static fn($error): ?string => $error->getIdentifier(),
+            callback: static fn($error): string|null => $error->getIdentifier(),
             array: $errors,
         ));
     }

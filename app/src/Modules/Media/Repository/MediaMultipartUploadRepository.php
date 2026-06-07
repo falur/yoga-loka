@@ -15,8 +15,6 @@ final class MediaMultipartUploadRepository extends Repository
 {
     public function findByMediaId(MediaId $mediaId): ?MediaMultipartUpload
     {
-        $multipartUpload = $this->findOne(['media_id' => $mediaId->value()]);
-
-        return $multipartUpload instanceof MediaMultipartUpload ? $multipartUpload : null;
+        return $this->findOne(['media_id' => $mediaId->value()]);
     }
 }

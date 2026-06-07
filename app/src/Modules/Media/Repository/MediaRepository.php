@@ -17,16 +17,12 @@ final class MediaRepository extends Repository
 {
     public function findById(MediaId $mediaId): ?Media
     {
-        $media = $this->findByPK($mediaId->value());
-
-        return $media instanceof Media ? $media : null;
+        return $this->findByPK($mediaId->value());
     }
 
     public function findByStorageKey(MediaStorageKey $storageKey): ?Media
     {
-        $media = $this->findOne(['storage_key' => $storageKey->value()]);
-
-        return $media instanceof Media ? $media : null;
+        return $this->findOne(['storage_key' => $storageKey->value()]);
     }
 
     public function findExpired(\DateTimeImmutable $now): MediaCollection

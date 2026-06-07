@@ -12,7 +12,5 @@ final class CollectionResponse extends AbstractJsonResponse
     /**
      * @param list<T> $data
      */
-    public function __construct(public readonly array $data)
-    {
-    }
+    public function __construct(public readonly array $data) {}
 }

@@ -22,7 +22,7 @@ final readonly class SessionConfig implements TypedConfig
         public int $lifetime,
         public string $cookie,
         public bool $secure,
-        public ?string $sameSite,
-        public ?Autowire $handler,
+        public string|null $sameSite,
+        public Autowire|null $handler,
     ) {}
 }

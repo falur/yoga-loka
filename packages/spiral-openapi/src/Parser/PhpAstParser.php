@@ -25,11 +25,10 @@ use GianTiaga\SpiralOpenApi\Model\PropertyMetadata;
 use GianTiaga\SpiralOpenApi\Model\RouteMetadata;
 use GianTiaga\SpiralOpenApi\Model\SourceFile;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
+
 final readonly class PhpAstParser
 {
-    public function __construct(private PhpDocReturnParser $phpDocReturnParser = new PhpDocReturnParser())
-    {
-    }
+    public function __construct(private PhpDocReturnParser $phpDocReturnParser = new PhpDocReturnParser()) {}
     /**
      * @param list<SourceFile> $sourceFiles
      * @return list<ClassMetadata>
@@ -147,7 +146,7 @@ final readonly class PhpAstParser
         }
         return $methods;
     }
-    private function parseFileResponse(Stmt\ClassMethod $method): ?FileResponseMetadata
+    private function parseFileResponse(Stmt\ClassMethod $method): FileResponseMetadata|null
     {
         foreach ((new NodeFinder())->findInstanceOf(nodes: $method->stmts ?? [], class: Expr\New_::class) as $newExpression) {
             if (!$newExpression->class instanceof Name) {
@@ -230,7 +229,7 @@ final readonly class PhpAstParser
         }
         return $parameters;
     }
-    private function parseRoute(Stmt\ClassMethod $method): ?RouteMetadata
+    private function parseRoute(Stmt\ClassMethod $method): RouteMetadata|null
     {
         foreach ($this->attributes($method) as $attribute) {
             if (!$this->attributeIs(attribute: $attribute, className: 'Spiral\Router\Annotation\Route')) {
@@ -240,7 +239,7 @@ final readonly class PhpAstParser
         }
         return null;
     }
-    private function parseOpenApi(Stmt\ClassMethod $method): ?OpenApiMetadata
+    private function parseOpenApi(Stmt\ClassMethod $method): OpenApiMetadata|null
     {
         foreach ($this->attributes($method) as $attribute) {
             if (!$this->attributeIs(attribute: $attribute, className: 'GianTiaga\SpiralOpenApi\Attribute\OpenApi')) {
@@ -307,7 +306,7 @@ final readonly class PhpAstParser
         $attributeName = $this->resolvedName($attribute->name);
         return $attributeName === $className || \str_ends_with(haystack: $attributeName, needle: '\\' . \basename(\str_replace(search: '\\', replace: '/', subject: $className)));
     }
-    private function nullableStringArgument(Attribute $attribute, string $name, int $position): ?string
+    private function nullableStringArgument(Attribute $attribute, string $name, int $position): string|null
     {
         $argument = $this->argument(attribute: $attribute, name: $name, position: $position, default: null);
         return \is_string($argument) && $argument !== '' ? $argument : null;
@@ -422,7 +421,7 @@ final readonly class PhpAstParser
     {
         return $className === $apiNamespace || \str_starts_with(haystack: $className, needle: $apiNamespace . '\\');
     }
-    private function summaryFromDocComment(?string $docComment): string
+    private function summaryFromDocComment(string|null $docComment): string
     {
         if ($docComment === null) {
             return '';
@@ -437,7 +436,7 @@ final readonly class PhpAstParser
         }
         return '';
     }
-    private function listItemType(?string $docComment): ?string
+    private function listItemType(string|null $docComment): string|null
     {
         if ($docComment === null || !\str_contains(haystack: $docComment, needle: 'list<')) {
             return null;

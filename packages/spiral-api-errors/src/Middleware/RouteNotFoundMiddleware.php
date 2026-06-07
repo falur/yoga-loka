@@ -13,11 +13,10 @@ use Spiral\Router\Exception\RouteNotFoundException;
 use Spiral\Translator\TranslatorInterface;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
+
 final readonly class RouteNotFoundMiddleware implements MiddlewareInterface
 {
-    public function __construct(private LoggerInterface $logger, private TranslatorInterface $translator)
-    {
-    }
+    public function __construct(private LoggerInterface $logger, private TranslatorInterface $translator) {}
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         try {

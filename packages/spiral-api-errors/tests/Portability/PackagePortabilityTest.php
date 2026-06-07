@@ -5,6 +5,7 @@ declare (strict_types=1);
 namespace GianTiaga\SpiralApiErrors\Tests\Portability;
 
 use PHPUnit\Framework\TestCase;
+
 final class PackagePortabilityTest extends TestCase
 {
     public function testProductionCodeDoesNotReferenceProjectInternals(): void

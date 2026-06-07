@@ -7,7 +7,7 @@ namespace App\Shared\Infrastructure\Configuration\Scaffolder;
 final readonly class ScaffolderDeclarationOptionsConfig
 {
     public function __construct(
-        public ?string $directory = null,
-        public ?string $annotated = null,
+        public string|null $directory = null,
+        public string|null $annotated = null,
     ) {}
 }

@@ -15,12 +15,12 @@ use Cycle\ORM\Select\Repository;
  */
 final class MediaRepository extends Repository
 {
-    public function findById(MediaId $mediaId): ?Media
+    public function findById(MediaId $mediaId): Media|null
     {
         return $this->findByPK($mediaId->value());
     }
 
-    public function findByStorageKey(MediaStorageKey $storageKey): ?Media
+    public function findByStorageKey(MediaStorageKey $storageKey): Media|null
     {
         return $this->findOne(['storage_key' => $storageKey->value()]);
     }

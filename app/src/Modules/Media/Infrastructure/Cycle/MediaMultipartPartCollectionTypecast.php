@@ -10,14 +10,9 @@ use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 
 final class MediaMultipartPartCollectionTypecast implements ColumnValueTypecast
 {
-    #[\Override]
     public static function castDatabaseValue(
-        bool|int|float|string|\DateTimeInterface|null $value,
+        string $value,
     ): MediaMultipartPartCollection {
-        if (!\is_string($value)) {
-            throw new \InvalidArgumentException('Список частей загрузки должен быть JSON-строкой.');
-        }
-
         $payload = \json_decode(
             json: $value,
             associative: true,
@@ -47,14 +42,9 @@ final class MediaMultipartPartCollectionTypecast implements ColumnValueTypecast
         return new MediaMultipartPartCollection($parts);
     }
 
-    #[\Override]
     public static function uncastValue(
-        object|null $value,
+        MediaMultipartPartCollection $value,
     ): string {
-        if (!$value instanceof MediaMultipartPartCollection) {
-            throw new \InvalidArgumentException('Значение должно быть списком частей загрузки.');
-        }
-
         return \json_encode(
             value: $value->jsonSerialize(),
             flags: \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE,

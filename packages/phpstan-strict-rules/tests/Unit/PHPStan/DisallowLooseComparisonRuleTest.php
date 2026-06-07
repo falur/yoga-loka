@@ -28,7 +28,7 @@ final class DisallowLooseComparisonRuleTest extends RuleTestCase
             'gianTiaga.phpstanStrictRules.looseEqualForbidden',
             'gianTiaga.phpstanStrictRules.looseNotEqualForbidden',
             'gianTiaga.phpstanStrictRules.looseNotEqualForbidden',
-        ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
+        ], \array_map(static fn($error): string|null => $error->getIdentifier(), $errors));
 
         $this->analyse([$file], [
             ['Loose comparison with == is forbidden. Use === instead.', 11],

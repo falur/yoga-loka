@@ -16,6 +16,7 @@ use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 use GianTiaga\SpiralOpenApi\Tests\Support\FakeTranslator;
+
 final class OpenApiGeneratorTest extends TestCase
 {
     public function testGeneratorRequiresTranslator(): void
@@ -131,9 +132,7 @@ final class OpenApiGeneratorTest extends TestCase
 
 final readonly class OpenApiSpecNode
 {
-    public function __construct(private mixed $value)
-    {
-    }
+    public function __construct(private mixed $value) {}
 
     public function child(int|string $key): self
     {

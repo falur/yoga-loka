@@ -11,11 +11,10 @@ use Spiral\Translator\TranslatorInterface;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
 use GianTiaga\SpiralOpenApi\Response\ValidationErrorItemResponse;
 use GianTiaga\SpiralOpenApi\Response\ValidationErrorResponse;
+
 final readonly class ApiValidationErrorsRenderer implements ErrorsRendererInterface
 {
-    public function __construct(private LoggerInterface $logger, private TranslatorInterface $translator)
-    {
-    }
+    public function __construct(private LoggerInterface $logger, private TranslatorInterface $translator) {}
     /**
      * @param array<string, string> $errors
      */

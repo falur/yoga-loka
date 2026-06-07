@@ -4,7 +4,7 @@ declare (strict_types=1);
 
 namespace GianTiaga\SpiralOpenApi\Response\Enum;
 
-enum HttpStatus : int
+enum HttpStatus: int
 {
     case Continue = 100;
     case SwitchingProtocols = 101;

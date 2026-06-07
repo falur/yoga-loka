@@ -36,7 +36,7 @@ final class RequireCqrsHandlerCallableRuleTest extends RuleTestCase
             'gianTiaga.spiralCqrs.handlerCallableRequired',
             'gianTiaga.spiralCqrs.transactionalQueryHandler',
         ], actual: \array_map(
-            callback: static fn($error): ?string => $error->getIdentifier(),
+            callback: static fn($error): string|null => $error->getIdentifier(),
             array: $errors,
         ));
     }

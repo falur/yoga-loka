@@ -6,6 +6,7 @@ namespace GianTiaga\SpiralOpenApi\Tests\Portability;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Finder\Finder;
+
 final class PackagePortabilityTest extends TestCase
 {
     public function testProductionCodeDoesNotReferenceProjectInternals(): void

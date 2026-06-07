@@ -17,6 +17,7 @@ use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
+
 final class ApiExceptionInterceptorTest extends TestCase
 {
     public function testDomainExceptionWith422CodeMapsTo422(): void
@@ -67,7 +68,7 @@ final class ApiExceptionInterceptorTest extends TestCase
         $this->expectException(FilterValidationException::class);
         $interceptor->intercept(context: self::createStub(CallContextInterface::class), handler: new ApiExceptionInterceptorFixtureHandler(exception: new FilterValidationException(errors: ['age' => 'Возраст должен быть числом'])));
     }
-    private function assertExceptionMapsToResponse(\Throwable $exception, HttpStatus $expectedStatus, string $expectedBody, FakeTranslator $translator, ?LoggerInterface $logger = null): void
+    private function assertExceptionMapsToResponse(\Throwable $exception, HttpStatus $expectedStatus, string $expectedBody, FakeTranslator $translator, LoggerInterface|null $logger = null): void
     {
         $interceptor = new ApiExceptionInterceptor(logger: $logger ?? new NullLogger(), translator: $translator);
         $response = $interceptor->intercept(context: self::createStub(CallContextInterface::class), handler: new ApiExceptionInterceptorFixtureHandler(exception: $exception));
@@ -84,9 +85,7 @@ final class ApiExceptionInterceptorTest extends TestCase
 }
 final readonly class ApiExceptionInterceptorFixtureHandler implements HandlerInterface
 {
-    public function __construct(private \Throwable $exception)
-    {
-    }
+    public function __construct(private \Throwable $exception) {}
     public function handle(CallContextInterface $context): mixed
     {
         throw $this->exception;

@@ -8,6 +8,7 @@ use Spiral\Interceptors\Context\CallContextInterface;
 use Spiral\Interceptors\HandlerInterface;
 use Spiral\Interceptors\InterceptorInterface;
 use GianTiaga\SpiralOpenApi\Response\ConvertsToHttpResponse;
+
 final readonly class HttpResponseInterceptor implements InterceptorInterface
 {
     public function intercept(CallContextInterface $context, HandlerInterface $handler): mixed

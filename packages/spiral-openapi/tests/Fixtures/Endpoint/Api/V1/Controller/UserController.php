@@ -9,6 +9,7 @@ use GianTiaga\SpiralOpenApi\Attribute\OpenApi;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1\Filter\UserSearchFilter;
 use GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1\Resource\UserResource;
+
 final class UserController
 {
     /**

@@ -8,6 +8,7 @@ use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Bootloader\I18nBootloader;
 use Spiral\Translator\TranslatorInterface;
 use GianTiaga\SpiralOpenApi\OpenApiGenerator;
+
 final class OpenApiToolsBootloader extends Bootloader
 {
     protected const array DEPENDENCIES = [I18nBootloader::class];

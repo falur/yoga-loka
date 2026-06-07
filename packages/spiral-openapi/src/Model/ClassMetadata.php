@@ -11,7 +11,5 @@ final readonly class ClassMetadata
      * @param list<PropertyMetadata> $properties
      * @param list<string> $enumCases
      */
-    public function __construct(public string $filePath, public string $className, public string $shortName, public ?string $parentClass, public bool $enum, public array $methods, public array $properties, public array $enumCases)
-    {
-    }
+    public function __construct(public string $filePath, public string $className, public string $shortName, public string|null $parentClass, public bool $enum, public array $methods, public array $properties, public array $enumCases) {}
 }

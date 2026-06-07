@@ -40,7 +40,7 @@ final readonly class MediaProcessingError implements \Stringable, \JsonSerializa
         return new self(value: $value);
     }
 
-    public function value(): ?string
+    public function value(): string|null
     {
         return $this->value === '' ? null : $this->value;
     }

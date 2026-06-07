@@ -6,7 +6,5 @@ namespace GianTiaga\SpiralOpenApi\Model;
 
 final readonly class SourceFile
 {
-    public function __construct(public string $path)
-    {
-    }
+    public function __construct(public string $path) {}
 }

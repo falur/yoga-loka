@@ -14,7 +14,7 @@ trait HasTimestamps
     #[Column(type: 'datetime', name: 'updated_at', typecast: 'datetime')]
     public private(set) \DateTimeImmutable $updatedAt;
 
-    public function initializeTimestamps(?\DateTimeImmutable $now = null): void
+    public function initializeTimestamps(\DateTimeImmutable|null $now = null): void
     {
         $now ??= new \DateTimeImmutable();
 
@@ -22,7 +22,7 @@ trait HasTimestamps
         $this->updatedAt = $now;
     }
 
-    public function touch(?\DateTimeImmutable $now = null): void
+    public function touch(\DateTimeImmutable|null $now = null): void
     {
         $this->updatedAt = $now ?? new \DateTimeImmutable();
     }

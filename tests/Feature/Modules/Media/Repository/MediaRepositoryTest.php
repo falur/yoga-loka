@@ -38,6 +38,7 @@ use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use App\Modules\Media\Repository\MediaRepository;
 use App\Modules\Media\Repository\MediaVideoConversionRepository;
 use Cycle\ORM\EntityManagerInterface;
+use Cycle\ORM\ORMInterface;
 use Tests\TestCase;
 
 final class MediaRepositoryTest extends TestCase
@@ -85,6 +86,108 @@ final class MediaRepositoryTest extends TestCase
         self::assertInstanceOf(MediaMultipartPartCollection::class, $restoredMultipartUpload->parts);
         self::assertSame(1, $restoredMultipartUpload->parts->first()->partNumber->value());
         self::assertSame('first', $restoredMultipartUpload->parts->first()->eTag->value());
+    }
+
+    public function testLazyGhostMapperRestoresRelationsAndKeepsThemAfterSave(): void
+    {
+        $media = $this->createMedia();
+        $imageConversion = $this->createImageConversion($media);
+        $videoConversion = $this->createVideoConversion($media);
+
+        $this->entityManager()->persist($media);
+        $this->entityManager()->persist($imageConversion);
+        $this->entityManager()->persist($videoConversion);
+        $this->entityManager()->run();
+        $mediaId = $media->id;
+
+        $this->cleanOrmState();
+
+        $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+
+        self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
+        self::assertInstanceOf(Media::class, $restoredImageConversion->media);
+        self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
+
+        $this->cleanOrmState();
+
+        $restoredMedia = $this->mediaRepository()->findById($mediaId);
+
+        self::assertInstanceOf(Media::class, $restoredMedia);
+        self::assertTrue($mediaId->equals($restoredMedia->id));
+        self::assertInstanceOf(MediaImageConversionCollection::class, $restoredMedia->imageConversions);
+        self::assertInstanceOf(MediaVideoConversionCollection::class, $restoredMedia->videoConversions);
+        self::assertCount(1, $restoredMedia->imageConversions);
+        self::assertCount(1, $restoredMedia->videoConversions);
+
+        $restoredMedia->markReady();
+        $this->entityManager()->persist($restoredMedia);
+        $this->entityManager()->run();
+        $this->cleanOrmState();
+
+        $savedMedia = $this->mediaRepository()->findById($mediaId);
+
+        self::assertInstanceOf(Media::class, $savedMedia);
+        self::assertSame(MediaStatus::Ready, $savedMedia->status);
+        self::assertCount(1, $savedMedia->imageConversions);
+        self::assertCount(1, $savedMedia->videoConversions);
+    }
+
+    public function testLazyGhostMapperSavesMediaWithoutReadingRelations(): void
+    {
+        $media = $this->createMedia();
+        $imageConversion = $this->createImageConversion($media);
+
+        $this->entityManager()->persist($media);
+        $this->entityManager()->persist($imageConversion);
+        $this->entityManager()->run();
+        $mediaId = $media->id;
+
+        $this->cleanOrmState();
+
+        $restoredMedia = $this->mediaRepository()->findById($mediaId);
+
+        self::assertInstanceOf(Media::class, $restoredMedia);
+        $restoredMedia->markReady();
+        $this->entityManager()->persist($restoredMedia);
+        $this->entityManager()->run();
+        $this->cleanOrmState();
+
+        $savedMedia = $this->mediaRepository()->findById($mediaId);
+        $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+
+        self::assertInstanceOf(Media::class, $savedMedia);
+        self::assertSame(MediaStatus::Ready, $savedMedia->status);
+        self::assertInstanceOf(MediaImageConversionCollection::class, $savedMedia->imageConversions);
+        self::assertCount(1, $savedMedia->imageConversions);
+        self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
+        self::assertTrue($mediaId->equals($savedImageConversion->mediaId));
+    }
+
+    public function testLazyGhostMapperKeepsBelongsToRelationAfterReadingAndSavingConversion(): void
+    {
+        $media = $this->createMedia();
+        $imageConversion = $this->createImageConversion($media);
+
+        $this->entityManager()->persist($media);
+        $this->entityManager()->persist($imageConversion);
+        $this->entityManager()->run();
+        $mediaId = $media->id;
+
+        $this->cleanOrmState();
+
+        $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
+        self::assertInstanceOf(Media::class, $restoredImageConversion->media);
+        self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
+
+        $this->entityManager()->persist($restoredImageConversion);
+        $this->entityManager()->run();
+        $this->cleanOrmState();
+
+        $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
+        self::assertInstanceOf(Media::class, $savedImageConversion->media);
+        self::assertTrue($mediaId->equals($savedImageConversion->media->id));
     }
 
     public function testFindExpiredReturnsTypedCollection(): void
@@ -135,8 +238,8 @@ final class MediaRepositoryTest extends TestCase
     }
 
     private function createMedia(
-        ?MediaStorageKey $storageKey = null,
-        ?MediaExpiration $expiration = null,
+        MediaStorageKey|null $storageKey = null,
+        MediaExpiration|null $expiration = null,
     ): Media {
         $storageKey ??= MediaStorageKey::generate();
 
@@ -210,6 +313,12 @@ final class MediaRepositoryTest extends TestCase
     private function entityManager(): EntityManagerInterface
     {
         return $this->getContainer()->get(EntityManagerInterface::class);
+    }
+
+    private function cleanOrmState(): void
+    {
+        $this->entityManager()->clean();
+        $this->getContainer()->get(ORMInterface::class)->getHeap()->clean();
     }
 
     private function mediaRepository(): MediaRepository

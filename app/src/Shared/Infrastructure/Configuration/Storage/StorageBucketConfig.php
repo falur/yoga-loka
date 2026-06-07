@@ -8,10 +8,10 @@ final readonly class StorageBucketConfig
 {
     public function __construct(
         public string $server,
-        public ?string $bucket = null,
-        public ?string $distribution = null,
-        public ?string $visibility = null,
-        public ?string $prefix = null,
-        public ?string $region = null,
+        public string|null $bucket = null,
+        public string|null $distribution = null,
+        public string|null $visibility = null,
+        public string|null $prefix = null,
+        public string|null $region = null,
     ) {}
 }

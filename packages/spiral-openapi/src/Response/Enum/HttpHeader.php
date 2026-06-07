@@ -4,7 +4,7 @@ declare (strict_types=1);
 
 namespace GianTiaga\SpiralOpenApi\Response\Enum;
 
-enum HttpHeader : string
+enum HttpHeader: string
 {
     case Accept = 'Accept';
     case AcceptCharset = 'Accept-Charset';

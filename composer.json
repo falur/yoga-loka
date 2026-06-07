@@ -75,11 +75,11 @@
         }
     },
     "scripts": {
-        "phpstan": "phpstan analyse",
+        "phpstan": "phpstan analyse --debug",
         "cs": "php-cs-fixer fix --dry-run --diff -v",
         "cs:fix": "php-cs-fixer fix -v",
         "test": "phpunit",
-        "test-coverage": "phpunit --coverage",
+        "test-coverage": "mkdir -p runtime/coverage && phpunit --coverage-text --coverage-clover runtime/coverage/clover.xml && php docker/test/assert-coverage.php runtime/coverage/clover.xml 100",
         "qa": [
             "@cs",
             "@phpstan",

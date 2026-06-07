@@ -4,13 +4,14 @@
 
 Compose-файл `docker/docker-compose.dev.yml` поднимает:
 
-- `app-http` - RoadRunner HTTP + RoadRunner jobs memory consumer в одном runtime.
+- `app-http` - RoadRunner HTTP + RoadRunner jobs RabbitMQ consumer в одном runtime.
 - `temporal-worker` - отдельный RoadRunner runtime для Temporal worker.
 - `test-runner` - минимальный test profile для `make test`.
 - `postgres` и `postgres-init` - PostgreSQL 18.3 и повторяемое создание баз.
 - `redis` - Redis 8.6 для cache/session и RoadRunner KV.
 - `minio` и `minio-init` - S3-compatible storage и repeatable bucket bootstrap.
 - `mailpit` - SMTP и web UI для локальной почты.
+- `rabbitmq` - брокер очередей для RoadRunner jobs и transactional outbox.
 - `temporal` и `temporal-ui` - Temporal Server и UI.
 - `centrifugo` - realtime-сервис с dev admin/API config.
 
@@ -30,6 +31,8 @@ Compose-файл `docker/docker-compose.dev.yml` поднимает:
 | minio console | `60901` |
 | mailpit SMTP | `61025` |
 | mailpit web | `60825` |
+| rabbitmq AMQP | `60672` |
+| rabbitmq management | `61672` |
 | temporal gRPC | `62333` |
 | temporal UI | `62334` |
 
@@ -43,9 +46,9 @@ RoadRunner binary устанавливается в `/usr/local/bin/rr`, что�
 репозитория не скрывал исполняемый файл. В image проверяются `redis`,
 `pdo_pgsql`, `php8.5-redis`, `rr --version`, jobs и workers команды.
 
-RoadRunner jobs остаются memory pipeline. Отдельный queue worker не создаётся:
-memory-задачи доступны только внутри того RoadRunner runtime, который их
-поставил. Поэтому HTTP и jobs consumer запущены вместе в `app-http`.
+RoadRunner jobs по умолчанию используют RabbitMQ pipeline. Memory pipeline
+остаётся в конфигурации только для локальных экспериментов и обратной
+совместимости.
 
 Temporal использует две базы: `temporal` и `temporal_visibility`. Это нужно
 для корректной visibility-схемы `temporalio/auto-setup`.
@@ -60,6 +63,7 @@ Named volumes:
 - `postgres-data` - dev/test/Temporal базы.
 - `redis-data` - Redis AOF.
 - `minio-data` - dev/test buckets.
+- `rabbitmq-data` - очереди и metadata RabbitMQ.
 - `temporal-data` - runtime config Temporal.
 - `app-runtime`, `temporal-worker-runtime`, `test-runtime` - runtime-директории Spiral.
 - `centrifugo-data` - локальные данные Centrifugo.
@@ -92,11 +96,25 @@ make reset-test
 - `redis:6379`
 - `minio:9000`
 - `mailpit:1025`
+- `rabbitmq:5672`
 - `temporal:7233`
 - `centrifugo:8000`
 
 Dev `STORAGE_DEFAULT=s3`, test `STORAGE_DEFAULT=s3-test`. Test cache остаётся
 `CACHE_STORAGE=local`, потому что существующие unit-тесты проверяют этот режим.
+Test queue остаётся `QUEUE_CONNECTION=sync`, чтобы `make test` не требовал
+RabbitMQ там, где тест не проверяет очередь явно.
+
+RabbitMQ pipeline настраивается через env:
+
+- `RABBITMQ_QUEUE_NAME`
+- `RABBITMQ_QUEUE_PREFETCH`
+- `RABBITMQ_QUEUE_DURABLE`
+- `RABBITMQ_EXCHANGE_NAME`
+- `RABBITMQ_EXCHANGE_TYPE`
+- `RABBITMQ_EXCHANGE_DURABLE`
+- `RABBITMQ_ROUTING_KEY`
+- `RABBITMQ_REQUEUE_ON_FAIL`
 
 ## Команды
 
@@ -109,6 +127,22 @@ make phpstan
 make logs
 make shell
 ```
+
+Разово переложить pending outbox-события в RabbitMQ:
+
+```bash
+make shell CMD='php app.php outbox:relay 100'
+```
+
+Запустить relay в постоянном режиме:
+
+```bash
+make shell CMD='php app.php outbox:relay 100 --loop --sleep=1'
+```
+
+Постоянный relay должен быть один. Несколько процессов `outbox:relay --loop`
+одновременно не поддерживаются, пока в выборке outbox-событий нет отдельного
+контракта `SKIP LOCKED`.
 
 Для one-shot команды в app-контейнере:
 
@@ -132,6 +166,20 @@ curl -i http://127.0.0.1:60080
 docker compose -f docker/docker-compose.dev.yml --env-file .env logs --tail=120 app-http temporal-worker
 docker compose -f docker/docker-compose.dev.yml --env-file .env exec -T temporal temporal operator cluster health --address temporal:7233
 ```
+
+Проверить RabbitMQ:
+
+```bash
+docker compose -f docker/docker-compose.dev.yml --env-file .env logs --tail=120 rabbitmq
+docker compose -f docker/docker-compose.dev.yml --env-file .env exec -T rabbitmq rabbitmq-diagnostics -q ping
+```
+
+RabbitMQ management UI доступен на `http://127.0.0.1:61672`.
+Dev-логин: `yoga_loka`, пароль берётся из `RABBITMQ_PASSWORD`.
+
+Реальные email, push, Centrifugo и webhooks этот runtime не отправляет сам.
+Они должны добавляться отдельными Job через outbox. Если внешний сервис
+поддерживает idempotency key, использовать `outboxId`.
 
 Проверить Redis cache:
 

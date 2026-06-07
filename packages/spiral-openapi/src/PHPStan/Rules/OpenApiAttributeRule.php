@@ -11,6 +11,7 @@ use PhpParser\Node\Scalar;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
+
 /**
  * @implements Rule<Node\Stmt\ClassMethod>
  */

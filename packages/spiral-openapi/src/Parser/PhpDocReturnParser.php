@@ -14,6 +14,7 @@ use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
 use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
 use PHPStan\PhpDocParser\Ast\Type\TypeNode;
 use GianTiaga\SpiralOpenApi\Model\GenericReturnType;
+
 final readonly class PhpDocReturnParser
 {
     private Lexer $lexer;
@@ -28,7 +29,7 @@ final readonly class PhpDocReturnParser
     /**
      * @param array<string, string> $aliases
      */
-    public function parse(?string $docComment, array $aliases, string $namespace): ?GenericReturnType
+    public function parse(string|null $docComment, array $aliases, string $namespace): GenericReturnType|null
     {
         if ($docComment === null) {
             return null;

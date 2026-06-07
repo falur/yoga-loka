@@ -8,17 +8,17 @@ final readonly class StorageServerConfig
 {
     public function __construct(
         public string $adapter,
-        public ?string $directory = null,
+        public string|null $directory = null,
         public StorageLocalVisibilityConfig|string|null $visibility = null,
-        public ?string $region = null,
-        public ?string $version = null,
-        public ?string $bucket = null,
-        public ?string $key = null,
-        public ?string $secret = null,
-        public ?string $token = null,
-        public ?string $expires = null,
-        public ?string $prefix = null,
-        public ?string $endpoint = null,
-        public ?StorageS3OptionsConfig $options = null,
+        public string|null $region = null,
+        public string|null $version = null,
+        public string|null $bucket = null,
+        public string|null $key = null,
+        public string|null $secret = null,
+        public string|null $token = null,
+        public string|null $expires = null,
+        public string|null $prefix = null,
+        public string|null $endpoint = null,
+        public StorageS3OptionsConfig|null $options = null,
     ) {}
 }

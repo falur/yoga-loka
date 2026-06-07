@@ -24,6 +24,7 @@ final class ConfigShapeTest extends TestCase
                 'mailer',
                 'migration',
                 'openapi',
+                'outbox',
                 'queue',
                 'scaffolder',
                 'session',

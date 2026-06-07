@@ -20,7 +20,7 @@ final readonly class CycleConfig implements TypedConfig
     public function __construct(
         public CycleSchemaConfig $schema,
         public bool $warmup,
-        public ?Options $options,
+        public Options|null $options,
         public array $customRelations,
     ) {}
 }

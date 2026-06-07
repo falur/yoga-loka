@@ -9,9 +9,7 @@ final readonly class DebugLogger
     /**
      * @param null|callable(string): void $writer
      */
-    public function __construct(private bool $enabled, private mixed $writer = null)
-    {
-    }
+    public function __construct(private bool $enabled, private mixed $writer = null) {}
     public function debug(string $message): void
     {
         if (!$this->enabled) {

@@ -96,7 +96,11 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
      */
     private function supportsRule(string $rule): bool
     {
-        return \is_subclass_of(object_or_class: $rule, class: ColumnValueTypecast::class)
+        return (
+            \is_subclass_of(object_or_class: $rule, class: ColumnValueTypecast::class)
+            && \method_exists(object_or_class: $rule, method: 'castDatabaseValue')
+            && \method_exists(object_or_class: $rule, method: 'uncastValue')
+        )
             || \is_subclass_of(object_or_class: $rule, class: BackedEnum::class)
             || \method_exists(object_or_class: $rule, method: 'fromString')
             || \method_exists(object_or_class: $rule, method: 'fromInt');
@@ -110,7 +114,10 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
         bool|int|float|string|object|null $value,
     ): object|null {
         if (\is_subclass_of(object_or_class: $rule, class: ColumnValueTypecast::class)) {
-            return $rule::castDatabaseValue($this->databaseValueOrFail($value));
+            return $this->invokeColumnCast(
+                rule: $rule,
+                value: $this->databaseValueOrFail($value),
+            );
         }
 
         if ($value === null) {
@@ -185,7 +192,7 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
                 return $value;
             }
 
-            return $rule::uncastValue($value);
+            return $this->invokeColumnUncast(rule: $rule, value: $value);
         }
 
         if ($value instanceof BackedEnum) {
@@ -219,6 +226,46 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
         }
 
         return $createdValue;
+    }
+
+    /**
+     * @param class-string $rule
+     */
+    private function invokeColumnCast(
+        string $rule,
+        bool|int|float|string|\DateTimeInterface|null $value,
+    ): object {
+        $castValue = (new \ReflectionMethod(objectOrMethod: $rule, method: 'castDatabaseValue'))->invoke(null, $value);
+
+        if (!\is_object($castValue)) {
+            throw new \InvalidArgumentException('Typecast базы должен вернуть объект.');
+        }
+
+        return $castValue;
+    }
+
+    /**
+     * @param class-string $rule
+     */
+    private function invokeColumnUncast(
+        string $rule,
+        object|null $value,
+    ): bool|int|float|string|\DateTimeInterface|null {
+        $databaseValue = (new \ReflectionMethod(objectOrMethod: $rule, method: 'uncastValue'))->invoke(null, $value);
+
+        if ($databaseValue === null) {
+            return null;
+        }
+
+        if (\is_bool($databaseValue) || \is_int($databaseValue) || \is_float($databaseValue) || \is_string($databaseValue)) {
+            return $databaseValue;
+        }
+
+        if ($databaseValue instanceof \DateTimeInterface) {
+            return $databaseValue;
+        }
+
+        throw new \InvalidArgumentException('Typecast базы вернул неподдерживаемый тип.');
     }
 
     private function valueObjectDatabaseValue(object $value): bool|int|float|string|\DateTimeInterface|null

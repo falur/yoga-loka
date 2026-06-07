@@ -11,6 +11,7 @@ use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 use GianTiaga\SpiralOpenApi\Response\ValidationErrorItemResponse;
 use GianTiaga\SpiralOpenApi\Response\ValidationErrorResponse;
+
 final class ValidationErrorResponseTest extends TestCase
 {
     public function testValidationErrorResponseSerializesErrors(): void

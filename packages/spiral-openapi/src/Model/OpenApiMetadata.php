@@ -6,7 +6,5 @@ namespace GianTiaga\SpiralOpenApi\Model;
 
 final readonly class OpenApiMetadata
 {
-    public function __construct(public string $id, public string $description, public bool $ignore)
-    {
-    }
+    public function __construct(public string $id, public string $description, public bool $ignore) {}
 }

@@ -16,7 +16,7 @@ final readonly class MailerConfig implements TypedConfig
     public function __construct(
         public string $dsn,
         public string $from,
-        public ?string $queueConnection,
-        public ?string $queue,
+        public string|null $queueConnection,
+        public string|null $queue,
     ) {}
 }

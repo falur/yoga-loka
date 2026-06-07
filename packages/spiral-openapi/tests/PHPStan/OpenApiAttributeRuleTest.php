@@ -7,6 +7,7 @@ namespace GianTiaga\SpiralOpenApi\Tests\PHPStan;
 use GianTiaga\SpiralOpenApi\PHPStan\Rules\OpenApiAttributeRule;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
+
 /**
  * @extends RuleTestCase<OpenApiAttributeRule>
  */
@@ -23,7 +24,7 @@ final class OpenApiAttributeRuleTest extends RuleTestCase
         $file = __DIR__ . '/Fixtures/OpenApiAttributeInvalid.fixture';
         require_once $file;
         $errors = $this->gatherAnalyserErrors([$file]);
-        self::assertSame(['gianTiaga.spiralOpenApi.emptyId', 'gianTiaga.spiralOpenApi.invalidId', 'gianTiaga.spiralOpenApi.duplicateId'], \array_map(callback: static fn($error): ?string => $error->getIdentifier(), array: $errors));
+        self::assertSame(['gianTiaga.spiralOpenApi.emptyId', 'gianTiaga.spiralOpenApi.invalidId', 'gianTiaga.spiralOpenApi.duplicateId'], \array_map(callback: static fn($error): string|null => $error->getIdentifier(), array: $errors));
     }
     protected function getRule(): Rule
     {

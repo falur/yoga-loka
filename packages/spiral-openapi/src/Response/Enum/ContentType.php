@@ -4,7 +4,7 @@ declare (strict_types=1);
 
 namespace GianTiaga\SpiralOpenApi\Response\Enum;
 
-enum ContentType : string
+enum ContentType: string
 {
     case AtomXml = 'application/atom+xml; charset=utf-8';
     case Avif = 'image/avif';

@@ -5,6 +5,7 @@ ARG RR_VERSION_FILTER=2025.*
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV DEBIAN_FRONTEND=noninteractive
+ENV XDEBUG_MODE=off
 
 WORKDIR /app
 
@@ -26,6 +27,7 @@ RUN set -eux; \
         php8.5-redis \
         php8.5-sockets \
         php8.5-xml \
+        php8.5-xdebug \
         php8.5-zip \
         php8.5-bcmath \
         php8.5-intl \
@@ -46,6 +48,7 @@ RUN set -eux; \
         --location /usr/local/bin \
         --plugin http \
         --plugin jobs \
+        --plugin amqp \
         --plugin kv \
         --plugin temporal \
         --plugin metrics \

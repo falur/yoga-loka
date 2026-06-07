@@ -7,15 +7,14 @@ namespace GianTiaga\SpiralOpenApi\Schema;
 use GianTiaga\SpiralOpenApi\Exception\OpenApiGenerationException;
 use GianTiaga\SpiralOpenApi\Model\ClassMetadata;
 use GianTiaga\SpiralOpenApi\Model\PropertyMetadata;
+
 final readonly class SchemaBuilder
 {
     /**
      * @param array<string, ClassMetadata> $classesByName
      * @param array<string, ClassMetadata> $classesByShortName
      */
-    public function __construct(private array $classesByName, private array $classesByShortName, private SchemaRegistry $schemaRegistry)
-    {
-    }
+    public function __construct(private array $classesByName, private array $classesByShortName, private SchemaRegistry $schemaRegistry) {}
     /**
      * @return array<string, mixed>
      */

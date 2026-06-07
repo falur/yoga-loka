@@ -23,6 +23,8 @@ services:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
       temporal:
         condition: service_healthy
       centrifugo:
@@ -60,6 +62,7 @@ services:
       STORAGE_DEFAULT: s3-test
       S3_BUCKET: yoga-loka-test
       CACHE_STORAGE: local
+      QUEUE_CONNECTION: sync
     command: ["bash", "docker/test/run-tests.sh"]
     volumes:
       - ..:/app
@@ -162,6 +165,23 @@ services:
       timeout: 5s
       retries: 20
 
+  rabbitmq:
+    image: rabbitmq:4.3.0-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-yoga_loka}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-yoga_loka_password}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "127.0.0.1:${RABBITMQ_HOST_PORT:-60672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_HOST_PORT:-61672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   temporal:
     image: temporalio/auto-setup:1.29.6
     environment:
@@ -218,5 +238,6 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  rabbitmq-data:
   temporal-data:
   centrifugo-data:

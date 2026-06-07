@@ -36,6 +36,9 @@ kv:
 metrics:
   address: '0.0.0.0:2112'
 
+amqp:
+  addr: 'amqp://${RABBITMQ_USER:-yoga_loka}:${RABBITMQ_PASSWORD:-yoga_loka_password}@${RABBITMQ_HOST:-rabbitmq}:${RABBITMQ_PORT:-5672}${RABBITMQ_URL_VHOST:-/}'
+
 jobs:
   pool:
     num_workers: 2
@@ -45,8 +48,27 @@ jobs:
       driver: memory
       config:
         priority: 10
+    rabbitmq:
+      driver: amqp
+      config:
+        priority: 10
+        prefetch: ${RABBITMQ_QUEUE_PREFETCH:-100}
+        queue: ${RABBITMQ_QUEUE_NAME:-yoga_loka_jobs}
+        queue_auto_delete: false
+        exchange: ${RABBITMQ_EXCHANGE_NAME:-yoga_loka_jobs}
+        exchange_durable: ${RABBITMQ_EXCHANGE_DURABLE:-true}
+        exchange_type: ${RABBITMQ_EXCHANGE_TYPE:-direct}
+        exchange_auto_delete: false
+        routing_key: ${RABBITMQ_ROUTING_KEY:-yoga_loka_jobs}
+        exclusive: false
+        multiple_ack: false
+        requeue_on_fail: ${RABBITMQ_REQUEUE_ON_FAIL:-false}
+        durable: ${RABBITMQ_QUEUE_DURABLE:-true}
+        consume_all: false
+        delete_queue_on_stop: false
+        redial_timeout: 60
   consume:
-    - memory
+    - rabbitmq
 
 logs:
   mode: development

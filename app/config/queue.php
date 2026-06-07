@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use Spiral\Queue\Driver\SyncDriver;
+use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;
+use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
+use Spiral\RoadRunner\Jobs\Queue\AMQP\ExchangeType;
 use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\RoadRunner\Jobs\Queue\BeanstalkCreateInfo;
 use Spiral\RoadRunner\Jobs\Queue\MemoryCreateInfo;
@@ -43,6 +49,10 @@ return [
             'driver' => 'roadrunner',
             'pipeline' => 'memory',
         ],
+        'rabbitmq' => [
+            'driver' => 'roadrunner',
+            'pipeline' => 'rabbitmq',
+        ],
     ],
 
     /**
@@ -57,6 +67,29 @@ return [
             // Запускаем обработчик этого конвейера при старте.
             // Обработчик можно поставить на паузу консольной командой.
             // php app.php queue:pause local
+            'consume' => true,
+        ],
+        'rabbitmq' => [
+            'connector' => new AMQPCreateInfo(
+                name: 'rabbitmq',
+                prefetch: \max(1, (int) \env('RABBITMQ_QUEUE_PREFETCH', 100)),
+                queue: (string) \env('RABBITMQ_QUEUE_NAME', 'yoga_loka_jobs'),
+                exchange: (string) \env('RABBITMQ_EXCHANGE_NAME', 'yoga_loka_jobs'),
+                exchangeType: ExchangeType::from((string) \env('RABBITMQ_EXCHANGE_TYPE', ExchangeType::Direct->value)),
+                routingKey: (string) \env('RABBITMQ_ROUTING_KEY', 'yoga_loka_jobs'),
+                requeueOnFail: (bool) \filter_var(
+                    value: \env('RABBITMQ_REQUEUE_ON_FAIL', 'false'),
+                    filter: FILTER_VALIDATE_BOOL,
+                ),
+                durable: (bool) \filter_var(
+                    value: \env('RABBITMQ_QUEUE_DURABLE', 'true'),
+                    filter: FILTER_VALIDATE_BOOL,
+                ),
+                exchangeDurable: (bool) \filter_var(
+                    value: \env('RABBITMQ_EXCHANGE_DURABLE', 'true'),
+                    filter: FILTER_VALIDATE_BOOL,
+                ),
+            ),
             'consume' => true,
         ],
         // 'amqp' => [
@@ -94,6 +127,7 @@ return [
          */
         'handlers' => [
             // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
+            OutboxDebugLogJob::class => OutboxDebugLogJob::class,
         ],
 
         /**
@@ -105,6 +139,7 @@ return [
         'serializers' => [
             // 'ping' => 'json',
             // \App\Modules\System\Presentation\Job\Ping::class => 'json',
+            OutboxDebugLogJob::class => OutboxQueueSerializer::class,
         ],
     ],
 
@@ -115,7 +150,16 @@ return [
      */
     'interceptors' => [
         // 'push' => [],
-        // 'consume' => [],
+        // Порядок критичен: RetryPolicyInterceptor обязан стоять ниже (внутри)
+        // OutboxQueueStatusInterceptor, иначе исключение Job ещё не преобразовано в
+        // RetryException и статус-interceptor спутает «оставить на повтор» с
+        // «окончательно failed». Перестановка interceptor-ов местами или удаление
+        // политики ретраев молча инвертирует классификацию ошибок outbox.
+        'consume' => [
+            ErrorHandlerInterceptor::class,
+            OutboxQueueStatusInterceptor::class,
+            RetryPolicyInterceptor::class,
+        ],
     ],
 
     'driverAliases' => [

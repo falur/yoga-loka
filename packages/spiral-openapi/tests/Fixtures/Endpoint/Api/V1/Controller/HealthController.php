@@ -9,6 +9,7 @@ use GianTiaga\SpiralOpenApi\Attribute\OpenApi;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1\Enum\HealthStatus;
 use GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1\Resource\HealthResource;
+
 final class HealthController
 {
     /**

@@ -4,6 +4,4 @@ declare (strict_types=1);
 
 namespace GianTiaga\SpiralOpenApi\Exception;
 
-final class FileResponseException extends OpenApiException
-{
-}
+final class FileResponseException extends OpenApiException {}

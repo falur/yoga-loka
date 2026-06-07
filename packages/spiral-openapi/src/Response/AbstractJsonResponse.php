@@ -8,6 +8,7 @@ use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
+
 abstract class AbstractJsonResponse implements \JsonSerializable, ConvertsToHttpResponse
 {
     use HasHttpResponseMetadata;

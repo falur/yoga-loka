@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use GianTiaga\SpiralOpenApi\Exception\FileResponseException;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
+
 final class FileResponse implements ConvertsToHttpResponse
 {
     use HasHttpResponseMetadata;

@@ -49,13 +49,6 @@ final class MediaTypecastTest extends TestCase
         );
     }
 
-    public function testMultipartPartCollectionTypecastRejectsWrongObject(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        MediaMultipartPartCollectionTypecast::uncastValue(new \stdClass());
-    }
-
     public function testMultipartPartCollectionTypecastStoresDomainCollection(): void
     {
         $parts = new MediaMultipartPartCollection([

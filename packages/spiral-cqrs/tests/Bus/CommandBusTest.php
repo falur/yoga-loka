@@ -288,8 +288,8 @@ final class CommandBusTest extends TestCase
     }
 
     private function commandBus(
-        ?DatabaseInterface $database = null,
-        ?TestLogger $logger = null,
+        DatabaseInterface|null $database = null,
+        TestLogger|null $logger = null,
     ): CommandBus {
         $database ??= $this->databaseWithoutTransactions();
         $logger ??= new TestLogger();

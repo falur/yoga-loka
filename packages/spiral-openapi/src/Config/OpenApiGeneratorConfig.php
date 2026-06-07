@@ -5,14 +5,13 @@ declare (strict_types=1);
 namespace GianTiaga\SpiralOpenApi\Config;
 
 use GianTiaga\SpiralOpenApi\Exception\OpenApiConfigurationException;
+
 final readonly class OpenApiGeneratorConfig
 {
     /**
      * @param list<string> $sourcePaths
      */
-    public function __construct(public string $projectRoot, public array $sourcePaths, public string $apiNamespace, public string $routePrefix, public string $outputFile, public string $title, public string $version, public ResponseWrapperMapping $responseWrapperMapping, public string $openApiVersion = '3.1.0', public bool $debug = false)
-    {
-    }
+    public function __construct(public string $projectRoot, public array $sourcePaths, public string $apiNamespace, public string $routePrefix, public string $outputFile, public string $title, public string $version, public ResponseWrapperMapping $responseWrapperMapping, public string $openApiVersion = '3.1.0', public bool $debug = false) {}
     public function validate(): void
     {
         if ($this->sourcePaths === []) {

@@ -161,23 +161,22 @@ GetMediaUrl
 ## Локальный Docker-runtime
 
 Локальная разработка и проверки выполняются через Docker Compose из
-`docker/docker-compose.dev.yml`. Приложение запускается в двух RoadRunner
-runtime:
+`docker/docker-compose.dev.yml`. Приложение запускается в двух RoadRunner runtime:
 
-- `app-http`: HTTP на `0.0.0.0:8080` внутри контейнера и RoadRunner jobs memory consumer в том же
 - `app-http`: RoadRunner слушает `0.0.0.0:8080` только внутри контейнера.
   Наружу compose публикует сервис как `127.0.0.1:60080 -> 8080`. RoadRunner
-  jobs memory consumer работает в том же процессе.
+  jobs consumer для RabbitMQ работает в том же процессе.
 - `temporal-worker`: отдельный Temporal worker на task queue `default`.
 
-Memory-очередь RoadRunner не выносится в отдельный queue worker, потому что
-задачи доступны только внутри runtime, который владеет memory pipeline. Redis в
-локальном стенде используется для cache/session и RoadRunner KV, но не является
-брокером очереди.
+Dev runtime использует RabbitMQ как queue connection по умолчанию. Memory
+pipeline остаётся запасным вариантом для локальных экспериментов и обратной
+совместимости, но не является основной очередью dev-стенда. Redis в локальном
+стенде используется для cache/session и RoadRunner KV, но не является брокером
+очереди.
 
-Локальная инфраструктура: PostgreSQL, Redis, MinIO, Mailpit, Temporal, Temporal
-UI и Centrifugo. Dev storage по умолчанию использует MinIO bucket `yoga-loka`,
-тесты используют отдельные `yoga_loka_test` и `yoga-loka-test`.
+Локальная инфраструктура: PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit, Temporal,
+Temporal UI и Centrifugo. Dev storage по умолчанию использует MinIO bucket
+`yoga-loka`, тесты используют отдельные `yoga_loka_test` и `yoga-loka-test`.
 
 ## Структура каталогов
 
@@ -198,6 +197,19 @@ app/
           Cycle/                  # Typecast и другие классы Cycle ORM
           FileService/            # Реализации файловых сервисов
         Presentation/             # HTTP, console, queue, Temporal входы модуля
+
+      Outbox/
+        Domain/                   # Outbox-события, статусы, value object
+        Application/
+          Command/                # Сценарии relay и обработки outbox-сообщений
+          Contract/               # OutboxEventStoreContract и сериализация сообщений
+          Message/                # DTO сообщений outbox
+        Repository/               # Доступ к outbox_events
+        Infrastructure/           # Relay, serializer, queue interceptor, bootloader
+          Cycle/                  # Typecast outbox-полей
+        Presentation/
+          Console/                # outbox:relay
+          Job/                    # Технические Job outbox
 
       System/
         Presentation/
@@ -461,21 +473,33 @@ push-уведомления, webhooks и любые интеграции, кот
 HTTP / Console / Job / Temporal
   -> Modules/{Module}/Application Command Handler
     -> Domain Entity / Repository
+    -> Modules/Outbox/Application/Contract/OutboxEventStoreContract::add(IntegrationEvent DTO)
     -> EntityManager::run()
-    -> OutboxEventStore::add(IntegrationEvent DTO)
   -> commit транзакции, если Handler помечен #[Transactional]
 
-Outbox worker
+Modules/Outbox relay
   -> забирает pending outbox-события
-  -> выбирает publisher по типу события
-  -> Infrastructure adapter, например CentrifugoService
-  -> помечает событие delivered / failed
+  -> кладёт задачу в RabbitMQ
+  -> RoadRunner jobs consumer запускает Job
+  -> общий queue interceptor помечает событие handled / failed
 ```
 
 Application Handler фиксирует интеграционное событие как факт завершённого
 use-case-а. Например, после создания поста Handler сохраняет `Post` и добавляет
 `PostCreated` в outbox в той же транзакции. Он не вызывает Centrifugo, email или
 другие внешние сервисы напрямую.
+
+`OutboxEventStoreContract::add()` только ставит outbox-событие на сохранение.
+Handler вызывает его до финального `EntityManager::run()`, чтобы доменное
+изменение и outbox-событие записались одним flush внутри одной транзакции. Если
+outbox-событие добавлено после `EntityManager::run()`, Handler обязан явно
+вызвать ещё один `EntityManager::run()` до выхода из транзакции.
+
+Публичная граница outbox для других модулей находится в Application-слое:
+интеграционное событие реализует `Application\Message\OutboxMessage`, а
+`OutboxEventStoreContract::add()` возвращает Application DTO с идентификатором
+сохранённого outbox-события. Domain-типы outbox остаются внутренней моделью
+модуля.
 
 Outbox-событие - сериализуемый DTO с camelCase-полями. Payload не передаётся как
 ассоциативный массив. DTO должен содержать только данные, нужные подписчикам или
@@ -490,9 +514,23 @@ Spiral events можно использовать для локальных in-p
 требуют гарантированной доставки и не зависят от commit-а транзакции. Для
 пользовательских уведомлений и интеграций они не являются основным механизмом.
 
-Outbox worker является техническим входом, как обычный queue job: он забирает
-событие, делегирует публикацию в application/infrastructure слой и отвечает за
-повторы, статусы и логирование инфраструктурных ошибок.
+Outbox relay является техническим входом: он забирает событие и кладёт Job в
+RabbitMQ. Job выполняет внешнее действие после commit-а. Общий queue interceptor
+меняет статусы outbox и отвечает за обработку дублей, retry-сценарии и
+логирование инфраструктурных ошибок.
+
+Relay сам управляет сохранением технических переходов outbox-события:
+`publishing`, `queued`, publish-failure и ошибки queue Job фиксируются после
+commit-а бизнес-сценария. Поэтому `outbox:relay` считается инфраструктурным
+orchestrator-ом, а не обычным Application Handler-ом с бизнес-записью.
+
+Текущий relay рассчитан на один постоянный процесс `outbox:relay --loop`.
+Параллельные relay-процессы не запускаются, пока для выборки событий не будет
+добавлен отдельный безопасный контракт `SKIP LOCKED`.
+
+Реальные Job для email, push, Centrifugo и webhooks должны быть идемпотентными
+по `outboxId`. Если внешний сервис поддерживает idempotency key, использовать
+`outboxId`.
 
 ## Правила доменной модели
 
@@ -529,7 +567,7 @@ API           -> Modules/{Module}/Presentation/Http -> Filter DTO, Resource, Res
 Configuration -> app/config -> Shared/Infrastructure/Configuration
 Persistence   -> Modules/{Module}/Repository -> Cycle ORM
 Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
-Events        -> Modules/{Module}/Application Event DTO -> Infrastructure/Outbox -> publisher
+Events        -> Modules/{Module}/Application Message DTO -> Modules/Outbox/Infrastructure -> publisher
 Errors        -> Shared/Domain/Exception / router 404 -> packages/spiral-api-errors -> packages/spiral-openapi ErrorResponse
 Logging       -> CQRS attributes / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested

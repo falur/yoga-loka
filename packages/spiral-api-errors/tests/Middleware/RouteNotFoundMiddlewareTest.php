@@ -19,6 +19,7 @@ use GianTiaga\SpiralApiErrors\Tests\Support\FakeTranslator;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
+
 final class RouteNotFoundMiddlewareTest extends TestCase
 {
     public function testRouteNotFoundExceptionReturnsEnglishJson404(): void
@@ -73,9 +74,7 @@ final class RouteNotFoundMiddlewareTest extends TestCase
 }
 final readonly class RouteNotFoundMiddlewareFixtureHandler implements RequestHandlerInterface
 {
-    public function __construct(private ResponseInterface $response, private ?\Throwable $exception = null)
-    {
-    }
+    public function __construct(private ResponseInterface $response, private \Throwable|null $exception = null) {}
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if ($this->exception !== null) {
@@ -127,7 +126,5 @@ final readonly class RouteNotFoundMiddlewareLogRecord
     /**
      * @param array<string, int|string> $context
      */
-    public function __construct(public string $level, public string $message, public array $context)
-    {
-    }
+    public function __construct(public string $level, public string $message, public array $context) {}
 }

@@ -13,7 +13,7 @@ use Cycle\ORM\Select\Repository;
  */
 final class MediaMultipartUploadRepository extends Repository
 {
-    public function findByMediaId(MediaId $mediaId): ?MediaMultipartUpload
+    public function findByMediaId(MediaId $mediaId): MediaMultipartUpload|null
     {
         return $this->findOne(['media_id' => $mediaId->value()]);
     }

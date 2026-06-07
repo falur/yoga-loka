@@ -12,7 +12,5 @@ final class DataResponse extends AbstractJsonResponse
     /**
      * @param T $data
      */
-    public function __construct(public readonly object $data)
-    {
-    }
+    public function __construct(public readonly object $data) {}
 }

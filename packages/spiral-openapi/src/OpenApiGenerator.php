@@ -12,11 +12,10 @@ use GianTiaga\SpiralOpenApi\Scanner\FileScanner;
 use GianTiaga\SpiralOpenApi\Spec\OpenApiGenerationResult;
 use GianTiaga\SpiralOpenApi\Spec\SpecBuilder;
 use GianTiaga\SpiralOpenApi\Writer\YamlWriter;
+
 final readonly class OpenApiGenerator
 {
-    public function __construct(private TranslatorInterface $translator, private FileScanner $fileScanner = new FileScanner(), private PhpAstParser $phpAstParser = new PhpAstParser(), private YamlWriter $yamlWriter = new YamlWriter())
-    {
-    }
+    public function __construct(private TranslatorInterface $translator, private FileScanner $fileScanner = new FileScanner(), private PhpAstParser $phpAstParser = new PhpAstParser(), private YamlWriter $yamlWriter = new YamlWriter()) {}
     /**
      * @param null|callable(string): void $debugWriter
      */

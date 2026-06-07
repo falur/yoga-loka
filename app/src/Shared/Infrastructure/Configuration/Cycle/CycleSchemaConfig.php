@@ -14,6 +14,6 @@ final readonly class CycleSchemaConfig
         public bool $cache,
         public array $defaults,
         public CycleCollectionsConfig $collections,
-        public ?array $generators,
+        public array|null $generators,
     ) {}
 }

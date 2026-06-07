@@ -11,6 +11,7 @@ use GianTiaga\SpiralApiErrors\Tests\Support\FakeTranslator;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpHeader;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
+
 final class ApiValidationErrorsRendererTest extends TestCase
 {
     public function testRendererReturnsEnglishValidationErrorResponse(): void

@@ -9,31 +9,21 @@ use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 
 final class MediaProcessingErrorTypecast implements ColumnValueTypecast
 {
-    #[\Override]
     public static function castDatabaseValue(
-        bool|int|float|string|\DateTimeInterface|null $value,
+        string|null $value,
     ): MediaProcessingError {
         if ($value === null) {
             return MediaProcessingError::none();
         }
 
-        if (!\is_string($value)) {
-            throw new \InvalidArgumentException('Ошибка обработки должна быть строкой.');
-        }
-
         return MediaProcessingError::fromString($value);
     }
 
-    #[\Override]
     public static function uncastValue(
-        object|null $value,
-    ): ?string {
+        MediaProcessingError|null $value,
+    ): string|null {
         if ($value === null) {
             return null;
-        }
-
-        if (!$value instanceof MediaProcessingError) {
-            throw new \InvalidArgumentException('Значение должно быть ошибкой обработки.');
         }
 
         return $value->value();

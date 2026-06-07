@@ -6,6 +6,7 @@ namespace GianTiaga\SpiralOpenApi\Writer;
 
 use Symfony\Component\Yaml\Yaml;
 use GianTiaga\SpiralOpenApi\Exception\OpenApiGenerationException;
+
 final readonly class YamlWriter
 {
     /**

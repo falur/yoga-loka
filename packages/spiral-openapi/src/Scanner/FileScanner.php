@@ -6,6 +6,7 @@ namespace GianTiaga\SpiralOpenApi\Scanner;
 
 use Symfony\Component\Finder\Finder;
 use GianTiaga\SpiralOpenApi\Model\SourceFile;
+
 final readonly class FileScanner
 {
     /**

@@ -45,7 +45,7 @@ final class RequireNamedArgumentsRuleTest extends RuleTestCase
             'gianTiaga.phpstanStrictRules.namedArgumentsRequired',
             'gianTiaga.phpstanStrictRules.namedArgumentsRequired',
             'gianTiaga.phpstanStrictRules.namedArgumentsRequired',
-        ], \array_map(static fn($error): ?string => $error->getIdentifier(), $errors));
+        ], \array_map(static fn($error): string|null => $error->getIdentifier(), $errors));
     }
 
     public function testReportsExpectedLines(): void

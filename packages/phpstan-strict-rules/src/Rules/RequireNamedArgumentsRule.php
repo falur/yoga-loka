@@ -31,7 +31,7 @@ final class RequireNamedArgumentsRule implements Rule
     private const string ERROR_IDENTIFIER = 'gianTiaga.phpstanStrictRules.namedArgumentsRequired';
     private const string PHPUNIT_ASSERT_CLASS = 'PHPUnit\\Framework\\Assert';
 
-    private ?string $currentFile = null;
+    private string|null $currentFile = null;
 
     /**
      * PHPStan can visit the same nullsafe-call arguments more than once during analysis.
@@ -201,7 +201,7 @@ final class RequireNamedArgumentsRule implements Rule
         return $classReflection->getName() === self::PHPUNIT_ASSERT_CLASS || $classReflection->isSubclassOf(className: self::PHPUNIT_ASSERT_CLASS);
     }
 
-    private function resolveStaticClassName(StaticCall $node, Scope $scope): ?string
+    private function resolveStaticClassName(StaticCall $node, Scope $scope): string|null
     {
         if (!$node->class instanceof Name) {
             return null;

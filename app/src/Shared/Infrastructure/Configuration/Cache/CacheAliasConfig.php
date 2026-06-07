@@ -8,6 +8,6 @@ final readonly class CacheAliasConfig
 {
     public function __construct(
         public string $storage,
-        public ?string $prefix = null,
+        public string|null $prefix = null,
     ) {}
 }

@@ -12,6 +12,7 @@ use Spiral\Translator\TranslatorInterface;
 use GianTiaga\SpiralApiErrors\Filter\ApiValidationErrorsRenderer;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
 use GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware;
+
 final class ApiErrorBootloader extends Bootloader
 {
     protected const array DEPENDENCIES = [I18nBootloader::class];

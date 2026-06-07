@@ -5,13 +5,14 @@ declare (strict_types=1);
 namespace GianTiaga\SpiralOpenApi\Response;
 
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
+
 trait HasHttpResponseMetadata
 {
     private HttpStatus $status = HttpStatus::Ok;
     /**
      * @var null|array<string, mixed>
      */
-    private ?array $headers = null;
+    private array|null $headers = null;
     public function withStatus(HttpStatus $status): static
     {
         $this->status = $status;

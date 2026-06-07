@@ -5,7 +5,7 @@ APP_SERVICE ?= app-http
 CMD ?= bash
 COMPOSE = docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) -p $(PROJECT_NAME)
 
-.PHONY: up down restart composer-install test phpstan shell logs migrate reset-test
+.PHONY: up down restart composer-install test test-unit test-feature test-coverage phpstan qa shell logs migrate reset-test
 
 up:
 	@echo "[make] Старт цели up: project=$(PROJECT_NAME)"
@@ -29,10 +29,30 @@ test: reset-test
 	@$(COMPOSE) --profile test run --rm test-runner
 	@echo "[make] Цель test завершена"
 
+test-unit:
+	@echo "[make] Старт цели test-unit: profile=test"
+	@$(COMPOSE) --profile test run --rm test-runner vendor/bin/phpunit --testsuite Unit
+	@echo "[make] Цель test-unit завершена"
+
+test-feature: reset-test
+	@echo "[make] Старт цели test-feature: profile=test"
+	@$(COMPOSE) --profile test run --rm test-runner bash -lc 'php app.php migrate --force && vendor/bin/phpunit --testsuite Feature'
+	@echo "[make] Цель test-feature завершена"
+
+test-coverage: reset-test
+	@echo "[make] Старт цели test-coverage: profile=test"
+	@$(COMPOSE) --profile test run --rm test-runner bash -lc 'php app.php migrate --force && COMPOSER_PROCESS_TIMEOUT=900 XDEBUG_MODE=coverage composer test-coverage'
+	@echo "[make] Цель test-coverage завершена"
+
 phpstan:
 	@echo "[make] Старт цели phpstan: service=$(APP_SERVICE)"
 	@$(COMPOSE) run --rm $(APP_SERVICE) composer phpstan
 	@echo "[make] Цель phpstan завершена"
+
+qa: reset-test
+	@echo "[make] Старт цели qa: profile=test"
+	@$(COMPOSE) --profile test run --rm --build test-runner bash docker/test/run-qa.sh
+	@echo "[make] Цель qa завершена"
 
 shell:
 	@echo "[make] Старт цели shell: service=$(APP_SERVICE)"

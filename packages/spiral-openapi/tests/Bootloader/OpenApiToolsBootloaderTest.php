@@ -10,6 +10,7 @@ use Spiral\Bootloader\I18nBootloader;
 use Spiral\Config\ConfigManager;
 use Spiral\Config\Loader\DirectoryLoader;
 use Spiral\Translator\Config\TranslatorConfig;
+
 final class OpenApiToolsBootloaderTest extends TestCase
 {
     public function testBootloaderRegistersPackageLocaleDirectory(): void

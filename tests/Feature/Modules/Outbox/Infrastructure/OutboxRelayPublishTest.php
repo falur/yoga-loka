@@ -1,0 +1,376 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Modules\Outbox\Infrastructure;
+
+use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
+use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
+use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
+use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
+use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
+use App\Modules\Outbox\Infrastructure\OutboxQueueHeaders;
+use App\Modules\Outbox\Infrastructure\OutboxQueuePublisher;
+use App\Modules\Outbox\Infrastructure\OutboxRelay;
+use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
+use App\Shared\Infrastructure\Database\DatabaseDateTimeFormat;
+use Cycle\Database\DatabaseInterface;
+use Cycle\ORM\EntityManagerInterface;
+use Spiral\Queue\OptionsInterface;
+use Spiral\Queue\QueueConnectionProviderInterface;
+use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\MarkHandledDuringPushQueueConnectionProvider;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxRelayTestHelpers;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\RecordingOutboxLogger;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\ThrowingQueueConnectionProvider;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\UnregisteredOutboxRelayMessage;
+use Tests\TestCase;
+
+final class OutboxRelayPublishTest extends TestCase
+{
+    use CleansOutboxEvents;
+    use OutboxRelayTestHelpers;
+
+    #[\Override]
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->cleanOutboxEvents();
+    }
+
+    public function testRelayPushesJobWithHeadersAndMarksEventQueued(): void
+    {
+        $this->useQueueConnection('rabbitmq');
+        $fakeQueue = $this->fakeQueue()->getConnection();
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'relay check',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:01:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $publishedCount = $this->getContainer()->get(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:02:00'),
+        );
+
+        self::assertSame(1, $publishedCount);
+
+        $fakeQueue->assertPushed(OutboxDebugLogJob::class, static function (array $job) use ($outboxEventId): bool {
+            $payload = $job['payload'];
+            $options = $job['options'];
+
+            return \is_array($payload)
+                && (
+                    ($payload['outboxId'] ?? null) === $outboxEventId->value()
+                    && ($payload['outboxType'] ?? null) === OutboxDebugLogMessage::class
+                )
+                && $options instanceof OptionsInterface
+                && $options->getHeaderLine(OutboxQueueHeaders::OUTBOX_ID) === $outboxEventId->value()
+                && $options->getHeaderLine(OutboxQueueHeaders::OUTBOX_TYPE) === OutboxDebugLogMessage::class;
+        });
+
+        self::assertSame(OutboxEventStatus::Queued->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($this->outboxQueuedAtIsFilledInDatabase($outboxEventId));
+    }
+
+    public function testRelayDoesNotOverwriteHandledStatusWhenWorkerFinishesDuringPush(): void
+    {
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'relay race check',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:13:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new MarkHandledDuringPushQueueConnectionProvider(
+                database: $this->database(),
+                outboxEventId: $outboxEventId,
+                handledAt: new \DateTimeImmutable('2026-05-25 16:14:00'),
+            ),
+        );
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:14:00'),
+        );
+
+        self::assertSame(1, $publishedCount);
+        self::assertSame(OutboxEventStatus::Handled->value, $this->outboxStatusInDatabase($outboxEventId));
+    }
+
+    public function testRelayKeepsEventPendingWhenQueuePushFails(): void
+    {
+        $this->useQueueConnection('rabbitmq');
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new ThrowingQueueConnectionProvider(),
+        );
+
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'relay failure',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:04:00'),
+        );
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+
+        self::assertSame(0, $publishedCount);
+        self::assertNotNull($storedOutboxEvent);
+        self::assertSame(OutboxEventStatus::Pending, $storedOutboxEvent->status);
+        self::assertSame(1, $storedOutboxEvent->attempts->value());
+        self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+    }
+
+    public function testRelayLogsPublishFailureThatStaysPendingAsWarning(): void
+    {
+        $this->useQueueConnection('rabbitmq');
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new ThrowingQueueConnectionProvider(),
+        );
+
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'relay warn failure',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $publishedCount = $this->relayWithLogger($recordingOutboxLogger)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:04:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Pending->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'warning',
+            messageSubstring: 'не смог поставить событие в очередь',
+        ));
+        self::assertFalse($recordingOutboxLogger->hasRecord(
+            level: 'error',
+            messageSubstring: 'окончательно перевёл событие в failed',
+        ));
+    }
+
+    public function testRelayLogsFinalPublishFailureAsError(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
+        $this->useQueueConnection('rabbitmq');
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new ThrowingQueueConnectionProvider(),
+        );
+
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'relay error failure',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $publishedCount = $this->relayWithLogger($recordingOutboxLogger)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:04:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'error',
+            messageSubstring: 'окончательно перевёл событие в failed',
+        ));
+    }
+
+    public function testRelayTruncatesLongPublishError(): void
+    {
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new ThrowingQueueConnectionProvider(\str_repeat('x', 3000)),
+        );
+
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'long publish failure',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:09:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:10:00'),
+        );
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+
+        self::assertNotNull($storedOutboxEvent);
+        self::assertSame(OutboxEventStatus::Pending, $storedOutboxEvent->status);
+        self::assertLessThanOrEqual(2000, \mb_strlen($storedOutboxEvent->lastError->value() ?? ''));
+    }
+
+    public function testRelayMarksFailedOnLastAllowedPublishAttempt(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(2));
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new ThrowingQueueConnectionProvider(),
+        );
+
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(
+                text: 'last publish attempt',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:11:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+            ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
+        $storedOutboxEvent->recordPublishFailure(
+            lastError: OutboxLastError::fromString('Предыдущая ошибка публикации.'),
+            outboxMaxAttempts: OutboxMaxAttempts::fromInt(2),
+            availableAt: new \DateTimeImmutable('2099-05-25 16:12:00'),
+            now: new \DateTimeImmutable('2099-05-25 16:11:30'),
+        );
+        $this->entityManager()->persist($storedOutboxEvent);
+        $this->entityManager()->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:12:00'),
+        );
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+
+        self::assertSame(0, $publishedCount);
+        self::assertNotNull($storedOutboxEvent);
+        self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
+        self::assertSame(2, $storedOutboxEvent->attempts->value());
+        self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
+        self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+    }
+
+    public function testRelayMarksOldRemovedMessageTypeAsFailed(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
+        $now = new \DateTimeImmutable('2099-05-25 16:17:00');
+        $outboxEventId = OutboxEventId::generate();
+
+        $this->database()
+            ->insert('outbox_events')
+            ->values([
+                'id' => $outboxEventId->value(),
+                'type' => 'Old\\Removed\\Message',
+                'payload' => '{}',
+                'status' => OutboxEventStatus::Pending->value,
+                'attempts' => 0,
+                'available_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+                'queued_at' => null,
+                'handled_at' => null,
+                'failed_at' => null,
+                'last_error' => null,
+                'created_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+                'updated_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+            ])
+            ->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: $now,
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
+    }
+
+    public function testRelayMarksNonOutboxMessageTypeAsFailed(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
+        $now = new \DateTimeImmutable('2099-05-25 16:19:00');
+        $outboxEventId = OutboxEventId::generate();
+
+        $this->database()
+            ->insert('outbox_events')
+            ->values([
+                'id' => $outboxEventId->value(),
+                'type' => \stdClass::class,
+                'payload' => '{}',
+                'status' => OutboxEventStatus::Pending->value,
+                'attempts' => 0,
+                'available_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+                'queued_at' => null,
+                'handled_at' => null,
+                'failed_at' => null,
+                'last_error' => null,
+                'created_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+                'updated_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
+            ])
+            ->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: $now,
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
+    }
+
+    public function testRelayMarksUnregisteredJobAsFailed(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
+        $outboxEventId = $this->addOutboxMessage(new UnregisteredOutboxRelayMessage(reason: 'missing job'));
+        $this->entityManager()->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:18:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
+    }
+
+    private function relayWithLogger(RecordingOutboxLogger $recordingOutboxLogger): OutboxRelay
+    {
+        return new OutboxRelay(
+            outboxEventRepository: $this->outboxEventRepository(),
+            outboxQueuePublisher: $this->getContainer()->make(OutboxQueuePublisher::class),
+            outboxConfig: $this->getContainer()->get(OutboxConfig::class),
+            database: $this->getContainer()->get(DatabaseInterface::class),
+            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
+            logger: $recordingOutboxLogger,
+        );
+    }
+}

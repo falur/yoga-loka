@@ -16,6 +16,7 @@ use GianTiaga\SpiralOpenApi\Response\HttpHeaderValue;
 use GianTiaga\SpiralOpenApi\Response\Interceptor\HttpResponseInterceptor;
 use GianTiaga\SpiralOpenApi\Response\PaginationMetaResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
+
 final class JsonResponseTest extends TestCase
 {
     public function testPaginationResponseBuildsHttpResponseWithDefaultJsonHeader(): void
@@ -58,9 +59,7 @@ final class JsonResponseTest extends TestCase
 }
 final readonly class JsonResponseFixtureResource implements \JsonSerializable
 {
-    public function __construct(public string $name)
-    {
-    }
+    public function __construct(public string $name) {}
     public function jsonSerialize(): mixed
     {
         return \get_object_vars($this);
@@ -68,9 +67,7 @@ final readonly class JsonResponseFixtureResource implements \JsonSerializable
 }
 final readonly class JsonResponseFixtureHandler implements HandlerInterface
 {
-    public function __construct(private ConvertsToHttpResponse|string $response)
-    {
-    }
+    public function __construct(private ConvertsToHttpResponse|string $response) {}
     public function handle(CallContextInterface $context): mixed
     {
         return $this->response;

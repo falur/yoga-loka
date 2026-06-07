@@ -9,6 +9,7 @@ use Spiral\Translator\TranslatorInterface;
 use GianTiaga\SpiralApiErrors\Filter\ApiValidationErrorsRenderer;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
 use GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware;
+
 final class ConstructorContractTest extends TestCase
 {
     public function testApiErrorClassesRequireTranslator(): void

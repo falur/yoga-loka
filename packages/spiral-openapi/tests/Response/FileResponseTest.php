@@ -13,6 +13,7 @@ use GianTiaga\SpiralOpenApi\Response\FileContentResponse;
 use GianTiaga\SpiralOpenApi\Response\FileResponse;
 use GianTiaga\SpiralOpenApi\Response\HtmlResponse;
 use GianTiaga\SpiralOpenApi\Response\HttpHeaderValue;
+
 final class FileResponseTest extends TestCase
 {
     public function testFileContentResponseBuildsInlineResponse(): void

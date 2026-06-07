@@ -13,11 +13,10 @@ use GianTiaga\SpiralOpenApi\Model\MethodMetadata;
 use GianTiaga\SpiralOpenApi\Model\PropertyMetadata;
 use GianTiaga\SpiralOpenApi\Schema\SchemaBuilder;
 use GianTiaga\SpiralOpenApi\Schema\SchemaRegistry;
+
 final readonly class SpecBuilder
 {
-    public function __construct(private DebugLogger $logger, private TranslatorInterface $translator)
-    {
-    }
+    public function __construct(private DebugLogger $logger, private TranslatorInterface $translator) {}
     /**
      * @param list<ClassMetadata> $classes
      */
@@ -149,7 +148,7 @@ final readonly class SpecBuilder
      * @param array<string, ClassMetadata> $classesByName
      * @return null|array<string, mixed>
      */
-    private function requestBody(MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, array $classesByName): ?array
+    private function requestBody(MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, array $classesByName): array|null
     {
         $bodyProperties = [...$this->filterProperties(methodMetadata: $methodMetadata, source: PropertyMetadata::SOURCE_BODY, classesByName: $classesByName), ...$this->filterProperties(methodMetadata: $methodMetadata, source: PropertyMetadata::SOURCE_DATA, classesByName: $classesByName)];
         if ($bodyProperties === []) {

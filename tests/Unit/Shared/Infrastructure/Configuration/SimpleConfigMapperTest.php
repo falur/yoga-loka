@@ -8,6 +8,7 @@ use App\Shared\Infrastructure\Configuration\Mailer\MailerConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMappingException;
 use App\Shared\Infrastructure\Configuration\Migration\MigrationConfig;
+use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
 use App\Shared\Infrastructure\Configuration\Scaffolder\ScaffolderConfig;
 use App\Shared\Infrastructure\Configuration\Scaffolder\ScaffolderDeclarationOptionsConfig;
 use App\Shared\Infrastructure\Configuration\Session\SessionConfig;
@@ -98,6 +99,25 @@ final class SimpleConfigMapperTest extends TestCase
         self::assertTrue($config->secure);
         self::assertNull($config->sameSite);
         self::assertInstanceOf(Autowire::class, $config->handler);
+    }
+
+    public function testHydratesOutboxConfigFromArray(): void
+    {
+        $config = $this->mapperFor(OutboxConfig::configName(), [
+            'maxAttempts' => 7,
+            'maxConsecutiveRelayFailures' => 5,
+            'baseRelayRetryDelaySeconds' => 2,
+            'maxRelayRetryDelaySeconds' => 20,
+            'claimTimeoutSeconds' => 45,
+            'publishRetryDelaySeconds' => 90,
+        ])->map(section: OutboxConfig::configName(), targetClass: OutboxConfig::class);
+
+        self::assertSame(7, $config->maxAttempts);
+        self::assertSame(5, $config->maxConsecutiveRelayFailures);
+        self::assertSame(2, $config->baseRelayRetryDelaySeconds);
+        self::assertSame(20, $config->maxRelayRetryDelaySeconds);
+        self::assertSame(45, $config->claimTimeoutSeconds);
+        self::assertSame(90, $config->publishRetryDelaySeconds);
     }
 
     public function testHydratesScaffolderConfigFromArray(): void
@@ -224,6 +244,20 @@ final class SimpleConfigMapperTest extends TestCase
                 'handler' => null,
             ],
             'lifetime',
+        ];
+
+        yield 'outbox' => [
+            OutboxConfig::configName(),
+            OutboxConfig::class,
+            [
+                'maxAttempts' => [],
+                'maxConsecutiveRelayFailures' => 10,
+                'baseRelayRetryDelaySeconds' => 1,
+                'maxRelayRetryDelaySeconds' => 30,
+                'claimTimeoutSeconds' => 60,
+                'publishRetryDelaySeconds' => 60,
+            ],
+            'maxAttempts',
         ];
 
         yield 'scaffolder' => [

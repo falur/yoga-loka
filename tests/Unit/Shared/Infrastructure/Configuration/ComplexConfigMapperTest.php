@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Shared\Infrastructure\Configuration;
 
+use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Configuration\Database\DatabaseConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
@@ -27,6 +30,9 @@ use PHPUnit\Framework\TestCase;
 use Spiral\Config\ConfiguratorInterface;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;
+use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
+use Spiral\RoadRunner\Jobs\Queue\AMQP\ExchangeType;
+use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\RoadRunner\Jobs\Queue\MemoryCreateInfo;
 
 final class ComplexConfigMapperTest extends TestCase
@@ -165,46 +171,79 @@ final class ComplexConfigMapperTest extends TestCase
 
     public function testHydratesQueueConfigFromArray(): void
     {
-        $connector = new MemoryCreateInfo('local');
+        $memoryConnector = new MemoryCreateInfo('local');
+        $rabbitMqConnector = new AMQPCreateInfo(
+            name: 'rabbitmq',
+            prefetch: 100,
+            queue: 'yoga_loka_jobs',
+            exchange: 'yoga_loka_jobs',
+            exchangeType: ExchangeType::Direct,
+            routingKey: 'yoga_loka_jobs',
+            requeueOnFail: false,
+            durable: true,
+            exchangeDurable: true,
+        );
 
         $config = $this->mapperFor(QueueConfig::configName(), [
-            'default' => 'in-memory',
-            'aliases' => ['mail' => 'in-memory'],
+            'default' => 'rabbitmq',
+            'aliases' => ['mail' => 'rabbitmq'],
             'connections' => [
                 'sync' => ['driver' => 'sync'],
                 'in-memory' => [
                     'driver' => 'roadrunner',
                     'pipeline' => 'memory',
                 ],
+                'rabbitmq' => [
+                    'driver' => 'roadrunner',
+                    'pipeline' => 'rabbitmq',
+                ],
             ],
             'registry' => [
-                'handlers' => ['ping' => \stdClass::class],
-                'serializers' => ['ping' => 'json'],
+                'handlers' => [OutboxDebugLogJob::class => OutboxDebugLogJob::class],
+                'serializers' => [OutboxDebugLogJob::class => OutboxQueueSerializer::class],
             ],
             'driverAliases' => ['sync' => SyncDriver::class],
             'interceptors' => [
                 'push' => [],
-                'consume' => [ErrorHandlerInterceptor::class],
+                'consume' => [
+                    ErrorHandlerInterceptor::class,
+                    OutboxQueueStatusInterceptor::class,
+                    RetryPolicyInterceptor::class,
+                ],
             ],
             'pipelines' => [
                 'memory' => [
-                    'connector' => $connector,
+                    'connector' => $memoryConnector,
+                    'consume' => true,
+                ],
+                'rabbitmq' => [
+                    'connector' => $rabbitMqConnector,
                     'consume' => true,
                 ],
             ],
             'defaultSerializer' => 'json',
         ])->map(section: QueueConfig::configName(), targetClass: QueueConfig::class);
 
-        self::assertSame('in-memory', $config->default);
-        self::assertSame('in-memory', $config->aliases['mail']);
+        self::assertSame('rabbitmq', $config->default);
+        self::assertSame('rabbitmq', $config->aliases['mail']);
         self::assertSame('sync', $config->connections['sync']->driver);
         self::assertSame('memory', $config->connections['in-memory']->pipeline);
-        self::assertSame(\stdClass::class, $config->registry->handlers['ping']);
-        self::assertSame('json', $config->registry->serializers['ping']);
+        self::assertSame('rabbitmq', $config->connections['rabbitmq']->pipeline);
+        self::assertSame(OutboxDebugLogJob::class, $config->registry->handlers[OutboxDebugLogJob::class]);
+        self::assertSame(OutboxQueueSerializer::class, $config->registry->serializers[OutboxDebugLogJob::class]);
         self::assertSame(SyncDriver::class, $config->driverAliases['sync']);
-        self::assertSame([ErrorHandlerInterceptor::class], $config->interceptors->consume);
-        self::assertSame($connector, $config->pipelines['memory']->connector);
+        self::assertSame(
+            [
+                ErrorHandlerInterceptor::class,
+                OutboxQueueStatusInterceptor::class,
+                RetryPolicyInterceptor::class,
+            ],
+            $config->interceptors->consume,
+        );
+        self::assertSame($memoryConnector, $config->pipelines['memory']->connector);
+        self::assertSame($rabbitMqConnector, $config->pipelines['rabbitmq']->connector);
         self::assertTrue($config->pipelines['memory']->consume);
+        self::assertTrue($config->pipelines['rabbitmq']->consume);
         self::assertSame('json', $config->defaultSerializer);
     }
 

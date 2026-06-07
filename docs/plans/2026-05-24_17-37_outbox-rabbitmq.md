@@ -484,3 +484,12 @@ make phpstan
 - [x] Шаг 3: Реализовать relay и общий queue status interceptor
 - [x] Шаг 4: Добавить технический outbox Job для проверки
 - [x] Шаг 5: Закрыть эксплуатацию и полный прогон проверок
+
+## Дополнительное выполнение 2026-06-06
+
+Журнал: `docs/executions/2026-06-06_15-34_outbox-message-loader-flow.md`
+
+- [x] Добавлен loader, который загружает бизнес-сообщение по `outboxId`.
+- [x] Debug Job и бизнес-handler разделены: Job знает технический `outboxId`, handler получает только бизнес-данные.
+- [x] Добавлен README модуля Outbox с кодовым flow подключения.
+- [x] Покрытие `app/src/Modules/Outbox` закрыто полностью по строкам.

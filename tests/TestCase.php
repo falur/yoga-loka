@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\Shared\Infrastructure\Framework\DirectoryAlias;
+use Cycle\Database\DatabaseInterface;
 use Spiral\Config\ConfiguratorInterface;
 use Spiral\Config\Patch\Set;
 use Spiral\Core\Container;
@@ -58,10 +59,28 @@ class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        \restore_error_handler();
-        \restore_exception_handler();
+        try {
+            \restore_error_handler();
+            \restore_exception_handler();
+            $this->disconnectDatabase();
+        } finally {
+            parent::tearDown();
+        }
 
         // Раскомментируйте строку ниже, если нужно очищать runtime-директорию после тестов.
         // $this->cleanUpRuntimeDirectory();
+    }
+
+    private function disconnectDatabase(): void
+    {
+        $container = $this->getContainer();
+
+        if (!$container->has(DatabaseInterface::class)) {
+            return;
+        }
+
+        $database = $container->get(DatabaseInterface::class);
+        $database->getDriver(DatabaseInterface::WRITE)->disconnect();
+        $database->getDriver(DatabaseInterface::READ)->disconnect();
     }
 }

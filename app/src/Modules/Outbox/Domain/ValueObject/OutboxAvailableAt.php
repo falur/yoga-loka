@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Outbox\Domain\ValueObject;
+
+use App\Shared\Domain\Trait\ComparesDateTimeToMicroseconds;
+
+final readonly class OutboxAvailableAt implements \JsonSerializable, \Stringable
+{
+    use ComparesDateTimeToMicroseconds;
+
+    private function __construct(
+        private \DateTimeImmutable $value,
+    ) {}
+
+    public static function fromDateTime(\DateTimeImmutable $value): self
+    {
+        return new self(value: $value);
+    }
+
+    public function value(): \DateTimeImmutable
+    {
+        return $this->value;
+    }
+
+    public function equals(self $other): bool
+    {
+        return self::dateTimeEqualsToMicroseconds(value: $this->value, other: $other->value);
+    }
+
+    #[\Override]
+    public function __toString(): string
+    {
+        return $this->value->format(\DateTimeInterface::ATOM);
+    }
+
+    #[\Override]
+    public function jsonSerialize(): string
+    {
+        return $this->value->format(\DateTimeInterface::ATOM);
+    }
+}

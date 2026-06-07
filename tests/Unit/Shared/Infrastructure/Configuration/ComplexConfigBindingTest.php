@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Shared\Infrastructure\Configuration;
 
+use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleCollectionFactoryConfig;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleCollectionsConfig;
@@ -29,6 +32,7 @@ use Cycle\Database\Config\DatabaseConfig as CycleDatabaseConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Cycle\Config\CycleConfig as SpiralCycleConfig;
 use Spiral\Queue\Config\QueueConfig as SpiralQueueConfig;
+use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\Storage\Config\StorageConfig as SpiralStorageConfig;
 use Tests\TestCase;
 
@@ -69,8 +73,22 @@ final class ComplexConfigBindingTest extends TestCase
         self::assertSame($container->get(SpiralQueueConfig::class)->getDefaultDriver(), $queueConfig->default);
         self::assertSame('roadrunner', $queueConfig->connections['in-memory']->driver);
         self::assertSame('memory', $queueConfig->connections['in-memory']->pipeline);
+        self::assertSame('roadrunner', $queueConfig->connections['rabbitmq']->driver);
+        self::assertSame('rabbitmq', $queueConfig->connections['rabbitmq']->pipeline);
         self::assertSame('json', $queueConfig->defaultSerializer);
+        self::assertSame(OutboxDebugLogJob::class, $queueConfig->registry->handlers[OutboxDebugLogJob::class]);
+        self::assertSame(OutboxQueueSerializer::class, $queueConfig->registry->serializers[OutboxDebugLogJob::class]);
+        self::assertContains(OutboxQueueStatusInterceptor::class, $queueConfig->interceptors->consume);
         self::assertArrayHasKey('memory', $queueConfig->pipelines);
+        self::assertArrayHasKey('rabbitmq', $queueConfig->pipelines);
+        self::assertInstanceOf(AMQPCreateInfo::class, $queueConfig->pipelines['rabbitmq']->connector);
+        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->queue);
+        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->exchange);
+        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->routingKey);
+        self::assertSame(100, $queueConfig->pipelines['rabbitmq']->connector->prefetch);
+        self::assertTrue($queueConfig->pipelines['rabbitmq']->connector->durable);
+        self::assertTrue($queueConfig->pipelines['rabbitmq']->connector->exchangeDurable);
+        self::assertFalse($queueConfig->pipelines['rabbitmq']->connector->requeueOnFail);
 
         self::assertSame('s3-test', $storageConfig->default);
         self::assertSame('local', $storageConfig->servers['local']->adapter);

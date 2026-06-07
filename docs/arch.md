@@ -201,12 +201,12 @@ app/
       Outbox/
         Domain/                   # Outbox-события, статусы, value object
         Application/
+          Command/                # Сценарии relay и обработки outbox-сообщений
           Contract/               # OutboxEventStoreContract и сериализация сообщений
-          Outbox/                 # DTO сообщений outbox
+          Message/                # DTO сообщений outbox
         Repository/               # Доступ к outbox_events
-        Infrastructure/
+        Infrastructure/           # Relay, serializer, queue interceptor, bootloader
           Cycle/                  # Typecast outbox-полей
-          Outbox/                 # Relay, serializer, queue interceptor, bootloader
         Presentation/
           Console/                # outbox:relay
           Job/                    # Технические Job outbox
@@ -496,7 +496,7 @@ outbox-событие добавлено после `EntityManager::run()`, Hand
 вызвать ещё один `EntityManager::run()` до выхода из транзакции.
 
 Публичная граница outbox для других модулей находится в Application-слое:
-интеграционное событие реализует `Application\Outbox\OutboxMessage`, а
+интеграционное событие реализует `Application\Message\OutboxMessage`, а
 `OutboxEventStoreContract::add()` возвращает Application DTO с идентификатором
 сохранённого outbox-события. Domain-типы outbox остаются внутренней моделью
 модуля.
@@ -567,7 +567,7 @@ API           -> Modules/{Module}/Presentation/Http -> Filter DTO, Resource, Res
 Configuration -> app/config -> Shared/Infrastructure/Configuration
 Persistence   -> Modules/{Module}/Repository -> Cycle ORM
 Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
-Events        -> Modules/{Module}/Application Event DTO -> Infrastructure/Outbox -> publisher
+Events        -> Modules/{Module}/Application Message DTO -> Modules/Outbox/Infrastructure -> publisher
 Errors        -> Shared/Domain/Exception / router 404 -> tools/api-error -> tools/openapi ErrorResponse
 Logging       -> CQRS attributes / infrastructure adapters
 Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-tested

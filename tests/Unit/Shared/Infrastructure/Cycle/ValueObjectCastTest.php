@@ -131,25 +131,15 @@ enum ValueObjectCastStatusProbe: string
 
 final class ValueObjectCastColumnProbe implements ColumnValueTypecast
 {
-    #[\Override]
     public static function castDatabaseValue(
-        bool|int|float|string|\DateTimeInterface|null $value,
+        string $value,
     ): ValueObjectCastStringProbe {
-        if (!\is_string($value)) {
-            throw new \InvalidArgumentException('Значение должно быть строкой.');
-        }
-
         return ValueObjectCastStringProbe::fromString($value);
     }
 
-    #[\Override]
     public static function uncastValue(
-        object|null $value,
-    ): ?string {
-        if (!$value instanceof ValueObjectCastStringProbe) {
-            throw new \InvalidArgumentException('Значение должно быть тестовым value object.');
-        }
-
+        ValueObjectCastStringProbe $value,
+    ): string|null {
         return $value->value();
     }
 }

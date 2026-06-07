@@ -132,7 +132,10 @@ final class PaymentConfigTest extends TestCase
     {
         $config = $this->getContainer()
             ->get(ConfigMapper::class)
-            ->map(section: PaymentConfig::configName(), targetClass: PaymentConfig::class);
+            ->map(
+                section: PaymentConfig::configName(),
+                targetClass: PaymentConfig::class,
+            );
 
         self::assertSame('stripe', $config->default);
         self::assertArrayHasKey('stripe', $config->providers);
@@ -396,6 +399,54 @@ final readonly class UserResource extends AbstractResource
             name: (string) $user->name,
             createdAt: $user->createdAt->format('c'),
         );
+    }
+}
+```
+
+## Консольная команда
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\User\Presentation\Console;
+
+use App\Modules\User\Application\Command\User\CreateUser\CreateUserCommand;
+use App\Modules\User\Application\Command\User\CreateUser\CreateUserHandler;
+use GianTiaga\SpiralCqrs\CommandBusInterface;
+use Spiral\Console\Attribute\Argument;
+use Spiral\Console\Attribute\AsCommand;
+use Spiral\Console\Command;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
+
+#[AsCommand(
+    name: 'user:create',
+    description: 'Создать пользователя',
+)]
+final class CreateUserConsoleCommand extends Command
+{
+    #[Argument(description: 'Email пользователя')]
+    public string $email;
+
+    #[Argument(description: 'Имя пользователя')]
+    public string $username;
+
+    public function perform(
+        CommandBusInterface $commandBus,
+        CreateUserHandler $createUserHandler,
+    ): int {
+        $result = $commandBus->dispatch(
+            command: new CreateUserCommand(
+                email: $this->email,
+                username: $this->username,
+            ),
+            handler: $createUserHandler->handle(...),
+        );
+
+        $this->info(\sprintf('Пользователь создан: %s', $result->userId));
+
+        return SymfonyCommand::SUCCESS;
     }
 }
 ```

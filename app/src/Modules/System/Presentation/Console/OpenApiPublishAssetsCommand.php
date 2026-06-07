@@ -10,7 +10,10 @@ use Spiral\Console\Attribute\AsCommand;
 use Spiral\Console\Command;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
-#[AsCommand(name: 'openapi:publish-assets', description: 'Опубликовать локальные assets Swagger UI')]
+#[AsCommand(
+    name: 'openapi:publish-assets',
+    description: 'Опубликовать локальные assets Swagger UI',
+)]
 final class OpenApiPublishAssetsCommand extends Command
 {
     private const int DIRECTORY_PERMISSIONS = 0o775;

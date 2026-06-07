@@ -13,7 +13,10 @@ use Symfony\Component\Console\Command\Command as SymfonyCommand;
 use GianTiaga\SpiralOpenApi\Exception\OpenApiException;
 use GianTiaga\SpiralOpenApi\OpenApiGenerator;
 
-#[AsCommand(name: 'openapi:generate', description: 'Сгенерировать OpenAPI YAML из типизированного HTTP-слоя')]
+#[AsCommand(
+    name: 'openapi:generate',
+    description: 'Сгенерировать OpenAPI YAML из типизированного HTTP-слоя',
+)]
 final class OpenApiGenerateCommand extends Command
 {
     public function perform(

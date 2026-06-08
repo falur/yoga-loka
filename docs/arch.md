@@ -205,7 +205,12 @@ app/
           Contract/               # OutboxEventStoreContract и сериализация сообщений
           Message/                # DTO сообщений outbox
         Repository/               # Доступ к outbox_events
-        Infrastructure/           # Relay, serializer, queue interceptor, bootloader
+        Infrastructure/
+          Bootloader/             # OutboxBootloader, OutboxConsoleBootloader
+          Relay/                  # Relay, worker, loop control, sleeper
+          Queue/                  # Publisher, serializer, headers, status interceptor
+          Message/                # Event store, message loader, message serializer
+          Registry/               # Реестр пары message -> Job
           Cycle/                  # Typecast outbox-полей
         Presentation/
           Console/                # outbox:relay
@@ -555,6 +560,21 @@ ValueObject валидирует вход и не зависит от ORM. Во�
 в БД выполняются инфраструктурным typecast-слоем.
 Repository скрывает Cycle API и возвращает доменные типы. Доменные исключения
 всплывают до presentation/interceptor boundary.
+
+## Typecast-слой Cycle ORM
+
+Два уровня:
+
+- `Shared/Infrastructure/Cycle/ValueObjectCast` — общий движок по соглашению для
+  простых non-nullable VO на скаляр (cast: `fromString`/`fromInt`/`BackedEnum::from`;
+  uncast: `value()`). Stateful (правила по роли Entity), поэтому не биндится синглтоном.
+- `Modules/{Module}/Infrastructure/Cycle/*Typecast` — отдельные `ColumnValueTypecast`
+  для случаев, которые конвенция не выражает: nullable↔null-object, дата/время,
+  JSON и коллекции.
+
+Entity подключает оба: `typecast: [Typecast::class, ValueObjectCast::class]` на
+`#[Entity]` плюс `#[Column(typecast: SpecificTypecast::class)]` на сложных колонках.
+Pass-through обёртки над `ValueObjectCast` не создаются.
 
 ## Примеры кода
 

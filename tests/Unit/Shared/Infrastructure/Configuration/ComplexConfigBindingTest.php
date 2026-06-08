@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Shared\Infrastructure\Configuration;
 
-use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleCollectionFactoryConfig;

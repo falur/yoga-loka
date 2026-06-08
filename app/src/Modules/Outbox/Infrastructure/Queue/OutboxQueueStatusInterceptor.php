@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure;
+namespace App\Modules\Outbox\Infrastructure\Queue;
 
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
-use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
@@ -73,7 +72,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
             throw $exception;
         }
 
-        if ($this->freshEventIsFinal($storedOutboxEvent)) {
+        if ($this->eventBecameFinalDuringJob($storedOutboxEvent)) {
             return $result;
         }
 
@@ -187,7 +186,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
 
     private function recordJobFailure(StoredOutboxEvent $storedOutboxEvent, \Throwable $exception): void
     {
-        if ($this->freshEventIsFinal($storedOutboxEvent)) {
+        if ($this->eventBecameFinalDuringJob($storedOutboxEvent)) {
             return;
         }
 
@@ -237,18 +236,18 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
         return OutboxMaxAttempts::fromInt($this->outboxConfig->maxAttempts);
     }
 
-    private function freshEventIsFinal(StoredOutboxEvent $storedOutboxEvent): bool
+    private function eventBecameFinalDuringJob(StoredOutboxEvent $storedOutboxEvent): bool
     {
-        $freshStatus = $this->outboxEventRepository->findFreshStatusById($storedOutboxEvent->id);
-
-        if (!$freshStatus instanceof OutboxEventStatus || !$freshStatus->isFinal()) {
+        // Job (например sync-обработчик в том же процессе) мог сам перевести нашу же Entity
+        // в финальный статус, пока выполнялся. Тогда не перезаписываем его handled-ом.
+        if (!$storedOutboxEvent->isFinal()) {
             return false;
         }
 
-        $this->logger->debug(message: 'Outbox interceptor не перезаписал свежее финальное событие.', context: [
+        $this->logger->debug(message: 'Outbox interceptor не перезаписал ставшее финальным событие.', context: [
             'outboxId' => $storedOutboxEvent->id->value(),
             'outboxType' => $storedOutboxEvent->type->value(),
-            'freshStatus' => $freshStatus->value,
+            'status' => $storedOutboxEvent->status->value,
         ]);
 
         return true;

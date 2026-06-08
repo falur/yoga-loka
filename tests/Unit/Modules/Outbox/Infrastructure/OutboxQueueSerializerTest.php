@@ -8,7 +8,7 @@ use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class OutboxQueueSerializerTest extends TestCase

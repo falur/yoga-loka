@@ -14,12 +14,12 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Infrastructure\Cycle\OutboxAvailableAtTypecast;
-use App\Modules\Outbox\Infrastructure\Cycle\OutboxValueObjectTypecast;
 use App\Modules\Outbox\Infrastructure\Cycle\OutboxEventDateTypecast;
 use App\Modules\Outbox\Infrastructure\Cycle\OutboxEventPayloadTypecast;
 use App\Modules\Outbox\Infrastructure\Cycle\OutboxLastErrorTypecast;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use App\Shared\Domain\Trait\HasTimestamps;
+use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\ORM\Parser\Typecast;
@@ -28,7 +28,7 @@ use Cycle\ORM\Parser\Typecast;
     role: 'outbox_event',
     table: 'outbox_events',
     repository: OutboxEventRepository::class,
-    typecast: [Typecast::class, OutboxValueObjectTypecast::class],
+    typecast: [Typecast::class, ValueObjectCast::class],
 )]
 class StoredOutboxEvent
 {
@@ -111,7 +111,7 @@ class StoredOutboxEvent
      * Захват события на публикацию. Для pending-события это штатный первый захват: статус
      * переводится в publishing без инкремента попыток (happy-path не меняется). Если же
      * событие уже в publishing — это повторный захват по истёкшей claim-аренде после жёсткой
-     * гибели relay-процесса (OOM/SIGKILL) между markPublishing и markQueuedIfPublishing.
+     * гибели relay-процесса (OOM/SIGKILL) между markPublishing и markQueued.
      * Такой повторный захват трактуется как очередная попытка: счётчик инкрементируется и
      * сверяется с лимитом тем же контрактом, что обычные попытки публикации (isLastAllowed).
      * Если лимит исчерпан — событие переводится в failed и на публикацию не отдаётся, иначе
@@ -142,6 +142,14 @@ class StoredOutboxEvent
 
         $this->attempts = $this->attempts->increment();
         $this->markPublishing(availableAt: $availableAt, now: $now);
+    }
+
+    public function markQueued(\DateTimeImmutable $now): void
+    {
+        $this->status = OutboxEventStatus::Queued;
+        $this->queuedAt = $this->queuedAt->isEmpty() ? OutboxEventDate::fromDateTime($now) : $this->queuedAt;
+        $this->lastError = OutboxLastError::none();
+        $this->touch($now);
     }
 
     public function markHandled(\DateTimeImmutable $now): void

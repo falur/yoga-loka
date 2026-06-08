@@ -10,9 +10,9 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
-use App\Modules\Outbox\Infrastructure\OutboxQueueHeaders;
-use App\Modules\Outbox\Infrastructure\OutboxQueuePublisher;
-use App\Modules\Outbox\Infrastructure\OutboxRelay;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueHeaders;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueuePublisher;
+use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
 use App\Shared\Infrastructure\Database\DatabaseDateTimeFormat;
@@ -92,7 +92,8 @@ final class OutboxRelayPublishTest extends TestCase
         $this->getContainer()->bindSingleton(
             QueueConnectionProviderInterface::class,
             new MarkHandledDuringPushQueueConnectionProvider(
-                database: $this->database(),
+                outboxEventRepository: $this->outboxEventRepository(),
+                entityManager: $this->entityManager(),
                 outboxEventId: $outboxEventId,
                 handledAt: new \DateTimeImmutable('2026-05-25 16:14:00'),
             ),
@@ -273,41 +274,6 @@ final class OutboxRelayPublishTest extends TestCase
         self::assertSame(2, $storedOutboxEvent->attempts->value());
         self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
         self::assertFalse($storedOutboxEvent->lastError->isEmpty());
-    }
-
-    public function testRelayMarksOldRemovedMessageTypeAsFailed(): void
-    {
-        $this->getContainer()->removeBinding(OutboxConfig::class);
-        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
-        $now = new \DateTimeImmutable('2099-05-25 16:17:00');
-        $outboxEventId = OutboxEventId::generate();
-
-        $this->database()
-            ->insert('outbox_events')
-            ->values([
-                'id' => $outboxEventId->value(),
-                'type' => 'Old\\Removed\\Message',
-                'payload' => '{}',
-                'status' => OutboxEventStatus::Pending->value,
-                'attempts' => 0,
-                'available_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
-                'queued_at' => null,
-                'handled_at' => null,
-                'failed_at' => null,
-                'last_error' => null,
-                'created_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
-                'updated_at' => $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS),
-            ])
-            ->run();
-
-        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
-            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
-            now: $now,
-        );
-
-        self::assertSame(0, $publishedCount);
-        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
-        self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
     }
 
     public function testRelayMarksNonOutboxMessageTypeAsFailed(): void

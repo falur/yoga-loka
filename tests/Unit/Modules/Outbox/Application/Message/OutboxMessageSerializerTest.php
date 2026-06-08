@@ -10,7 +10,7 @@ use App\Modules\Outbox\Application\Message\OutboxMessageSerializationException;
 use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
 use App\Modules\Outbox\Application\Message\StoredOutboxEventId;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Modules\Outbox\Infrastructure\ValinorOutboxMessageSerializer;
+use App\Modules\Outbox\Infrastructure\Message\ValinorOutboxMessageSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class OutboxMessageSerializerTest extends TestCase

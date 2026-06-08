@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure;
+namespace App\Modules\Outbox\Infrastructure\Registry;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Application\Message\OutboxMessage;

@@ -13,7 +13,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadId;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Infrastructure\Cycle\MediaMultipartPartCollectionTypecast;
-use App\Modules\Media\Infrastructure\Cycle\MediaValueObjectTypecast;
+use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -24,7 +24,7 @@ use Cycle\ORM\Parser\Typecast;
     role: 'media_multipart_upload',
     table: 'media_multipart_uploads',
     repository: MediaMultipartUploadRepository::class,
-    typecast: [Typecast::class, MediaValueObjectTypecast::class],
+    typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class MediaMultipartUpload
 {

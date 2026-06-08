@@ -9,13 +9,11 @@ use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
 use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
-use App\Modules\Outbox\Presentation\Console\OutboxRelayCommand;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Shared\Domain\Exception\InvalidDomainValueException;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
 use Tests\TestCase;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Input\InputInterface;
 
 final class OutboxRelayCommandTest extends TestCase
 {
@@ -82,101 +80,36 @@ final class OutboxRelayCommandTest extends TestCase
         }
     }
 
-    public function testCommandRejectsInvalidLimit(): void
+    public function testCommandUsesDefaultLimitWhenArgumentOmitted(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Аргумент limit должен быть целым числом.');
+        $outboxRelayWorker = new RecordingOutboxRelayWorker();
+        $this->getContainer()->removeBinding(OutboxRelayWorkerContract::class);
+        $this->getContainer()->bindSingleton(OutboxRelayWorkerContract::class, $outboxRelayWorker);
+
+        $this->runCommand(command: 'outbox:relay');
+
+        self::assertNotNull($outboxRelayWorker->runOnceBatchSize);
+        self::assertSame(100, $outboxRelayWorker->runOnceBatchSize->value());
+    }
+
+    public function testCommandRejectsOutOfRangeLimit(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Размер пачки outbox relay должно быть от 1 до 1000.');
 
         $this->runCommand(command: 'outbox:relay', args: ['limit' => 'wrong']);
     }
 
-    public function testCommandRejectsInvalidSleepOption(): void
+    public function testCommandRejectsOutOfRangeSleepOption(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Опция sleep должна быть целым числом.');
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Пауза outbox relay в секундах должно быть от 1 до 3600.');
 
         $this->runCommand(command: 'outbox:relay', args: [
             'limit' => '5',
             '--loop' => true,
             '--sleep' => 'wrong',
         ]);
-    }
-
-    public function testCommandAcceptsAlreadyIntegerInputValue(): void
-    {
-        $integerInputValue = new \ReflectionMethod(OutboxRelayCommand::class, 'integerInputValue');
-
-        self::assertSame(
-            5,
-            $integerInputValue->invoke(
-                $this->getContainer()->get(OutboxRelayCommand::class),
-                5,
-                'Не используется.',
-            ),
-        );
-    }
-
-    public function testCommandRejectsNonScalarArgumentValue(): void
-    {
-        $integerArgument = new \ReflectionMethod(OutboxRelayCommand::class, 'integerArgument');
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Аргумент limit должен быть целым числом.');
-
-        $integerArgument->invoke(
-            $this->commandWithInput(new NonScalarArgumentInput()),
-            'limit',
-        );
-    }
-
-    public function testCommandRejectsNonScalarOptionValue(): void
-    {
-        $integerOption = new \ReflectionMethod(OutboxRelayCommand::class, 'integerOption');
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Опция sleep должна быть целым числом.');
-
-        $integerOption->invoke(
-            $this->commandWithInput(new NonScalarOptionInput()),
-            'sleep',
-        );
-    }
-
-    private function commandWithInput(InputInterface $input): OutboxRelayCommand
-    {
-        $outboxRelayCommand = $this->getContainer()->get(OutboxRelayCommand::class);
-        $inputProperty = new \ReflectionProperty(OutboxRelayCommand::class, 'input');
-        $inputProperty->setValue($outboxRelayCommand, $input);
-
-        return $outboxRelayCommand;
-    }
-}
-
-final class NonScalarArgumentInput extends ArrayInput
-{
-    public function __construct()
-    {
-        parent::__construct([]);
-    }
-
-    #[\Override]
-    public function getArgument(string $name): mixed
-    {
-        return ['bad'];
-    }
-}
-
-final class NonScalarOptionInput extends ArrayInput
-{
-    public function __construct()
-    {
-        parent::__construct([]);
-    }
-
-    #[\Override]
-    public function getOption(string $name): mixed
-    {
-        return ['bad'];
     }
 }
 

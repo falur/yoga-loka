@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure;
+namespace App\Modules\Outbox\Infrastructure\Relay;
 
 final class OutboxRelayStoppedException extends \DomainException
 {

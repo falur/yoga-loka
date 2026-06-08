@@ -8,6 +8,7 @@ use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use Cycle\ORM\Exception\TypecastException;
 use PHPUnit\Framework\TestCase;
+use Spiral\Core\Attribute\Singleton;
 
 final class ValueObjectCastTest extends TestCase
 {
@@ -75,6 +76,26 @@ final class ValueObjectCastTest extends TestCase
         $this->expectExceptionMessage('field');
 
         $cast->uncast(['field' => new \stdClass()]);
+    }
+
+    public function testEachInstanceKeepsRulesIsolated(): void
+    {
+        $first = new ValueObjectCast();
+        $first->setRules(['name' => ValueObjectCastStringProbe::class]);
+
+        // Свежий инстанс (как Cycle создаёт на каждую роль) не наследует чужие правила.
+        $second = new ValueObjectCast();
+        $data = $second->cast(['name' => 'media']);
+
+        self::assertSame('media', $data['name']);
+    }
+
+    public function testIsNotMarkedSingleton(): void
+    {
+        // ValueObjectCast stateful (правила по роли) — синглтон смешал бы правила сущностей.
+        $attributes = (new \ReflectionClass(ValueObjectCast::class))->getAttributes(Singleton::class);
+
+        self::assertSame([], $attributes);
     }
 }
 

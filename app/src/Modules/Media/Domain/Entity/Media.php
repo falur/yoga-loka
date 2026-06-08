@@ -22,7 +22,7 @@ use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Modules\Media\Infrastructure\Cycle\MediaExpirationTypecast;
 use App\Modules\Media\Infrastructure\Cycle\MediaProcessingErrorTypecast;
-use App\Modules\Media\Infrastructure\Cycle\MediaValueObjectTypecast;
+use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use App\Modules\Media\Repository\MediaRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -33,7 +33,7 @@ use Cycle\ORM\Parser\Typecast;
     role: 'media',
     table: 'media',
     repository: MediaRepository::class,
-    typecast: [Typecast::class, MediaValueObjectTypecast::class],
+    typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Media
 {

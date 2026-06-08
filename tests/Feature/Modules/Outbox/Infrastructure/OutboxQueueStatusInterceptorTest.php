@@ -9,8 +9,8 @@ use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
 use Cycle\ORM\EntityManagerInterface;
@@ -169,7 +169,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             }),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $this->outboxEventRepository()->findFreshStatusById($storedOutboxEvent->id));
+        self::assertSame(OutboxEventStatus::Handled, $this->outboxEventRepository()->findById($storedOutboxEvent->id)?->status);
         self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
         self::assertSame($handledAt, $storedOutboxEvent->handledAt->value());
     }

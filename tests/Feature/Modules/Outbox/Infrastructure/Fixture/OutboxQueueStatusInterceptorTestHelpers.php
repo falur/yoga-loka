@@ -9,10 +9,9 @@ use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Modules\Outbox\Infrastructure\OutboxQueueHeaders;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueHeaders;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use Cycle\ORM\EntityManagerInterface;
-use Cycle\ORM\ORMInterface;
 
 /**
  * @mixin \Tests\TestCase
@@ -28,15 +27,11 @@ trait OutboxQueueStatusInterceptorTestHelpers
             availableAt: $now,
             now: $now,
         );
-        // queued-статус выставляем тем же CAS-переходом, что и боевой relay: publishing -> queued.
+        // Проводим событие тем же путём, что и боевой relay: publishing -> queued, через Entity.
         $storedOutboxEvent->markPublishing(availableAt: $now, now: $now);
+        $storedOutboxEvent->markQueued($now);
         $this->entityManager()->persist($storedOutboxEvent);
         $this->entityManager()->run();
-        $this->outboxEventRepository()->markQueuedIfPublishing(outboxEventId: $storedOutboxEvent->id, now: $now);
-        // CAS-переход publishing -> queued выполняется сырым UPDATE мимо ORM, поэтому identity map
-        // держит stale-сущность со статусом Publishing. Очищаем heap, чтобы findById перегидрировал
-        // строку из БД и вернул актуальный статус Queued.
-        $this->cleanOrmState();
 
         return $this->outboxEventRepository()->findById($storedOutboxEvent->id)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
@@ -56,12 +51,6 @@ trait OutboxQueueStatusInterceptorTestHelpers
     private function entityManager(): EntityManagerInterface
     {
         return $this->getContainer()->get(EntityManagerInterface::class);
-    }
-
-    private function cleanOrmState(): void
-    {
-        $this->entityManager()->clean();
-        $this->getContainer()->get(ORMInterface::class)->getHeap()->clean();
     }
 
     private function outboxEventRepository(): OutboxEventRepository

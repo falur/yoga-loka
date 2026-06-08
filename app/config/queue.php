@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Outbox\Infrastructure\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;

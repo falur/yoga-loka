@@ -60,11 +60,11 @@ app/database/migrations/20260525.153700_0_create_outbox_events_table.php
 app/src/Modules/Outbox/Application/Contract/OutboxEventStoreContract.php
 app/src/Modules/Outbox/Application/Contract/OutboxMessageLoaderContract.php
 app/src/Modules/Outbox/Application/Message/OutboxMessage.php
-app/src/Modules/Outbox/Infrastructure/OutboxBootloader.php
-app/src/Modules/Outbox/Infrastructure/OutboxConsoleBootloader.php
-app/src/Modules/Outbox/Infrastructure/OutboxMessageLoader.php
-app/src/Modules/Outbox/Infrastructure/OutboxRelay.php
-app/src/Modules/Outbox/Infrastructure/OutboxQueueStatusInterceptor.php
+app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxBootloader.php
+app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxConsoleBootloader.php
+app/src/Modules/Outbox/Infrastructure/Message/OutboxMessageLoader.php
+app/src/Modules/Outbox/Infrastructure/Relay/OutboxRelay.php
+app/src/Modules/Outbox/Infrastructure/Queue/OutboxQueueStatusInterceptor.php
 app/src/Modules/Outbox/Presentation/Console/OutboxRelayCommand.php
 ```
 
@@ -75,8 +75,8 @@ app/src/Modules/Outbox/Presentation/Console/OutboxRelayCommand.php
 В списке bootloader-ов должны быть:
 
 ```php
-use App\Modules\Outbox\Infrastructure\OutboxBootloader;
-use App\Modules\Outbox\Infrastructure\OutboxConsoleBootloader;
+use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
+use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
 
 // ...
 

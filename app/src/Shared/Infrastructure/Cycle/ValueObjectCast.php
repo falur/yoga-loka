@@ -12,6 +12,10 @@ use Cycle\ORM\Parser\UncastableInterface;
 final class ValueObjectCast implements CastableInterface, UncastableInterface
 {
     /**
+     * Правила привязаны к конкретной роли Entity, поэтому класс stateful. Cycle
+     * создаёт по одному typecast-обработчику на роль через factory->make().
+     * Не биндить как #[Singleton] / общий синглтон — иначе правила разных ролей смешаются.
+     *
      * @var array<non-empty-string, class-string>
      */
     private array $rules = [];

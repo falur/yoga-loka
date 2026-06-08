@@ -16,7 +16,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaVideoConversionId;
-use App\Modules\Media\Infrastructure\Cycle\MediaValueObjectTypecast;
+use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use App\Modules\Media\Repository\MediaVideoConversionRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -27,7 +27,7 @@ use Cycle\ORM\Parser\Typecast;
     role: 'media_video_conversion',
     table: 'media_video_conversions',
     repository: MediaVideoConversionRepository::class,
-    typecast: [Typecast::class, MediaValueObjectTypecast::class],
+    typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class MediaVideoConversion
 {

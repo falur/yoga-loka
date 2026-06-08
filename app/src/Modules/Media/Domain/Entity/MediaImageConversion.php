@@ -14,7 +14,7 @@ use App\Modules\Media\Domain\ValueObject\MediaImageConversionId;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
-use App\Modules\Media\Infrastructure\Cycle\MediaValueObjectTypecast;
+use App\Shared\Infrastructure\Cycle\ValueObjectCast;
 use App\Modules\Media\Repository\MediaImageConversionRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -25,7 +25,7 @@ use Cycle\ORM\Parser\Typecast;
     role: 'media_image_conversion',
     table: 'media_image_conversions',
     repository: MediaImageConversionRepository::class,
-    typecast: [Typecast::class, MediaValueObjectTypecast::class],
+    typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class MediaImageConversion
 {

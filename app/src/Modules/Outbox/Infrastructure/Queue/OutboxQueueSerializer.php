@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure;
+namespace App\Modules\Outbox\Infrastructure\Queue;
 
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;

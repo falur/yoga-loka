@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure;
+namespace App\Modules\Outbox\Infrastructure\Relay;
 
 use App\Modules\Outbox\Application\Contract\OutboxRelaySleeperContract;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;

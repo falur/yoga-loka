@@ -78,7 +78,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
 
         $now = new \DateTimeImmutable();
         $storedOutboxEvent->markHandled($now);
-        $this->outboxEventRepository->save($storedOutboxEvent);
+        $this->entityManager->persist($storedOutboxEvent);
         $this->entityManager->run();
 
         $this->logger->debug(message: 'Outbox interceptor поставил handled.', context: [
@@ -207,7 +207,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
             );
         }
 
-        $this->outboxEventRepository->save($storedOutboxEvent);
+        $this->entityManager->persist($storedOutboxEvent);
         $this->entityManager->run();
 
         $jobFailureContext = [

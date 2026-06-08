@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Configuration\Cycle;
 
-use App\Shared\Infrastructure\Configuration\Mapping\InvalidConfigValueException;
+use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
 use Cycle\ORM\Collection\CollectionFactoryInterface;
 
 final readonly class CycleCollectionsConfig

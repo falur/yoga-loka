@@ -12,7 +12,7 @@ use App\Modules\Outbox\Infrastructure\Cycle\OutboxEventDateTypecast;
 use App\Modules\Outbox\Infrastructure\Cycle\OutboxLastErrorTypecast;
 use App\Modules\Outbox\Infrastructure\Relay\InfiniteOutboxRelayLoopControl;
 use App\Modules\Outbox\Infrastructure\Registry\OutboxJobRegistry;
-use App\Modules\Outbox\Infrastructure\Registry\OutboxJobRegistryException;
+use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueuePublisher;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use PHPUnit\Framework\TestCase;

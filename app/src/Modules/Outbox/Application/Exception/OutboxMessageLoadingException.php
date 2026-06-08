@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Application\Message;
+namespace App\Modules\Outbox\Application\Exception;
 
+use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 
 final class OutboxMessageLoadingException extends \DomainException
@@ -42,20 +43,5 @@ final class OutboxMessageLoadingException extends \DomainException
             $outboxMessage::class,
             $expectedMessageClass,
         ));
-    }
-
-    /**
-     * @param class-string<OutboxMessage> $expectedMessageClass
-     */
-    public static function deserializationFailed(string $expectedMessageClass, \Throwable $exception): self
-    {
-        return new self(
-            message: \sprintf(
-                'Не удалось загрузить outbox-сообщение `%s`: %s',
-                $expectedMessageClass,
-                $exception->getMessage(),
-            ),
-            previous: $exception,
-        );
     }
 }

@@ -9,7 +9,7 @@ use App\Modules\Outbox\Application\Contract\OutboxRelayLoopControlContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelaySleeperContract;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
-use App\Modules\Outbox\Infrastructure\Relay\OutboxRelayStoppedException;
+use App\Modules\Outbox\Infrastructure\Exception\OutboxRelayStoppedException;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelayWorker;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
 use PHPUnit\Framework\TestCase;

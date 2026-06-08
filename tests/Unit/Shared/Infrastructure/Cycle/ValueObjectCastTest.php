@@ -6,7 +6,6 @@ namespace Tests\Unit\Shared\Infrastructure\Cycle;
 
 use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\ORM\Exception\TypecastException;
 use PHPUnit\Framework\TestCase;
 use Spiral\Core\Attribute\Singleton;
 
@@ -68,12 +67,12 @@ final class ValueObjectCastTest extends TestCase
         self::assertSame(['payload' => 'ok'], $uncastedData);
     }
 
-    public function testUnsupportedObjectFailsWithFieldName(): void
+    public function testUnsupportedObjectFails(): void
     {
         $cast = new ValueObjectCast();
 
-        $this->expectException(TypecastException::class);
-        $this->expectExceptionMessage('field');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Объект не поддерживает запись в базу.');
 
         $cast->uncast(['field' => new \stdClass()]);
     }

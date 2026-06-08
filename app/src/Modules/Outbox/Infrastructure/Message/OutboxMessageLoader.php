@@ -7,7 +7,7 @@ namespace App\Modules\Outbox\Infrastructure\Message;
 use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\OutboxMessageLoadingException;
+use App\Modules\Outbox\Application\Exception\OutboxMessageLoadingException;
 use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
@@ -40,19 +40,12 @@ final readonly class OutboxMessageLoader implements OutboxMessageLoaderContract
             );
         }
 
-        try {
-            $outboxMessage = $this->outboxMessageSerializer->deserialize(
-                serializedOutboxMessage: new SerializedOutboxMessage(
-                    type: $storedOutboxEvent->type->value(),
-                    payload: $storedOutboxEvent->payload->value(),
-                ),
-            );
-        } catch (\Throwable $exception) {
-            throw OutboxMessageLoadingException::deserializationFailed(
-                expectedMessageClass: $expectedMessageClass,
-                exception: $exception,
-            );
-        }
+        $outboxMessage = $this->outboxMessageSerializer->deserialize(
+            serializedOutboxMessage: new SerializedOutboxMessage(
+                type: $storedOutboxEvent->type->value(),
+                payload: $storedOutboxEvent->payload->value(),
+            ),
+        );
 
         if (!$outboxMessage instanceof $expectedMessageClass) {
             throw OutboxMessageLoadingException::restoredTypeMismatch(

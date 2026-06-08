@@ -6,6 +6,7 @@ namespace App\Modules\Outbox\Infrastructure\Registry;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
 use Spiral\Queue\HandlerInterface;
 
 final class OutboxJobRegistry implements OutboxJobRegistryContract

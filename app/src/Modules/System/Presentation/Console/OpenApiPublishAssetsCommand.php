@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\System\Presentation\Console;
 
+use App\Modules\System\Presentation\Exception\OpenApiAssetsPublicationException;
 use App\Shared\Infrastructure\Framework\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;
 use Spiral\Console\Attribute\AsCommand;

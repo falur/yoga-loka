@@ -8,7 +8,7 @@ use App\Shared\Infrastructure\Configuration\Cache\CacheAliasConfig;
 use App\Shared\Infrastructure\Configuration\Cache\CacheConfig;
 use App\Shared\Infrastructure\Configuration\Cache\CacheStorageConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Configuration\Mapping\ConfigMappingException;
+use App\Shared\Infrastructure\Exception\ConfigMappingException;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;

@@ -10,8 +10,6 @@ use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use Cycle\Database\Injection\Parameter;
-use Cycle\ORM\EntityManagerInterface;
-use Cycle\ORM\Select;
 use Cycle\ORM\Select\Repository;
 
 /**
@@ -19,13 +17,6 @@ use Cycle\ORM\Select\Repository;
  */
 final class OutboxEventRepository extends Repository
 {
-    public function __construct(
-        Select $select,
-        private readonly EntityManagerInterface $entityManager,
-    ) {
-        parent::__construct($select);
-    }
-
     public function findById(OutboxEventId $outboxEventId): StoredOutboxEvent|null
     {
         return $this->findByPK($outboxEventId->value());
@@ -53,10 +44,5 @@ final class OutboxEventRepository extends Repository
                 ->limit($outboxRelayBatchSize->value())
                 ->fetchAll(),
         );
-    }
-
-    public function save(StoredOutboxEvent $outboxEvent): void
-    {
-        $this->entityManager->persist($outboxEvent);
     }
 }

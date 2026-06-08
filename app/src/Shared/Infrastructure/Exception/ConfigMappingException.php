@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Infrastructure\Configuration\Mapping;
+namespace App\Shared\Infrastructure\Exception;
 
 use CuyZ\Valinor\Mapper\MappingError;
 

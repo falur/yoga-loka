@@ -92,7 +92,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
                     availableAt: $claimUntil,
                     now: $now,
                 );
-                $this->outboxEventRepository->save($claimedOutboxEvent);
+                $this->entityManager->persist($claimedOutboxEvent);
 
                 // Повторный захват по истёкшей claim-аренде, исчерпавший лимит попыток,
                 // переводится в failed прямо здесь — нарушение инварианта доставки, ERROR.
@@ -133,7 +133,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
             }
 
             $storedOutboxEvent->markQueued($now);
-            $this->outboxEventRepository->save($storedOutboxEvent);
+            $this->entityManager->persist($storedOutboxEvent);
             $this->entityManager->run();
 
             $this->logger->debug(message: 'Outbox relay поставил событие в очередь.', context: [
@@ -163,7 +163,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
                 availableAt: $now->modify(\sprintf('+%d seconds', $this->outboxConfig->publishRetryDelaySeconds)),
                 now: $now,
             );
-            $this->outboxEventRepository->save($storedOutboxEvent);
+            $this->entityManager->persist($storedOutboxEvent);
             $this->entityManager->run();
 
             $publishFailureContext = [

@@ -47,6 +47,13 @@ Infrastructure - технические реализации контракто�
 Presentation   - HTTP-контроллеры, фильтры запросов и другие входы.
 ```
 
+Исключения каждого слоя лежат в папке `Exception/` своего слоя:
+`Application/Exception`, `Infrastructure/Exception`, `Presentation/Exception`, а
+общие доменные — в `Shared/Domain/Exception`. Слой исключения определяется
+контрактом, к которому оно относится, а не местом выброса: например
+`OutboxMessageLoadingException` лежит в `Application/Exception`, хотя бросается в
+инфраструктурной реализации загрузчика сообщений.
+
 Правила связей:
 
 ```text
@@ -203,10 +210,12 @@ app/
         Application/
           Command/                # Сценарии relay и обработки outbox-сообщений
           Contract/               # OutboxEventStoreContract и сериализация сообщений
+          Exception/              # Исключения слоя Application (загрузка, сериализация сообщений)
           Message/                # DTO сообщений outbox
         Repository/               # Доступ к outbox_events
         Infrastructure/
           Bootloader/             # OutboxBootloader, OutboxConsoleBootloader
+          Exception/              # Исключения слоя Infrastructure (registry, relay)
           Relay/                  # Relay, worker, loop control, sleeper
           Queue/                  # Publisher, serializer, headers, status interceptor
           Message/                # Event store, message loader, message serializer
@@ -220,6 +229,7 @@ app/
         Presentation/
           Http/                   # Health, Swagger UI, OpenAPI YAML route
           Console/                # openapi:* команды
+          Exception/              # Исключения слоя Presentation (публикация ассетов OpenAPI)
           Temporal/               # технические workflow
 
     Shared/
@@ -234,6 +244,7 @@ app/
         Cache/
         Configuration/            # Типизированные config DTO и ConfigMapper
         Cycle/                    # Общие typecast-классы
+        Exception/                # Общие инфраструктурные исключения (config mapping)
         Framework/                # Spiral Kernel, bootloaders, routes
 ```
 

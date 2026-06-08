@@ -30,7 +30,7 @@ final readonly class MarkHandledDuringPushQueue implements QueueInterface
         $storedOutboxEvent = $this->outboxEventRepository->findById($this->outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->markHandled($this->handledAt);
-        $this->outboxEventRepository->save($storedOutboxEvent);
+        $this->entityManager->persist($storedOutboxEvent);
         $this->entityManager->run();
 
         return 'job-id';

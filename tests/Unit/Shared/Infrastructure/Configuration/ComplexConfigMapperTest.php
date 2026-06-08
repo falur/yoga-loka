@@ -10,7 +10,7 @@ use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Configuration\Database\DatabaseConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Configuration\Mapping\ConfigMappingException;
+use App\Shared\Infrastructure\Exception\ConfigMappingException;
 use App\Shared\Infrastructure\Configuration\Queue\QueueConfig;
 use App\Shared\Infrastructure\Configuration\Storage\StorageConfig;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Cycle;
 
 use BackedEnum;
-use Cycle\ORM\Exception\TypecastException;
 use Cycle\ORM\Parser\CastableInterface;
 use Cycle\ORM\Parser\UncastableInterface;
 
@@ -51,20 +50,12 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
     #[\Override]
     public function cast(array $data): array
     {
-        try {
-            foreach ($this->rules as $field => $rule) {
-                if (!\array_key_exists(key: $field, array: $data)) {
-                    continue;
-                }
-
-                $data[$field] = $this->castField(rule: $rule, value: $data[$field]);
+        foreach ($this->rules as $field => $rule) {
+            if (!\array_key_exists(key: $field, array: $data)) {
+                continue;
             }
-        } catch (\Throwable $exception) {
-            throw new TypecastException(
-                message: \sprintf('Не удалось восстановить значение поля `%s`: %s', $field, $exception->getMessage()),
-                code: $exception->getCode(),
-                previous: $exception,
-            );
+
+            $data[$field] = $this->castField(rule: $rule, value: $data[$field]);
         }
 
         return $data;
@@ -77,18 +68,10 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
     #[\Override]
     public function uncast(array $data): array
     {
-        try {
-            foreach ($data as $field => $value) {
-                $data[$field] = $this->uncastField(
-                    field: (string) $field,
-                    value: $value,
-                );
-            }
-        } catch (\Throwable $exception) {
-            throw new TypecastException(
-                message: \sprintf('Не удалось подготовить значение поля `%s`: %s', $field, $exception->getMessage()),
-                code: $exception->getCode(),
-                previous: $exception,
+        foreach ($data as $field => $value) {
+            $data[$field] = $this->uncastField(
+                field: (string) $field,
+                value: $value,
             );
         }
 

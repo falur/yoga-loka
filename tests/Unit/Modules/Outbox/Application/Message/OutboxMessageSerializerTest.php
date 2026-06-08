@@ -6,11 +6,12 @@ namespace Tests\Unit\Modules\Outbox\Application\Message;
 
 use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
-use App\Modules\Outbox\Application\Message\OutboxMessageSerializationException;
+use App\Modules\Outbox\Application\Exception\OutboxMessageSerializationException;
 use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
 use App\Modules\Outbox\Application\Message\StoredOutboxEventId;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Modules\Outbox\Infrastructure\Message\ValinorOutboxMessageSerializer;
+use CuyZ\Valinor\Mapper\MappingError;
 use PHPUnit\Framework\TestCase;
 
 final class OutboxMessageSerializerTest extends TestCase
@@ -55,7 +56,7 @@ final class OutboxMessageSerializerTest extends TestCase
     {
         $serializer = new ValinorOutboxMessageSerializer();
 
-        $this->expectException(OutboxMessageSerializationException::class);
+        $this->expectException(MappingError::class);
 
         $serializer->deserialize(
             serializedOutboxMessage: new SerializedOutboxMessage(
@@ -69,7 +70,8 @@ final class OutboxMessageSerializerTest extends TestCase
     {
         $serializer = new ValinorOutboxMessageSerializer();
 
-        $this->expectException(OutboxMessageSerializationException::class);
+        // Нормализатор Valinor бросает internal-исключение, поэтому проверяем стабильного родителя.
+        $this->expectException(\RuntimeException::class);
 
         $serializer->serialize(new UnsupportedOutboxMessagePayload(static fn(): string => 'unsupported'));
     }

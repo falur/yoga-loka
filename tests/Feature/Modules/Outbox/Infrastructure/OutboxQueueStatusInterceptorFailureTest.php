@@ -6,7 +6,6 @@ namespace Tests\Feature\Modules\Outbox\Infrastructure;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
 use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxMessageLoadingException;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
@@ -15,6 +14,7 @@ use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
+use CuyZ\Valinor\Mapper\MappingError;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\Exception\RetryException;
@@ -42,7 +42,7 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
     {
         $storedOutboxEvent = $this->persistQueuedEvent(payload: '{"text":"debug"}');
 
-        $this->expectException(OutboxMessageLoadingException::class);
+        $this->expectException(MappingError::class);
 
         try {
             $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
@@ -75,7 +75,7 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
             outboxEventType: $storedOutboxEvent->type,
         );
 
-        $this->expectException(OutboxMessageLoadingException::class);
+        $this->expectException(MappingError::class);
 
         try {
             $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(

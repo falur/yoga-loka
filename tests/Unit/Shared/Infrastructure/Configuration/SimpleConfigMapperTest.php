@@ -6,7 +6,7 @@ namespace Tests\Unit\Shared\Infrastructure\Configuration;
 
 use App\Shared\Infrastructure\Configuration\Mailer\MailerConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Configuration\Mapping\ConfigMappingException;
+use App\Shared\Infrastructure\Exception\ConfigMappingException;
 use App\Shared\Infrastructure\Configuration\Migration\MigrationConfig;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
 use App\Shared\Infrastructure\Configuration\Scaffolder\ScaffolderConfig;

@@ -9,7 +9,7 @@ use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
 use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\OutboxMessageLoadingException;
+use App\Modules\Outbox\Application\Exception\OutboxMessageLoadingException;
 use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
@@ -17,6 +17,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Infrastructure\Message\OutboxMessageLoader;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
+use CuyZ\Valinor\Mapper\MappingError;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
 use Tests\TestCase;
@@ -84,8 +85,7 @@ final class OutboxMessageLoaderTest extends TestCase
             payload: '{"text":"missing date"}',
         );
 
-        $this->expectException(OutboxMessageLoadingException::class);
-        $this->expectExceptionMessage('Не удалось загрузить outbox-сообщение');
+        $this->expectException(MappingError::class);
 
         $this->getContainer()->get(OutboxMessageLoaderContract::class)->load(
             outboxEventId: $outboxEventId,

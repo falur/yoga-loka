@@ -24,12 +24,18 @@ for bucket in ${MINIO_BUCKETS}; do
 
     if mc stat "yoga-loka/${bucket}" >/dev/null 2>&1; then
         echo "[minio-init] Bucket уже существует: ${bucket}"
-        continue
+    else
+        echo "[minio-init] Создаю bucket: ${bucket}"
+        mc mb "yoga-loka/${bucket}" >/dev/null
+        echo "[minio-init] Bucket создан: ${bucket}"
     fi
 
-    echo "[minio-init] Создаю bucket: ${bucket}"
-    mc mb "yoga-loka/${bucket}" >/dev/null
-    echo "[minio-init] Bucket создан: ${bucket}"
+    # media-public отдаёт прямые публичные URL, поэтому нужен anonymous read (download).
+    # Идемпотентно применяем policy на каждом запуске.
+    if [[ "${bucket}" == "media-public" ]]; then
+        echo "[minio-init] Ставлю anonymous download policy: ${bucket}"
+        mc anonymous set download "yoga-loka/${bucket}" >/dev/null
+    fi
 done
 
 echo "[minio-init] Проверка bucket-ов MinIO завершена"

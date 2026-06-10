@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Media\Presentation\Job\ProcessMediaJob;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
@@ -128,6 +129,7 @@ return [
         'handlers' => [
             // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
             OutboxDebugLogJob::class => OutboxDebugLogJob::class,
+            ProcessMediaJob::class => ProcessMediaJob::class,
         ],
 
         /**
@@ -140,6 +142,7 @@ return [
             // 'ping' => 'json',
             // \App\Modules\System\Presentation\Job\Ping::class => 'json',
             OutboxDebugLogJob::class => OutboxQueueSerializer::class,
+            ProcessMediaJob::class => OutboxQueueSerializer::class,
         ],
     ],
 

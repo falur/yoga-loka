@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Domain\ValueObject;
 
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
+use App\Modules\Media\Domain\Enum\MediaType;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use Ramsey\Uuid\Uuid;
 
@@ -17,14 +19,39 @@ final readonly class MediaPath implements \Stringable, \JsonSerializable
 
     public static function originalUpload(MediaStorageKey $storageKey, string $extension): self
     {
-        $safeExtension = \strtolower(\trim($extension));
+        return self::fromString(
+            \sprintf('uploads/%s/%s/source.%s', $storageKey->shard(), $storageKey, self::sanitizeExtension($extension)),
+        );
+    }
 
-        if ($safeExtension === '' || \preg_match(pattern: '/^[a-z0-9]+$/', subject: $safeExtension) !== 1) {
-            throw new InvalidDomainValueException('Расширение файла имеет неверный формат.');
-        }
+    public static function imageConversion(
+        MediaStorageKey $storageKey,
+        MediaImageConversionType $type,
+        string $extension,
+    ): self {
+        return self::fromString(
+            \sprintf(
+                'images/%s/%s/%s.%s',
+                $storageKey->shard(),
+                $storageKey,
+                $type->value,
+                self::sanitizeExtension($extension),
+            ),
+        );
+    }
+
+    public static function originalReady(MediaStorageKey $storageKey, MediaType $type, string $extension): self
+    {
+        $prefix = match ($type) {
+            MediaType::Image => 'images',
+            MediaType::Video => 'videos',
+            MediaType::Audio, MediaType::Document => throw new InvalidDomainValueException(
+                'Перекладка готового оригинала поддержана только для изображений и видео.',
+            ),
+        };
 
         return self::fromString(
-            \sprintf('uploads/%s/%s/source.%s', $storageKey->shard(), $storageKey, $safeExtension),
+            \sprintf('%s/%s/%s/source.%s', $prefix, $storageKey->shard(), $storageKey, self::sanitizeExtension($extension)),
         );
     }
 
@@ -39,6 +66,19 @@ final readonly class MediaPath implements \Stringable, \JsonSerializable
     public function value(): string
     {
         return $this->value;
+    }
+
+    /**
+     * Расширение файла из последнего сегмента пути (без точки). Используется для построения
+     * путей конверсий и готового оригинала с тем же форматом, что у загруженного файла.
+     */
+    public function extension(): string
+    {
+        $segments = \explode(separator: '/', string: $this->value);
+        $fileName = (string) \end($segments);
+        $dotPosition = \strrpos(haystack: $fileName, needle: '.');
+
+        return $dotPosition === false ? '' : \substr(string: $fileName, offset: $dotPosition + 1);
     }
 
     public function equals(self $other): bool
@@ -56,6 +96,17 @@ final readonly class MediaPath implements \Stringable, \JsonSerializable
     public function jsonSerialize(): string
     {
         return $this->value;
+    }
+
+    private static function sanitizeExtension(string $extension): string
+    {
+        $safeExtension = \strtolower(\trim($extension));
+
+        if ($safeExtension === '' || \preg_match(pattern: '/^[a-z0-9]+$/', subject: $safeExtension) !== 1) {
+            throw new InvalidDomainValueException('Расширение файла имеет неверный формат.');
+        }
+
+        return $safeExtension;
     }
 
     private static function assertValid(string $value): void

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Domain\ValueObject;
 
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
+use App\Modules\Media\Domain\Enum\MediaType;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;
@@ -20,6 +22,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
+use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingAttempts;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
@@ -67,6 +70,54 @@ final class MediaValueObjectTest extends TestCase
         MediaPath::fromString('uploads/aa/11111111-1111-4111-8111-111111111111/source.jpg');
     }
 
+    public function testMediaPathFactoriesBuildValidPaths(): void
+    {
+        $storageKey = MediaStorageKey::fromString('ab111111-1111-4111-8111-111111111111');
+
+        self::assertSame(
+            'images/ab/ab111111-1111-4111-8111-111111111111/thumbnail.jpg',
+            (string) MediaPath::imageConversion(
+                storageKey: $storageKey,
+                type: MediaImageConversionType::Thumbnail,
+                extension: 'JPG',
+            ),
+        );
+        self::assertSame(
+            'images/ab/ab111111-1111-4111-8111-111111111111/source.png',
+            (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Image, extension: 'png'),
+        );
+        self::assertSame(
+            'videos/ab/ab111111-1111-4111-8111-111111111111/source.mp4',
+            (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Video, extension: 'mp4'),
+        );
+    }
+
+    public function testMediaPathExtensionReadsLastSegment(): void
+    {
+        $storageKey = MediaStorageKey::fromString('ab111111-1111-4111-8111-111111111111');
+
+        self::assertSame('jpg', MediaPath::originalUpload(storageKey: $storageKey, extension: 'jpg')->extension());
+        self::assertSame('', MediaPath::fromString('uploads/ab/ab111111-1111-4111-8111-111111111111/source')->extension());
+    }
+
+    public function testOriginalReadyRejectsUnsupportedMediaType(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaPath::originalReady(storageKey: MediaStorageKey::generate(), type: MediaType::Audio, extension: 'mp3');
+    }
+
+    public function testMediaPathFactoryRejectsInvalidExtension(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaPath::imageConversion(
+            storageKey: MediaStorageKey::generate(),
+            type: MediaImageConversionType::Thumbnail,
+            extension: 'jp g',
+        );
+    }
+
     public function testMimeTypeValidatesLength(): void
     {
         self::assertSame('image/jpeg', (string) MediaMimeType::fromString('image/jpeg'));
@@ -82,7 +133,12 @@ final class MediaValueObjectTest extends TestCase
     #[DataProvider('integerValueObjectProvider')]
     public function testIntegerValueObjectsValidateBorders(string $valueObjectClass, int $valid, int $invalid): void
     {
-        self::assertSame($valid, $valueObjectClass::fromInt($valid)->value());
+        $validValue = $valueObjectClass::fromInt($valid);
+        self::assertSame($valid, $validValue->value());
+        self::assertSame($valid, $validValue->jsonSerialize());
+        self::assertSame((string) $valid, (string) $validValue);
+        self::assertTrue($valueObjectClass::supports($valid));
+        self::assertFalse($valueObjectClass::supports($invalid));
 
         $this->expectException(InvalidDomainValueException::class);
 
@@ -156,5 +212,6 @@ final class MediaValueObjectTest extends TestCase
         yield MediaMultipartPartsCount::class => [MediaMultipartPartsCount::class, 10_000, 10_001];
         yield MediaMultipartPartSize::class => [MediaMultipartPartSize::class, 5_242_880, 5_242_879];
         yield MediaMultipartPartNumber::class => [MediaMultipartPartNumber::class, 10_000, 10_001];
+        yield MediaPresignedTtl::class => [MediaPresignedTtl::class, 604_800, 604_801];
     }
 }

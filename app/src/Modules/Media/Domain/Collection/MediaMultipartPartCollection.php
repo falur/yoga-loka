@@ -26,13 +26,11 @@ final class MediaMultipartPartCollection extends Collection
     #[\Override]
     public function jsonSerialize(): array
     {
-        $payload = [];
-
-        foreach ($this->values() as $part) {
-            $payload[] = $part->jsonSerialize();
-        }
-
-        return $payload;
+        return $this
+            ->toBase()
+            ->map(static fn(MediaMultipartPart $part): array => $part->jsonSerialize())
+            ->values()
+            ->all();
     }
 
     /**

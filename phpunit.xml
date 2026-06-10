@@ -45,6 +45,13 @@
         <env name="S3_KEY" value="yoga_loka" />
         <env name="S3_SECRET" value="yoga_loka_password" />
         <env name="S3_ENDPOINT" value="http://minio:9000" />
+        <env name="MEDIA_UPLOAD_STORAGE_PREFIX" value="test" />
+        <env name="MEDIA_PRIVATE_STORAGE_PREFIX" value="test" />
+        <env name="MEDIA_PUBLIC_STORAGE_PREFIX" value="test" />
+        <env name="MEDIA_STAGING_TTL_SECONDS" value="86400" />
+        <env name="MEDIA_MULTIPART_THRESHOLD_BYTES" value="16777216" />
+        <env name="MEDIA_MULTIPART_PART_SIZE_BYTES" value="8388608" />
+        <env name="MEDIA_IMAGE_PROCESSING_DRIVER" value="imagick" />
         <env name="MAILER_DSN" value="smtp://mailpit:1025" />
         <env name="TEMPORAL_ADDRESS" value="temporal:7233" />
         <env name="TEMPORAL_TASK_QUEUE" value="default" />

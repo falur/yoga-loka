@@ -31,6 +31,8 @@ RUN set -eux; \
         php8.5-zip \
         php8.5-bcmath \
         php8.5-intl \
+        php8.5-gd \
+        php8.5-imagick \
         postgresql-client \
     ; \
     curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
@@ -60,6 +62,8 @@ RUN set -eux; \
     php -v; \
     php -m | grep -E '^redis$'; \
     php -m | grep -E '^pdo_pgsql$'; \
+    php -m | grep -E '^imagick$'; \
+    php -m | grep -E '^gd$'; \
     dpkg -l | grep php8.5-redis; \
     rr --version; \
     rr jobs --help >/dev/null; \

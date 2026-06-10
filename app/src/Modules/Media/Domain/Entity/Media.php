@@ -10,6 +10,7 @@ use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
@@ -160,16 +161,34 @@ final class Media
         $this->touch();
     }
 
+    /**
+     * Готовое медиа не «ломается» задним числом: повторная/запоздалая фиксация ошибки на уже
+     * ready-медиа — no-op (симметрично guard'у в markReadyMovedTo). Защищает инвариант
+     * «ready без ошибки» независимо от вызывающего, даже если фиксацию сбоя задиспатчат в обход
+     * isReady-guard'а в ProcessMediaHandler (другой relay, ручной перезапуск Job, дубликат в очереди).
+     */
     public function recordTemporaryProcessingError(MediaProcessingError $processingError): void
     {
+        if ($this->status === MediaStatus::Ready) {
+            return;
+        }
+
         $this->status = MediaStatus::ProcessingFailed;
         $this->processingAttempts = $this->processingAttempts->increment();
         $this->processingError = $processingError;
         $this->touch();
     }
 
+    /**
+     * См. recordTemporaryProcessingError: тот же инвариант «ready без ошибки» — на уже
+     * ready-медиа фиксация постоянной ошибки также no-op.
+     */
     public function recordPermanentProcessingError(MediaProcessingError $processingError): void
     {
+        if ($this->status === MediaStatus::Ready) {
+            return;
+        }
+
         $this->status = MediaStatus::ProcessingFailed;
         $this->processingAttempts = $this->processingAttempts->increment();
         $this->processingError = $processingError;
@@ -181,6 +200,39 @@ final class Media
         $this->status = MediaStatus::Ready;
         $this->processingError = MediaProcessingError::none();
         $this->touch();
+    }
+
+    /**
+     * Перевод в ready с переназначением целевого хранилища и пути (после перекладки оригинала
+     * из staging). Идемпотентен: повторная доставка на ready — no-op. Допустим из uploaded,
+     * processing или processingFailed (ретрай обработки после транзиентной ошибки).
+     */
+    public function markReadyMovedTo(MediaStorage $storage, MediaPath $path): void
+    {
+        if ($this->status === MediaStatus::Ready) {
+            return;
+        }
+
+        if (
+            $this->status !== MediaStatus::Uploaded
+            && $this->status !== MediaStatus::Processing
+            && $this->status !== MediaStatus::ProcessingFailed
+        ) {
+            throw new InvalidDomainValueException(
+                'Перевод медиа в ready допустим только из uploaded, processing или processingFailed.',
+            );
+        }
+
+        $this->storage = $storage;
+        $this->path = $path;
+        $this->status = MediaStatus::Ready;
+        $this->processingError = MediaProcessingError::none();
+        $this->touch();
+    }
+
+    public function isReady(): bool
+    {
+        return $this->status === MediaStatus::Ready;
     }
 
     public function markReadyOriginalRemoved(): void

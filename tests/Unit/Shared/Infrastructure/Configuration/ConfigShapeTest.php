@@ -22,6 +22,7 @@ final class ConfigShapeTest extends TestCase
                 'cycle',
                 'database',
                 'mailer',
+                'media',
                 'migration',
                 'openapi',
                 'outbox',

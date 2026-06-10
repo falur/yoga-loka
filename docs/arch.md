@@ -261,6 +261,23 @@ Domain         -> PHP standard library, свой Domain, Shared/Domain
 Shared         -> общий доменный и инфраструктурный код без привязки к одному модулю
 ```
 
+Осознанное исключение: типизированный `TypedConfig` из
+`Shared/Infrastructure/Configuration` может инжектиться напрямую в Application-Handler,
+когда сценарию нужны инфра-дефолты (staging-TTL, пороги, размеры, драйвер). Пример —
+`MediaConfig` в `RequestMediaUploadHandler` модуля `Media`.
+Формально `Shared/Infrastructure` не входит в список зависимостей Application выше, но
+`TypedConfig` — это не технический сервис с поведением и не зависимость от чужого модуля:
+правила (`rules.md` «Typed config для каждого config-файла») и эта же `arch.md`
+(«Configuration → app/config → Shared/Infrastructure/Configuration») предписывают единое
+размещение всех config-DTO в `Shared/Infrastructure/Configuration`. Оборачивать такой
+config-DTO в Application-`*Contract` и привязывать его в бутлоадере означало бы создать
+pass-through-обёртку над `TypedConfig` ради формального списка — это запрещённый паттерн
+(ср. «Без pass-through typecast-обёрток») и сделало бы модуль единственным, кто прячет
+собственный typed-config за контрактом. Поэтому прямая инъекция `TypedConfig` в Application
+допускается явно. Если Application нужен именно технический сервис с поведением (S3,
+процессор, внешний клиент) — он по-прежнему идёт через `Application/Contract` + реализацию
+в `Infrastructure`, без исключений.
+
 ## Взаимодействие слоёв
 
 ### Поток HTTP-команды
@@ -484,6 +501,14 @@ Lifecycle hooks и after-commit callbacks не входят в CQRS-bus. Вне�
 transactional outbox. К таким эффектам относятся сообщения в Centrifugo, email,
 push-уведомления, webhooks и любые интеграции, которые нельзя выполнять до
 финального commit-а бизнес-транзакции.
+
+Outbox используется не только для внешних интеграций, но и для внутренних
+отложенных шагов, которым нужна гарантированная доставка после commit-а. Пример —
+асинхронная обработка медиа: `Media` Application Handler в одной транзакции
+переводит медиа в `uploaded` и кладёт `MediaUploaded` в outbox, а relay запускает
+тяжёлую обработку (перекладка оригинала, конверсии на Imagick) уже после commit-а.
+Определяющий признак — требование «надёжно выполнить после commit», а не то,
+внешний эффект или внутренний.
 
 ```text
 HTTP / Console / Job / Temporal

@@ -44,7 +44,14 @@ Ondrej PHP PPA не используется, потому что для Ubuntu 
 
 RoadRunner binary устанавливается в `/usr/local/bin/rr`, чтобы bind mount
 репозитория не скрывал исполняемый файл. В image проверяются `redis`,
-`pdo_pgsql`, `php8.5-redis`, `rr --version`, jobs и workers команды.
+`pdo_pgsql`, `imagick`, `gd`, `php8.5-redis`, `rr --version`, jobs и workers команды.
+
+Обработка изображений модуля `Media` использует Intervention Image v4. В образ ставятся
+apt-пакеты `php8.5-imagick` (доступен в `resolute/universe`) и `php8.5-gd`. Основной драйвер —
+imagick, GD остаётся фолбэком: драйвер выбирается значением `MEDIA_IMAGE_PROCESSING_DRIVER`
+(`imagick` по умолчанию, `gd` — фолбэк) из `app/config/media.php`. Если под текущим базовым
+образом apt-пакет imagick станет недоступен, альтернатива — собрать расширение через PECL с
+`libmagickwand-dev`.
 
 RoadRunner jobs по умолчанию используют RabbitMQ pipeline. Memory pipeline
 остаётся в конфигурации только для локальных экспериментов и обратной

@@ -28,6 +28,16 @@ abstract readonly class AbstractIntegerValue implements \Stringable, \JsonSerial
         return $this->value;
     }
 
+    /**
+     * Проверяет, попадает ли значение в допустимый доменный диапазон [MIN; MAX] без создания VO.
+     * Нужно на границе Application, чтобы перевести невалидный вход в ValidationException (422)
+     * до построения VO, которое бросило бы InvalidDomainValueException (500).
+     */
+    public static function supports(int $value): bool
+    {
+        return $value >= static::MIN && $value <= static::MAX;
+    }
+
     public function equals(self $other): bool
     {
         return $this->value === $other->value;

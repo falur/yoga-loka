@@ -11,7 +11,7 @@ echo "[test-runner] Старт PHPStan"
 composer phpstan
 
 echo "[test-runner] Старт тестов"
-composer test
+COMPOSER_PROCESS_TIMEOUT=900 composer test
 
 echo "[test-runner] Старт проверки покрытия"
 COMPOSER_PROCESS_TIMEOUT=900 XDEBUG_MODE=coverage composer test-coverage

@@ -33,6 +33,7 @@ use Spiral\Twig\Bootloader\TwigBootloader;
 use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
+use App\Modules\Media\Infrastructure\Bootloader\MediaBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
 use GianTiaga\SpiralApiErrors\Bootloader\ApiErrorBootloader;
@@ -132,6 +133,7 @@ class Kernel extends \Spiral\Framework\Kernel
             OpenApiToolsBootloader::class,
             CqrsBootloader::class,
             OutboxBootloader::class,
+            MediaBootloader::class,
 
             // Почта
             MailerBootloader::class,

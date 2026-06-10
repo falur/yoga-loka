@@ -28,6 +28,7 @@ RUN set -eux; \
         php8.5-sockets \
         php8.5-xml \
         php8.5-xdebug \
+        php8.5-pcov \
         php8.5-zip \
         php8.5-bcmath \
         php8.5-intl \
@@ -59,11 +60,14 @@ RUN set -eux; \
         --no-interaction \
         --quiet; \
     chmod +x /usr/local/bin/rr; \
+    # PCOV выключен по умолчанию; включается только coverage-командой через php -d pcov.enabled=1.
+    echo 'pcov.enabled=0' > /etc/php/8.5/cli/conf.d/99-pcov-disabled.ini; \
     php -v; \
     php -m | grep -E '^redis$'; \
     php -m | grep -E '^pdo_pgsql$'; \
     php -m | grep -E '^imagick$'; \
     php -m | grep -E '^gd$'; \
+    php -m | grep -E '^pcov$'; \
     dpkg -l | grep php8.5-redis; \
     rr --version; \
     rr jobs --help >/dev/null; \

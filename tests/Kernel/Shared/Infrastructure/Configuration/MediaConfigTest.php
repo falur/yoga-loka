@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Infrastructure\Configuration;
+namespace Tests\Kernel\Shared\Infrastructure\Configuration;
 
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Configuration\Media\MediaConfig;

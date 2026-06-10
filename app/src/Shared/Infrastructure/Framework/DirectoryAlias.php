@@ -8,4 +8,5 @@ enum DirectoryAlias: string
 {
     case Root = 'root';
     case Runtime = 'runtime';
+    case Cache = 'cache';
 }

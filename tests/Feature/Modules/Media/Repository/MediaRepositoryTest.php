@@ -38,10 +38,9 @@ use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use App\Modules\Media\Repository\MediaRepository;
 use App\Modules\Media\Repository\MediaVideoConversionRepository;
 use Cycle\ORM\EntityManagerInterface;
-use Cycle\ORM\ORMInterface;
-use Tests\TestCase;
+use Tests\DatabaseTestCase;
 
-final class MediaRepositoryTest extends TestCase
+final class MediaRepositoryTest extends DatabaseTestCase
 {
     public function testStoresAndRestoresMediaWithValueObjects(): void
     {
@@ -100,7 +99,7 @@ final class MediaRepositoryTest extends TestCase
         $this->entityManager()->run();
         $mediaId = $media->id;
 
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
 
@@ -108,7 +107,7 @@ final class MediaRepositoryTest extends TestCase
         self::assertInstanceOf(Media::class, $restoredImageConversion->media);
         self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
 
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $restoredMedia = $this->mediaRepository()->findById($mediaId);
 
@@ -122,7 +121,7 @@ final class MediaRepositoryTest extends TestCase
         $restoredMedia->markReady();
         $this->entityManager()->persist($restoredMedia);
         $this->entityManager()->run();
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $savedMedia = $this->mediaRepository()->findById($mediaId);
 
@@ -142,7 +141,7 @@ final class MediaRepositoryTest extends TestCase
         $this->entityManager()->run();
         $mediaId = $media->id;
 
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $restoredMedia = $this->mediaRepository()->findById($mediaId);
 
@@ -150,7 +149,7 @@ final class MediaRepositoryTest extends TestCase
         $restoredMedia->markReady();
         $this->entityManager()->persist($restoredMedia);
         $this->entityManager()->run();
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $savedMedia = $this->mediaRepository()->findById($mediaId);
         $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
@@ -173,7 +172,7 @@ final class MediaRepositoryTest extends TestCase
         $this->entityManager()->run();
         $mediaId = $media->id;
 
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
         self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
@@ -182,7 +181,7 @@ final class MediaRepositoryTest extends TestCase
 
         $this->entityManager()->persist($restoredImageConversion);
         $this->entityManager()->run();
-        $this->cleanOrmState();
+        $this->cleanOrmHeap();
 
         $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
         self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
@@ -313,12 +312,6 @@ final class MediaRepositoryTest extends TestCase
     private function entityManager(): EntityManagerInterface
     {
         return $this->getContainer()->get(EntityManagerInterface::class);
-    }
-
-    private function cleanOrmState(): void
-    {
-        $this->entityManager()->clean();
-        $this->getContainer()->get(ORMInterface::class)->getHeap()->clean();
     }
 
     private function mediaRepository(): MediaRepository

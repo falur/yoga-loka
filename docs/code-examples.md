@@ -115,12 +115,15 @@ final readonly class PaymentProviderConfig
 }
 ```
 
+Тест на `Tests\TestCase` поднимает Spiral kernel, поэтому живёт в suite `Kernel`
+(`tests/Kernel`), а не в лёгком `Unit`:
+
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Infrastructure\Configuration;
+namespace Tests\Kernel\Shared\Infrastructure\Configuration;
 
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Configuration\Payment\PaymentConfig;

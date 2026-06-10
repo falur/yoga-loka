@@ -19,21 +19,10 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use Cycle\ORM\EntityManagerInterface;
-use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
-use Tests\TestCase;
+use Tests\DatabaseTestCase;
 
-final class OutboxEventRepositoryTest extends TestCase
+final class OutboxEventRepositoryTest extends DatabaseTestCase
 {
-    use CleansOutboxEvents;
-
-    #[\Override]
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->cleanOutboxEvents();
-    }
-
     public function testStorePersistsAndRestoresOutboxEvent(): void
     {
         $storedOutboxEventId = $this->outboxEventStore()->add(

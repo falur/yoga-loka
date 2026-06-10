@@ -40,11 +40,12 @@
         "swagger-api/swagger-ui": "^5.32"
     },
     "require-dev": {
+        "brianium/paratest": "7.22.4",
         "friendsofphp/php-cs-fixer": "*",
+        "gian-tiaga/phpstan-strict-rules": "*",
         "phpstan/phpstan": "^2.1.54",
         "spiral/code-style": "^2.2",
         "spiral/dumper": "^3.3.1",
-        "gian-tiaga/phpstan-strict-rules": "*",
         "spiral/testing": "^3.0"
     },
     "autoload": {
@@ -81,11 +82,11 @@
         "cs": "php-cs-fixer fix --dry-run --diff -v",
         "cs:fix": "php-cs-fixer fix -v",
         "test": "phpunit",
-        "test-coverage": "mkdir -p runtime/coverage && phpunit --coverage-text --coverage-clover runtime/coverage/clover.xml && php docker/test/assert-coverage.php runtime/coverage/clover.xml 100",
+        "test:parallel": "vendor/bin/paratest --processes \"${TEST_PARALLEL_PROCESSES:-4}\"",
+        "test-coverage": "echo '[coverage] драйвер=PCOV clover=runtime/coverage/clover.xml порог=100%' && mkdir -p runtime/coverage && XDEBUG_MODE=off php -d pcov.enabled=1 -d pcov.directory=app/src vendor/bin/paratest --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=app/src'\" --processes \"${TEST_PARALLEL_PROCESSES:-4}\" --testsuite Unit,Kernel,Feature --coverage-clover runtime/coverage/clover.xml && php docker/test/assert-coverage.php runtime/coverage/clover.xml 100",
         "qa": [
             "@cs",
             "@phpstan",
-            "@test",
             "@test-coverage"
         ]
     },

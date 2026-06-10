@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[test-runner] Старт миграций тестовой базы"
-php app.php migrate --force
+# Полный quality gate: стиль, PHPStan и один coverage-run (PCOV) без отдельного
+# обычного прогона тестов перед покрытием. composer qa = cs + phpstan +
+# test-coverage, поэтому набор тестов запускается ровно один раз с покрытием.
 
-echo "[test-runner] Старт проверки стиля"
-composer cs
+echo "[test-runner] Этап 1/4: очистка runtime-артефактов"
+bash docker/test/clean-run-artifacts.sh
 
-echo "[test-runner] Старт PHPStan"
-composer phpstan
+echo "[test-runner] Этап 2/4: миграции тестовых баз"
+bash docker/test/migrate-test-databases.sh
 
-echo "[test-runner] Старт тестов"
-COMPOSER_PROCESS_TIMEOUT=900 composer test
+echo "[test-runner] Этап 3/4: прогрев Cycle schema cache"
+bash docker/test/warmup.sh
 
-echo "[test-runner] Старт проверки покрытия"
-COMPOSER_PROCESS_TIMEOUT=900 XDEBUG_MODE=coverage composer test-coverage
+echo "[test-runner] Этап 4/4: стиль, PHPStan и один coverage-run (PCOV)"
+COMPOSER_PROCESS_TIMEOUT=900 composer qa
 
 echo "[test-runner] Composer QA завершён успешно"

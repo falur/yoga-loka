@@ -19,21 +19,10 @@ use App\Modules\Outbox\Infrastructure\Message\OutboxMessageLoader;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use CuyZ\Valinor\Mapper\MappingError;
 use Cycle\ORM\EntityManagerInterface;
-use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
-use Tests\TestCase;
+use Tests\DatabaseTestCase;
 
-final class OutboxMessageLoaderTest extends TestCase
+final class OutboxMessageLoaderTest extends DatabaseTestCase
 {
-    use CleansOutboxEvents;
-
-    #[\Override]
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->cleanOutboxEvents();
-    }
-
     public function testLoadsStoredOutboxMessage(): void
     {
         $outboxEventId = $this->addOutboxMessage(new OutboxDebugLogMessage(

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          backupGlobals="false"
          colors="true"
          processIsolation="false"
@@ -16,6 +16,9 @@
         <testsuite name="Unit">
             <directory suffix="Test.php">tests/Unit</directory>
         </testsuite>
+        <testsuite name="Kernel">
+            <directory suffix="Test.php">tests/Kernel</directory>
+        </testsuite>
         <testsuite name="Feature">
             <directory suffix="Test.php">tests/Feature</directory>
         </testsuite>
@@ -28,7 +31,7 @@
     <php>
         <env name="DB_CONNECTION" value="pgsql" />
         <env name="DB_LOG_QUERY_PARAMETERS" value="true" />
-        <env name="DB_DATABASE" value="yoga_loka_test" />
+        <!-- DB_DATABASE, S3_BUCKET, S3_TEST_BUCKET задаёт tests/bootstrap.php по TEST_TOKEN. -->
         <env name="DB_HOST" value="postgres" />
         <env name="DB_PORT" value="5432" />
         <env name="DB_USERNAME" value="postgres" />
@@ -40,8 +43,6 @@
         <env name="SCHEDULER_MUTEX_CACHE_STORAGE" value="local" />
         <env name="REDIS_DSN" value="redis://redis:6379/0" />
         <env name="STORAGE_DEFAULT" value="s3-test" />
-        <env name="S3_BUCKET" value="yoga-loka-test" />
-        <env name="S3_TEST_BUCKET" value="yoga-loka-test" />
         <env name="S3_KEY" value="yoga_loka" />
         <env name="S3_SECRET" value="yoga_loka_password" />
         <env name="S3_ENDPOINT" value="http://minio:9000" />

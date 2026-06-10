@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Outbox\Presentation\Job;
+namespace Tests\Kernel\Modules\Outbox\Presentation\Job;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
 use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;

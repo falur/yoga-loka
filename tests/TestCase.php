@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use App\Shared\Infrastructure\Framework\DirectoryAlias;
 use Cycle\Database\DatabaseInterface;
 use Spiral\Config\ConfiguratorInterface;
 use Spiral\Config\Patch\Set;
@@ -33,9 +32,7 @@ class TestCase extends BaseTestCase
 
     public function defineDirectories(string $root): array
     {
-        return [
-            DirectoryAlias::Root->value => $root,
-        ];
+        return TestRuntime::directories($root);
     }
 
     protected function setUp(): void

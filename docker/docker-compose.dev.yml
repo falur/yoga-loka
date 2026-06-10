@@ -100,7 +100,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DATABASES: yoga_loka yoga_loka_test temporal temporal_visibility
+      POSTGRES_DATABASES: yoga_loka yoga_loka_test yoga_loka_test_1 yoga_loka_test_2 yoga_loka_test_3 yoga_loka_test_4 temporal temporal_visibility
     volumes:
       - ./postgres/ensure-databases.sh:/usr/local/bin/ensure-databases.sh:ro
     command: ["bash", "/usr/local/bin/ensure-databases.sh"]
@@ -145,7 +145,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yoga_loka}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yoga_loka_password}
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_BUCKETS: yoga-loka yoga-loka-test media-upload media-private media-public
+      MINIO_BUCKETS: yoga-loka yoga-loka-test yoga-loka-test-1 yoga-loka-test-2 yoga-loka-test-3 yoga-loka-test-4 media-upload media-private media-public
     volumes:
       - ./minio/ensure-buckets.sh:/usr/local/bin/ensure-buckets.sh:ro
     entrypoint: ["bash", "/usr/local/bin/ensure-buckets.sh"]

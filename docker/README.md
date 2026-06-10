@@ -89,8 +89,11 @@ docker compose -f docker/docker-compose.dev.yml --env-file .env -p yoga-loka-spi
 make reset-test
 ```
 
-Эта команда проверяет, что очищаются только база `yoga_loka_test` и bucket
-`yoga-loka-test`.
+Команда поднимает тестовые сервисы и очищает только тестовые ресурсы: базовую
+базу `yoga_loka_test` и базовый bucket `yoga-loka-test`, а при параллельном
+запуске — ещё и worker-ресурсы `yoga_loka_test_1..4` / `yoga-loka-test-1..4`.
+Перед очисткой скрипт проверяет точные имена баз и bucket-ов. Миграции
+`reset-test` не выполняет — это делает `docker/test/migrate-test-databases.sh`.
 
 ## Env
 
@@ -129,11 +132,27 @@ RabbitMQ pipeline настраивается через env:
 make up
 make composer-install
 make migrate
-make test
+make test-unit      # быстрый suite Unit без kernel и внешних сервисов
+make test-kernel    # suite Kernel (Spiral kernel/container) после reset
+make test-feature   # suite Feature после reset, параллельно через ParaTest
+make warmup         # пересобрать cache/cycle.php в тестовых runtime-каталогах
+make test           # полный gate: один reset, один прогон Unit,Kernel,Feature (ParaTest)
+make test-coverage  # покрытие через PCOV (порог 100%)
+make qa             # стиль, PHPStan и один coverage-run без пересборки образа
+make qa-build       # тот же QA с пересборкой образа
 make phpstan
 make logs
 make shell
 ```
+
+Параллельный запуск управляется `TEST_PARALLEL_PROCESSES` (1..4, по умолчанию 4).
+Worker-и ParaTest изолированы по ресурсам: базы `yoga_loka_test_1..4`, bucket-ы
+`yoga-loka-test-1..4` и runtime-каталоги `runtime/testing-1..4`. Подготовку
+ресурсов выполняет `docker/test/prepare-parallel-resources.sh` (валидация лимита
+и очистка БД) и `docker/minio/ensure-buckets.sh reset-test` (очистка bucket-ов);
+миграции тестовых баз — единый владелец `docker/test/migrate-test-databases.sh`.
+Покрытие собирается PCOV (`pcov.enabled=0` по умолчанию, coverage-команда включает
+его через `php -d pcov.enabled=1` и пробрасывает в worker-ы ParaTest).
 
 Разово переложить pending outbox-события в RabbitMQ:
 

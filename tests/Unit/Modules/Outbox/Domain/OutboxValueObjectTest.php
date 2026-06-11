@@ -133,6 +133,14 @@ final class OutboxValueObjectTest extends TestCase
         );
     }
 
+    public function testOutboxLastErrorRejectsEmptyValue(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Ошибка outbox имеет неверную длину.');
+
+        OutboxLastError::fromString('');
+    }
+
     public function testOutboxAvailableAtWrapsAndComparesDate(): void
     {
         $now = new \DateTimeImmutable('2026-05-25 15:37:00.123456');

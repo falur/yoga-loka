@@ -10,8 +10,10 @@ use App\Shared\Infrastructure\Configuration\Cache\CacheStorageConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Exception\ConfigMappingException;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
+use CuyZ\Valinor\Mapper\TreeMapper;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;
+use CuyZ\Valinor\Normalizer\Normalizer;
 use CuyZ\Valinor\NormalizerBuilder;
 use PHPUnit\Framework\TestCase;
 use Spiral\Config\ConfiguratorInterface;
@@ -133,6 +135,65 @@ final class ConfigMapperTest extends TestCase
         self::assertArrayHasKey('storages', $normalized);
         self::assertArrayHasKey('typeAliases', $normalized);
         self::assertSame('array', $normalized['storages']['local']['type']);
+    }
+
+    public function testMapRethrowsUnexpectedError(): void
+    {
+        $configurator = $this->createStub(ConfiguratorInterface::class);
+        $configurator->method('getConfig')->willReturn([]);
+
+        $treeMapper = $this->createStub(TreeMapper::class);
+        $treeMapper->method('map')->willThrowException(new \RuntimeException('Непредвиденная ошибка маппинга.'));
+
+        $mapper = new ConfigMapper(
+            configurator: $configurator,
+            mapper: $treeMapper,
+            normalizer: new NormalizerBuilder()->normalizer(Format::array()),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Непредвиденная ошибка маппинга.');
+
+        $mapper->map(section: 'any', targetClass: ConfigMapperSnakeCaseProbe::class);
+    }
+
+    public function testNormalizeRejectsNonArrayResult(): void
+    {
+        $mapper = $this->mapperWithNormalizer(new class implements Normalizer {
+            public function normalize(mixed $value): mixed
+            {
+                return 'not-an-array';
+            }
+        });
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('должен возвращать массив для объекта');
+
+        $mapper->normalize(new \stdClass());
+    }
+
+    public function testNormalizeRejectsNonStringKeys(): void
+    {
+        $mapper = $this->mapperWithNormalizer(new class implements Normalizer {
+            public function normalize(mixed $value): mixed
+            {
+                return [0 => 'value'];
+            }
+        });
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('массив со строковыми ключами');
+
+        $mapper->normalize(new \stdClass());
+    }
+
+    private function mapperWithNormalizer(Normalizer $normalizer): ConfigMapper
+    {
+        return new ConfigMapper(
+            configurator: $this->createStub(ConfiguratorInterface::class),
+            mapper: $this->createStub(TreeMapper::class),
+            normalizer: $normalizer,
+        );
     }
 
     /**

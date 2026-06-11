@@ -19,6 +19,7 @@ use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\Exception\RetryException;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\MarkFinalThenThrowQueueStatusCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxQueueStatusInterceptorTestHelpers;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\QueueStatusDebugLogJobCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\QueueStatusTestCore;
@@ -94,6 +95,29 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
             self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
             self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
             self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+        }
+    }
+
+    public function testInterceptorSkipsFailureWhenEventBecameFinalDuringJob(): void
+    {
+        $storedOutboxEvent = $this->persistQueuedEvent();
+
+        $this->expectException(\RuntimeException::class);
+
+        try {
+            $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
+                controller: OutboxDebugLogJob::class,
+                action: 'handle',
+                parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
+                core: new MarkFinalThenThrowQueueStatusCore(
+                    storedOutboxEvent: $storedOutboxEvent,
+                    entityManager: $this->entityManager(),
+                    exception: new \RuntimeException('Job упал после перевода события в финальный статус.'),
+                ),
+            );
+        } finally {
+            // recordJobFailure увидел уже-финальное событие и не перезаписал его статус.
+            self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
         }
     }
 

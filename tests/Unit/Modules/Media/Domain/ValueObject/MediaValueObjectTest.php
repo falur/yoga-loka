@@ -202,6 +202,108 @@ final class MediaValueObjectTest extends TestCase
         new MediaMultipartPartCollection([$firstPart, $firstPart]);
     }
 
+    public function testProcessingAttemptsRejectsIncrementPastMaximum(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Количество попыток обработки превышено.');
+
+        MediaProcessingAttempts::fromInt(100)->increment();
+    }
+
+    public function testMultipartUploadIdComparesAndSerializes(): void
+    {
+        $uploadId = MediaMultipartUploadIdValue::fromString('upload-id');
+
+        self::assertSame('upload-id', $uploadId->value());
+        self::assertSame('upload-id', $uploadId->jsonSerialize());
+        self::assertTrue($uploadId->equals(MediaMultipartUploadIdValue::fromString('upload-id')));
+        self::assertFalse($uploadId->equals(MediaMultipartUploadIdValue::fromString('other-id')));
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaMultipartUploadIdValue::fromString('');
+    }
+
+    public function testMultipartPartETagSerializesAndRejectsEmpty(): void
+    {
+        self::assertSame('etag-value', MediaMultipartPartETag::fromString('etag-value')->jsonSerialize());
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaMultipartPartETag::fromString('');
+    }
+
+    public function testMimeTypeSerializesToJson(): void
+    {
+        self::assertSame('image/png', MediaMimeType::fromString('image/png')->jsonSerialize());
+    }
+
+    public function testStorageKeySerializesToJson(): void
+    {
+        self::assertSame(
+            '11111111-1111-4111-8111-111111111111',
+            MediaStorageKey::fromString('11111111-1111-4111-8111-111111111111')->jsonSerialize(),
+        );
+    }
+
+    public function testExpirationFailsWhenPermanentAskedForExpiry(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Постоянный файл не имеет даты удаления.');
+
+        MediaExpiration::permanent()->expiresAtOrFail();
+    }
+
+    public function testExpirationComparesAndSerializes(): void
+    {
+        $expiresAt = new \DateTimeImmutable('2026-05-21 18:41:00');
+        $expiration = MediaExpiration::temporaryUntil($expiresAt);
+
+        self::assertSame($expiresAt->format(\DateTimeInterface::ATOM), $expiration->jsonSerialize());
+        self::assertNull(MediaExpiration::permanent()->jsonSerialize());
+
+        self::assertTrue($expiration->equals(MediaExpiration::temporaryUntil($expiresAt)));
+        self::assertTrue(MediaExpiration::permanent()->equals(MediaExpiration::permanent()));
+        self::assertFalse($expiration->equals(MediaExpiration::permanent()));
+        self::assertFalse($expiration->equals(MediaExpiration::temporaryUntil($expiresAt->modify('+1 second'))));
+    }
+
+    public function testProcessingErrorSerializesAndRejectsEmpty(): void
+    {
+        self::assertSame(
+            'Не удалось обработать изображение',
+            MediaProcessingError::fromString('Не удалось обработать изображение')->jsonSerialize(),
+        );
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaProcessingError::fromString('');
+    }
+
+    public function testMediaPathSerializesToJson(): void
+    {
+        self::assertSame(
+            'uploads/11/11111111-1111-4111-8111-111111111111/source.jpg',
+            MediaPath::fromString('uploads/11/11111111-1111-4111-8111-111111111111/source.jpg')->jsonSerialize(),
+        );
+    }
+
+    public function testMediaPathRejectsTooLongValue(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Путь файла слишком длинный.');
+
+        MediaPath::fromString(\str_repeat('a', 1025));
+    }
+
+    public function testMediaPathRejectsInvalidFormat(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Путь файла имеет неверный формат.');
+
+        MediaPath::fromString('not-a-valid-path');
+    }
+
     public static function integerValueObjectProvider(): iterable
     {
         yield MediaFileSize::class => [MediaFileSize::class, 1, 0];

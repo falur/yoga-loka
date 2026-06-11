@@ -127,19 +127,21 @@ final class ValueObjectCast implements CastableInterface, UncastableInterface
             return $this->invokeObjectFactory(rule: $rule, method: 'fromString', value: $value);
         }
 
-        if (\method_exists(object_or_class: $rule, method: 'fromInt')) {
-            if (\is_string($value) && \preg_match(pattern: '/^-?\d+$/', subject: $value) === 1) {
-                return $this->invokeObjectFactory(rule: $rule, method: 'fromInt', value: (int) $value);
-            }
-
-            if (\is_int($value)) {
-                return $this->invokeObjectFactory(rule: $rule, method: 'fromInt', value: $value);
-            }
-
-            throw new \InvalidArgumentException('Числовой value object должен восстанавливаться из числа.');
+        // Инвариант: supportsRule() пропускает ровно четыре вида правил
+        // (ColumnValueTypecast, BackedEnum, fromString, fromInt); первые три отсечены выше,
+        // поэтому единственное оставшееся правило здесь — фабрика fromInt, и финальный throw
+        // означает «не-число для fromInt». Если в supportsRule() добавят новый вид правила,
+        // эту хвостовую ветку нужно расширить синхронно, иначе сообщение про «числовой
+        // value object» станет вводить в заблуждение.
+        if (\is_string($value) && \preg_match(pattern: '/^-?\d+$/', subject: $value) === 1) {
+            return $this->invokeObjectFactory(rule: $rule, method: 'fromInt', value: (int) $value);
         }
 
-        throw new \LogicException('Неподдерживаемое правило преобразования.');
+        if (\is_int($value)) {
+            return $this->invokeObjectFactory(rule: $rule, method: 'fromInt', value: $value);
+        }
+
+        throw new \InvalidArgumentException('Числовой value object должен восстанавливаться из числа.');
     }
 
     private function uncastField(

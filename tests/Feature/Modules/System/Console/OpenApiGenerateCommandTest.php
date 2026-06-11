@@ -25,4 +25,20 @@ final class OpenApiGenerateCommandTest extends TestCase
         self::assertStringContainsString('Ошибка API.', $contents);
         self::assertStringContainsString('/health:', $contents);
     }
+
+    #[Config('openapi.enabled', false)]
+    public function testGenerateCommandWarnsWhenDisabled(): void
+    {
+        $output = $this->runCommand(command: 'openapi:generate');
+
+        self::assertStringContainsString('Генерация OpenAPI выключена в конфигурации.', $output);
+    }
+
+    #[Config('openapi.sourcePath', 'definitely-missing-openapi-source')]
+    public function testGenerateCommandReportsGeneratorError(): void
+    {
+        $output = $this->runCommand(command: 'openapi:generate');
+
+        self::assertStringContainsString('Ошибка генерации OpenAPI', $output);
+    }
 }

@@ -328,6 +328,84 @@ final class OutboxRelayPublishTest extends TestCase
         self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
     }
 
+    public function testRelayReturnsZeroWhenNoPendingEvents(): void
+    {
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $publishedCount = $this->relayWithLogger($recordingOutboxLogger)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:04:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'debug',
+            messageSubstring: 'не нашёл pending-события',
+        ));
+    }
+
+    public function testRelayReclaimsStuckPublishingEventAndMarksFailedWhenAttemptsExhausted(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(1));
+
+        $stuckSince = new \DateTimeImmutable('2026-05-25 16:00:00');
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(text: 'stuck publishing', createdAt: $stuckSince),
+        );
+        $this->entityManager()->run();
+
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+            ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
+        // Истёкшая claim-аренда: событие зависло в publishing, available_at в прошлом.
+        $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
+        $this->entityManager()->persist($storedOutboxEvent);
+        $this->entityManager()->run();
+
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $publishedCount = $this->relayWithLogger($recordingOutboxLogger)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2026-05-25 16:05:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Failed->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'error',
+            messageSubstring: 'перевёл застрявшее в publishing событие в failed',
+        ));
+    }
+
+    public function testRelayReclaimsStuckPublishingEventAndRetriesWhenAttemptsRemain(): void
+    {
+        $this->getContainer()->removeBinding(OutboxConfig::class);
+        $this->getContainer()->bindSingleton(OutboxConfig::class, $this->outboxConfigWithMaxAttempts(3));
+
+        $stuckSince = new \DateTimeImmutable('2026-05-25 16:00:00');
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogMessage(text: 'stuck publishing retry', createdAt: $stuckSince),
+        );
+        $this->entityManager()->run();
+
+        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+            ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
+        $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
+        $this->entityManager()->persist($storedOutboxEvent);
+        $this->entityManager()->run();
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2026-05-25 16:05:00'),
+        );
+
+        $reclaimedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+
+        self::assertSame(1, $publishedCount);
+        self::assertNotNull($reclaimedOutboxEvent);
+        // Повторный захват исчерпал не все попытки: счётчик инкрементирован, событие опубликовано.
+        self::assertSame(1, $reclaimedOutboxEvent->attempts->value());
+        self::assertNotSame(OutboxEventStatus::Failed, $reclaimedOutboxEvent->status);
+    }
+
     private function relayWithLogger(RecordingOutboxLogger $recordingOutboxLogger): OutboxRelay
     {
         return new OutboxRelay(

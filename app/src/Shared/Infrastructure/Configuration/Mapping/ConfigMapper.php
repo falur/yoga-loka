@@ -8,18 +8,19 @@ use App\Shared\Infrastructure\Exception\ConfigMappingException;
 use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
 use CuyZ\Valinor\Mapper\MappingError;
 use CuyZ\Valinor\Mapper\TreeMapper;
-use CuyZ\Valinor\Normalizer\ArrayNormalizer;
+use CuyZ\Valinor\Normalizer\Normalizer;
 use Spiral\Config\ConfiguratorInterface;
 
 final readonly class ConfigMapper
 {
     /**
      * @param ConfiguratorInterface<object> $configurator
+     * @param Normalizer<mixed> $normalizer
      */
     public function __construct(
         private ConfiguratorInterface $configurator,
         private TreeMapper $mapper,
-        private ArrayNormalizer $normalizer,
+        private Normalizer $normalizer,
     ) {}
 
     /**

@@ -26,6 +26,17 @@ final class MediaTypecastTest extends TestCase
         self::assertSame($expiresAt, MediaExpirationTypecast::uncastValue(MediaExpiration::temporaryUntil($expiresAt)));
     }
 
+    public function testExpirationTypecastConvertsMutableDateAndUncastsNull(): void
+    {
+        $mutableDate = new \DateTime('2026-05-22 15:00:00');
+
+        self::assertEquals(
+            \DateTimeImmutable::createFromInterface($mutableDate),
+            MediaExpirationTypecast::castDatabaseValue($mutableDate)->value(),
+        );
+        self::assertNull(MediaExpirationTypecast::uncastValue(null));
+    }
+
     public function testProcessingErrorTypecastHandlesNullableString(): void
     {
         $processingError = MediaProcessingErrorTypecast::castDatabaseValue('Не удалось обработать файл');
@@ -34,6 +45,28 @@ final class MediaTypecastTest extends TestCase
         self::assertTrue(MediaProcessingErrorTypecast::castDatabaseValue(null)->isEmpty());
         self::assertSame('Не удалось обработать файл', MediaProcessingErrorTypecast::uncastValue($processingError));
         self::assertNull(MediaProcessingErrorTypecast::uncastValue(MediaProcessingError::none()));
+        self::assertNull(MediaProcessingErrorTypecast::uncastValue(null));
+    }
+
+    public function testMultipartPartCollectionTypecastRejectsNonArrayJson(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        MediaMultipartPartCollectionTypecast::castDatabaseValue('123');
+    }
+
+    public function testMultipartPartCollectionTypecastRejectsNonArrayElement(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        MediaMultipartPartCollectionTypecast::castDatabaseValue('[1, 2]');
+    }
+
+    public function testMultipartPartCollectionTypecastRejectsInvalidPartShape(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        MediaMultipartPartCollectionTypecast::castDatabaseValue('[{"partNumber":"x","eTag":"y"}]');
     }
 
     public function testMultipartPartCollectionTypecastHandlesJsonCollection(): void

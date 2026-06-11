@@ -53,11 +53,10 @@ final class OpenApiPublishAssetsCommand extends Command
             mode: \RecursiveIteratorIterator::SELF_FIRST,
         );
 
+        // RecursiveDirectoryIterator с дефолтными флагами всегда отдаёт SplFileInfo;
+        // PHPStan видит значение итератора как mixed, поэтому сужаем тип аннотацией.
+        /** @var \SplFileInfo $fileInfo */
         foreach ($iterator as $fileInfo) {
-            if (!$fileInfo instanceof \SplFileInfo) {
-                continue;
-            }
-
             $relativePath = \substr(string: $fileInfo->getPathname(), offset: \strlen(string: $sourceDirectory) + 1);
             $targetPath = \sprintf('%s/%s', $targetDirectory, $relativePath);
 

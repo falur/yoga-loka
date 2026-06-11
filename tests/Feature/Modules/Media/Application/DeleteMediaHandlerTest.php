@@ -10,10 +10,14 @@ use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
+use App\Modules\Media\Domain\Entity\MediaVideoConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
+use App\Modules\Media\Domain\ValueObject\MediaBitrate;
+use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
@@ -89,6 +93,32 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertContains($media->path->value(), $deletedPaths);
         self::assertNull($this->mediaRepository()->findById($media->id));
         self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+    }
+
+    public function testDeletesReadyMediaVideoConversionObjectsFromStorage(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->readyMediaWithVideoConversion($userId, MediaStorage::Public);
+        $conversionPath = $this->videoConversionRepository()->findByMediaId($media->id)->first()?->path;
+        self::assertNotNull($conversionPath);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $deletedPaths = [];
+        $fileService->expects(self::exactly(2))->method('deleteObject')->willReturnCallback(
+            function (MediaStorage $storage, MediaPath $path) use (&$deletedPaths): void {
+                $deletedPaths[] = $path->value();
+            },
+        );
+
+        $this->handler($fileService)->handle(new DeleteMediaCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+        ));
+
+        self::assertContains($conversionPath->value(), $deletedPaths);
+        self::assertContains($media->path->value(), $deletedPaths);
+        self::assertNull($this->mediaRepository()->findById($media->id));
+        self::assertCount(0, $this->videoConversionRepository()->findByMediaId($media->id));
     }
 
     public function testDeletesWaitingUploadWithoutMultipartRecord(): void
@@ -169,6 +199,35 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
             size: MediaFileSize::fromInt(128),
             width: MediaPixelDimension::fromInt(100),
             height: MediaPixelDimension::fromInt(100),
+        ));
+
+        return $media;
+    }
+
+    private function readyMediaWithVideoConversion(UserId $userId, MediaStorage $storage): Media
+    {
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $media->markUploaded();
+        $media->markReadyMovedTo(
+            $storage,
+            MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Video, extension: 'mp4'),
+        );
+        $this->persist($media);
+
+        $this->persist(MediaVideoConversion::create(
+            media: $media,
+            type: MediaVideoConversionType::NormalizedMp4H264,
+            status: MediaConversionStatus::Ready,
+            storage: $storage,
+            path: MediaPath::fromString(
+                \sprintf('videos/%s/%s/normalized.mp4', $media->storageKey->shard(), $media->storageKey),
+            ),
+            mimeType: MediaMimeType::fromString('video/mp4'),
+            size: MediaFileSize::fromInt(2048),
+            width: MediaPixelDimension::fromInt(1920),
+            height: MediaPixelDimension::fromInt(1080),
+            duration: MediaDuration::fromInt(1000),
+            bitrate: MediaBitrate::fromInt(800_000),
         ));
 
         return $media;

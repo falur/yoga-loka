@@ -403,11 +403,10 @@ final class ComplexConfigMapperTest extends TestCase
      */
     private function mapperFor(string $section, array $config): ConfigMapper
     {
-        $configurator = $this->createMock(ConfiguratorInterface::class);
+        $configurator = $this->createStub(ConfiguratorInterface::class);
         $configurator
             ->method('getConfig')
-            ->with($section)
-            ->willReturn($config);
+            ->willReturnMap([[$section, $config]]);
 
         return new ConfigMapper(
             configurator: $configurator,

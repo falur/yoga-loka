@@ -60,11 +60,10 @@ final class MediaStorageConfigTest extends TestCase
 
     private function mapperFor(array $config): ConfigMapper
     {
-        $configurator = $this->createMock(ConfiguratorInterface::class);
+        $configurator = $this->createStub(ConfiguratorInterface::class);
         $configurator
             ->method('getConfig')
-            ->with(StorageConfig::configName())
-            ->willReturn($config);
+            ->willReturnMap([[StorageConfig::configName(), $config]]);
 
         return new ConfigMapper(
             configurator: $configurator,

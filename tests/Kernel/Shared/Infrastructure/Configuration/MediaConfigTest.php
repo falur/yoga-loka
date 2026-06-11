@@ -60,11 +60,10 @@ final class MediaConfigTest extends TestCase
      */
     private function mapperFor(array $config): ConfigMapper
     {
-        $configurator = $this->createMock(ConfiguratorInterface::class);
+        $configurator = $this->createStub(ConfiguratorInterface::class);
         $configurator
             ->method('getConfig')
-            ->with(MediaConfig::configName())
-            ->willReturn($config);
+            ->willReturnMap([[MediaConfig::configName(), $config]]);
 
         return new ConfigMapper(
             configurator: $configurator,

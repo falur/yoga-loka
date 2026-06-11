@@ -212,10 +212,8 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
 
         \ob_start();
         \imagejpeg($image);
-        $bytes = (string) \ob_get_clean();
-        \imagedestroy($image);
 
-        return $bytes;
+        return (string) \ob_get_clean();
     }
 
     private function track(MediaStorage $storage, MediaPath $path): void

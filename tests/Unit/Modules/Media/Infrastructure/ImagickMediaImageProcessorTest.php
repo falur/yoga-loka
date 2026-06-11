@@ -89,9 +89,7 @@ final class ImagickMediaImageProcessorTest extends TestCase
 
         \ob_start();
         $encode($image);
-        $bytes = (string) \ob_get_clean();
-        \imagedestroy($image);
 
-        return $bytes;
+        return (string) \ob_get_clean();
     }
 }

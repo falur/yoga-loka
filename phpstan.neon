@@ -11,3 +11,14 @@ parameters:
     phpVersion: 80506
     bootstrapFiles:
         - vendor/autoload.php
+    ignoreErrors:
+        # \Normalizer::normalize() вызывается позиционно с явной формой FORM_C.
+        # Именовать аргументы нельзя: имя первого параметра расходится между нативным
+        # ext-intl ($string) и стабом symfony/polyfill-intl-normalizer ($s), поэтому
+        # named-arguments-правило для этих двух строк погашено точечно.
+        -
+            identifier: gianTiaga.phpstanStrictRules.namedArgumentsRequired
+            message: '#Calls with two or more ordinary arguments must use named arguments\.#'
+            paths:
+                - app/src/Modules/User/Domain/ValueObject/UserName.php
+                - app/src/Modules/User/Domain/ValueObject/UserSpiritualName.php

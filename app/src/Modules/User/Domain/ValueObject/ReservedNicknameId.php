@@ -1,0 +1,9 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\User\Domain\ValueObject;
+
+use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
+
+final readonly class ReservedNicknameId extends AbstractUuidV7Id {}

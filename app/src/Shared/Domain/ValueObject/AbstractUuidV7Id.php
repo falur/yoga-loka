@@ -47,9 +47,14 @@ abstract readonly class AbstractUuidV7Id implements \Stringable, \JsonSerializab
         return $this->value;
     }
 
+    public static function isUuidV7(string $value): bool
+    {
+        return Uuid::isValid($value) && Uuid::fromString($value)->getVersion() === 7;
+    }
+
     private static function assertUuidV7(string $value): void
     {
-        if (!Uuid::isValid($value) || Uuid::fromString($value)->getVersion() !== 7) {
+        if (!self::isUuidV7($value)) {
             throw new InvalidDomainValueException('Идентификатор должен быть UUID v7.');
         }
     }

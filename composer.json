@@ -10,6 +10,7 @@
     },
     "require": {
         "php": ">=8.5 <8.6",
+        "ext-intl": "*",
         "ext-mbstring": "*",
         "ext-pdo_pgsql": "*",
         "ext-redis": "*",

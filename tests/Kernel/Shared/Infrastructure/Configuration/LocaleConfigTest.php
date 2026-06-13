@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Kernel\Shared\Infrastructure\Configuration;
 
+use App\Shared\Domain\Enum\Locale;
 use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
 use App\Shared\Infrastructure\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
@@ -22,6 +23,19 @@ final class LocaleConfigTest extends TestCase
 
         self::assertSame(['ru', 'en'], $localeConfig->supported);
         self::assertSame('ru', $localeConfig->default);
+    }
+
+    public function testSupportedLocalesMatchDomainEnum(): void
+    {
+        $localeConfig = $this->getContainer()->get(LocaleConfig::class);
+
+        self::assertSame(
+            \array_map(
+                static fn(Locale $locale): string => $locale->value,
+                Locale::cases(),
+            ),
+            $localeConfig->supported,
+        );
     }
 
     public function testMapsLocaleConfigSection(): void

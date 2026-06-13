@@ -126,12 +126,13 @@ final readonly class RequestMediaUploadHandler
     {
         if (!$spec->allowedMimeTypes->containsMimeType($fileMeta->mimeType)) {
             throw new ValidationException(
-                \sprintf('MIME-тип «%s» не разрешён спецификацией загрузки.', $fileMeta->mimeType->value()),
+                translationKey: 'app.media.mime_not_allowed',
+                translationParameters: ['mimeType' => $fileMeta->mimeType->value()],
             );
         }
 
         if ($fileMeta->size->value() > $spec->maxSize->value()) {
-            throw new ValidationException('Размер файла превышает допустимый предел.');
+            throw new ValidationException('app.media.file_size_exceeded');
         }
     }
 
@@ -140,7 +141,7 @@ final readonly class RequestMediaUploadHandler
         $extension = \pathinfo(path: $fileMeta->fileName, flags: \PATHINFO_EXTENSION);
 
         if ($extension === '') {
-            throw new ValidationException('Имя файла должно содержать расширение.');
+            throw new ValidationException('app.media.file_name_without_extension');
         }
 
         return $extension;

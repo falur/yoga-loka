@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Shared\Domain\Exception;
 
-final class ValidationException extends \DomainException
+final class ValidationException extends DomainTranslatableException
 {
-    private const int STATUS_CODE = 422;
-
-    public function __construct(string $message)
+    #[\Override]
+    protected function statusCode(): int
     {
-        parent::__construct(message: $message, code: self::STATUS_CODE);
+        return 422;
     }
 }

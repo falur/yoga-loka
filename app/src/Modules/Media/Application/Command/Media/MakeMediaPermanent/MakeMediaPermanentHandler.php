@@ -26,15 +26,15 @@ final readonly class MakeMediaPermanentHandler
     public function handle(MakeMediaPermanentCommand $command): MediaResult
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('Медиа не найдено.');
+            ?? throw new NotFoundException('app.media.not_found');
 
         if (!$media->uploadedById->equals(UserId::fromString($command->userId))) {
-            throw new ForbiddenException('Нет доступа к этому медиа.');
+            throw new ForbiddenException('app.media.access_denied');
         }
 
         // Статус-guard на Application-границе: домен makePermanent() без guard (бросил бы 500).
         if ($media->status !== MediaStatus::Uploaded && $media->status !== MediaStatus::Ready) {
-            throw new ValidationException('Постоянным можно сделать только загруженное или готовое медиа.');
+            throw new ValidationException('app.media.cannot_make_permanent');
         }
 
         $media->makePermanent();

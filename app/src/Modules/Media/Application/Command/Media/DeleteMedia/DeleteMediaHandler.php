@@ -35,10 +35,10 @@ final readonly class DeleteMediaHandler
     public function handle(DeleteMediaCommand $command): void
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('Медиа не найдено.');
+            ?? throw new NotFoundException('app.media.not_found');
 
         if (!$media->uploadedById->equals(UserId::fromString($command->userId))) {
-            throw new ForbiddenException('Нет доступа к этому медиа.');
+            throw new ForbiddenException('app.media.access_denied');
         }
 
         if ($media->status === MediaStatus::WaitingUpload) {

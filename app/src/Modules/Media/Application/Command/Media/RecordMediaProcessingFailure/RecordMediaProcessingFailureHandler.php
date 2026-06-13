@@ -28,7 +28,7 @@ final readonly class RecordMediaProcessingFailureHandler
     public function handle(RecordMediaProcessingFailureCommand $command): void
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('Медиа не найдено.');
+            ?? throw new NotFoundException('app.media.not_found');
 
         $media->recordTemporaryProcessingError(MediaProcessingError::fromString($command->error));
         $this->entityManager->persist($media);

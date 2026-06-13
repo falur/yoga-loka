@@ -11,6 +11,7 @@ use Psr\Log\NullLogger;
 use Spiral\Filters\Exception\ValidationException as FilterValidationException;
 use Spiral\Interceptors\Context\CallContextInterface;
 use Spiral\Interceptors\HandlerInterface;
+use GianTiaga\SpiralApiErrors\Exception\TranslatableException;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
 use GianTiaga\SpiralApiErrors\Tests\Support\FakeTranslator;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;
@@ -62,6 +63,21 @@ final class ApiExceptionInterceptorTest extends TestCase
     {
         $this->assertExceptionMapsToResponse(exception: new \RuntimeException(message: 'SQL connection failed'), expectedStatus: HttpStatus::InternalServerError, expectedBody: '{"message":"Внутренняя ошибка сервера","code":500}', translator: new FakeTranslator(locale: 'ru', messages: ['gian_tiaga.spiral_api_errors.internal_server_error' => 'Внутренняя ошибка сервера']));
     }
+    public function testTranslatableExceptionTranslatesKeyWithParameterInRequestLocale(): void
+    {
+        $this->assertExceptionMapsToResponse(exception: new ApiExceptionInterceptorTranslatableFixtureException(translationKey: 'app.media.unsupported_file_type', translationDomain: 'media', translationParameters: ['type' => 'png'], code: HttpStatus::UnprocessableEntity->value), expectedStatus: HttpStatus::UnprocessableEntity, expectedBody: '{"message":"Unsupported file type: png.","code":422}', translator: new FakeTranslator(locale: 'en', messages: ['app.media.unsupported_file_type' => 'Unsupported file type: {type}.']));
+    }
+    public function testTranslatableExceptionWithoutCatalogueEntryReturnsKeyItself(): void
+    {
+        $this->assertExceptionMapsToResponse(exception: new ApiExceptionInterceptorTranslatableFixtureException(translationKey: 'app.media.not_found', translationDomain: 'media', translationParameters: [], code: HttpStatus::NotFound->value), expectedStatus: HttpStatus::NotFound, expectedBody: '{"message":"app.media.not_found","code":404}', translator: self::englishTranslator());
+    }
+    public function testTranslatableExceptionPassesItsDomainToTranslator(): void
+    {
+        $translator = new FakeTranslator(locale: 'en', messages: ['app.media.not_found' => 'Media not found.']);
+        $interceptor = new ApiExceptionInterceptor(logger: new NullLogger(), translator: $translator);
+        $interceptor->intercept(context: self::createStub(CallContextInterface::class), handler: new ApiExceptionInterceptorFixtureHandler(exception: new ApiExceptionInterceptorTranslatableFixtureException(translationKey: 'app.media.not_found', translationDomain: 'media', translationParameters: [], code: HttpStatus::NotFound->value)));
+        self::assertSame('media', $translator->lastDomain);
+    }
     public function testFilterValidationExceptionBubblesToValidationMiddleware(): void
     {
         $interceptor = new ApiExceptionInterceptor(logger: new NullLogger(), translator: self::englishTranslator());
@@ -99,5 +115,33 @@ final class ApiExceptionInterceptorCountingLogger implements LoggerInterface
     public function log(mixed $level, string|\Stringable $message, array $context = []): void
     {
         ++$this->recordsCount;
+    }
+}
+final class ApiExceptionInterceptorTranslatableFixtureException extends \DomainException implements TranslatableException
+{
+    /**
+     * @param array<string, string> $translationParameters
+     */
+    public function __construct(private readonly string $translationKey, private readonly string $translationDomain, private readonly array $translationParameters, int $code)
+    {
+        parent::__construct(code: $code);
+    }
+    #[\Override]
+    public function translationKey(): string
+    {
+        return $this->translationKey;
+    }
+    #[\Override]
+    public function translationDomain(): string
+    {
+        return $this->translationDomain;
+    }
+    /**
+     * @return array<string, string>
+     */
+    #[\Override]
+    public function translationParameters(): array
+    {
+        return $this->translationParameters;
     }
 }

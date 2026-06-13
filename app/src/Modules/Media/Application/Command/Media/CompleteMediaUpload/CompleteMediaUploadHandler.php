@@ -42,14 +42,14 @@ final readonly class CompleteMediaUploadHandler
     public function handle(CompleteMediaUploadCommand $command): MediaResult
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('Медиа не найдено.');
+            ?? throw new NotFoundException('app.media.not_found');
 
         if (!$media->uploadedById->equals(UserId::fromString($command->userId))) {
-            throw new ForbiddenException('Нет доступа к этому медиа.');
+            throw new ForbiddenException('app.media.access_denied');
         }
 
         if ($media->status !== MediaStatus::WaitingUpload) {
-            throw new ValidationException('Загрузка медиа не ожидает подтверждения.');
+            throw new ValidationException('app.media.upload_not_pending');
         }
 
         $this->assertConversionsValid($command->conversions);
@@ -80,7 +80,7 @@ final readonly class CompleteMediaUploadHandler
     private function completeMultipartUpload(Media $media, MediaMultipartPartCollection $parts): void
     {
         $multipartUpload = $this->mediaMultipartUploadRepository->findByMediaId($media->id)
-            ?? throw new ValidationException('Для медиа не найдена multipart-загрузка.');
+            ?? throw new ValidationException('app.media.multipart_upload_not_found');
 
         $multipartUpload->replaceParts($parts);
         $this->entityManager->persist($multipartUpload);
@@ -97,7 +97,7 @@ final readonly class CompleteMediaUploadHandler
         $objectHead = $this->mediaFileService->headObject(storage: $media->storage, path: $media->path);
 
         if ($objectHead === null || $objectHead->contentLength->value() !== $media->size->value()) {
-            throw new ValidationException('Загруженный объект отсутствует или его размер не совпадает с заявленным.');
+            throw new ValidationException('app.media.uploaded_object_mismatch');
         }
     }
 
@@ -116,7 +116,7 @@ final readonly class CompleteMediaUploadHandler
         );
 
         if ($hasOutOfRangeConversion) {
-            throw new ValidationException('Ширина и высота конверсии вне допустимого диапазона.');
+            throw new ValidationException('app.media.conversion_dimensions_out_of_range');
         }
     }
 }

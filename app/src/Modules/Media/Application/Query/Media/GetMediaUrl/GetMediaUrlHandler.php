@@ -28,15 +28,15 @@ final readonly class GetMediaUrlHandler
     public function handle(GetMediaUrlQuery $query): MediaUrlResult
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($query->mediaId))
-            ?? throw new NotFoundException('Медиа не найдено.');
+            ?? throw new NotFoundException('app.media.not_found');
 
         if (!$media->isReady()) {
-            throw new NotFoundException('Медиа ещё не готово.');
+            throw new NotFoundException('app.media.not_ready');
         }
 
         if ($query->conversionType !== null) {
             $conversion = $this->findConversion(mediaId: $media->id, type: $query->conversionType)
-                ?? throw new NotFoundException('Запрошенная конверсия отсутствует.');
+                ?? throw new NotFoundException('app.media.conversion_not_found');
 
             return $this->buildUrl(
                 visibility: $media->visibility,

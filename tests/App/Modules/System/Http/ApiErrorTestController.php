@@ -6,6 +6,7 @@ namespace Tests\App\Modules\System\Http;
 
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Exception\NotFoundException;
+use App\Shared\Domain\Exception\ValidationException;
 use App\Modules\System\Presentation\Http\Enum\HealthStatus;
 use App\Modules\System\Presentation\Http\Resource\HealthResource;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
@@ -17,7 +18,18 @@ final class ApiErrorTestController
      */
     public function domain(): DataResponse
     {
-        throw new NotFoundException(message: 'Тестовый ресурс не найден.');
+        throw new NotFoundException('app.system.test_resource_not_found');
+    }
+
+    /**
+     * @return DataResponse<HealthResource>
+     */
+    public function parametrizedDomain(): DataResponse
+    {
+        throw new ValidationException(
+            translationKey: 'app.media.unsupported_file_type',
+            translationParameters: ['type' => 'png'],
+        );
     }
 
     /**

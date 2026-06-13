@@ -27,6 +27,9 @@ final readonly class MediaTypeResolver
             return MediaType::Video;
         }
 
-        throw new ValidationException(\sprintf('Тип файла «%s» не поддерживается для загрузки.', $value));
+        throw new ValidationException(
+            translationKey: 'app.media.unsupported_file_type',
+            translationParameters: ['type' => $value],
+        );
     }
 }

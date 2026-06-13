@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Framework\Bootloader;
 
+use App\Shared\Infrastructure\Framework\Middleware\LocaleMiddleware;
 use Spiral\Bootloader\Http\RoutesBootloader as BaseRoutesBootloader;
 use Spiral\Cookies\Middleware\CookiesMiddleware;
 use Spiral\Csrf\Middleware\CsrfMiddleware;
@@ -32,6 +33,7 @@ final class RoutesBootloader extends BaseRoutesBootloader
     {
         return [
             ErrorHandlerMiddleware::class,
+            LocaleMiddleware::class,
             RouteNotFoundMiddleware::class,
             DumperMiddleware::class,
             JsonPayloadMiddleware::class,

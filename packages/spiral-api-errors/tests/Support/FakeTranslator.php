@@ -7,12 +7,13 @@ namespace GianTiaga\SpiralApiErrors\Tests\Support;
 use Spiral\Translator\CatalogueManagerInterface;
 use Spiral\Translator\TranslatorInterface;
 
-final readonly class FakeTranslator implements TranslatorInterface
+final class FakeTranslator implements TranslatorInterface
 {
+    public string|null $lastDomain = null;
     /**
      * @param array<string, string> $messages
      */
-    public function __construct(private string $locale, private array $messages) {}
+    public function __construct(private readonly string $locale, private readonly array $messages) {}
     #[\Override]
     public function getLocale(): string
     {
@@ -34,6 +35,7 @@ final readonly class FakeTranslator implements TranslatorInterface
     #[\Override]
     public function trans(string $id, array $parameters = [], string|null $domain = null, string|null $locale = null): string
     {
+        $this->lastDomain = $domain;
         $replacePairs = [];
         foreach ($parameters as $key => $value) {
             $replacePairs[\sprintf('{%s}', $key)] = (string) $value;

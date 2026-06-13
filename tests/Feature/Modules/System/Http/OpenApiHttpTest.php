@@ -47,7 +47,9 @@ final class OpenApiHttpTest extends TestCase
     #[Config('openapi.outputFile', 'runtime/missing-openapi.yml')]
     public function testSwaggerYamlRouteReturnsErrorResponseWhenFileDoesNotExist(): void
     {
-        $response = $this->fakeHttp()->get('/api/docs/openapi.yml');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
+            ->get('/api/docs/openapi.yml');
 
         $response->assertNotFound();
         $response->assertHasHeader('Content-Type', 'application/json; charset=utf-8');
@@ -58,6 +60,7 @@ final class OpenApiHttpTest extends TestCase
     public function testSwaggerUiRouteReturnsJsonErrorWhenDisabled(): void
     {
         $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
             ->get('/api/docs')
             ->assertNotFound()
             ->assertHasHeader('Content-Type', 'application/json; charset=utf-8')
@@ -68,6 +71,7 @@ final class OpenApiHttpTest extends TestCase
     public function testSwaggerYamlRouteReturnsJsonErrorWhenDisabled(): void
     {
         $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
             ->get('/api/docs/openapi.yml')
             ->assertNotFound()
             ->assertHasHeader('Content-Type', 'application/json; charset=utf-8')

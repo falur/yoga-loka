@@ -54,7 +54,7 @@ final class SimpleConfigBindingTest extends TestCase
         self::assertSame('migrations', $migrationConfig->table);
         self::assertSame('smtp://mailpit:1025', $mailerConfig->dsn);
         self::assertSame('local', $mailerConfig->queue);
-        self::assertSame('en', $translatorConfig->locale);
+        self::assertSame('ru', $translatorConfig->locale);
         self::assertArrayHasKey('php', $translatorConfig->loaders);
         self::assertArrayHasKey('messages', $translatorConfig->domains);
         self::assertSame(86400, $sessionConfig->lifetime);
@@ -87,7 +87,7 @@ final class SimpleConfigBindingTest extends TestCase
         self::assertSame('migrations', $container->get(CycleMigrationConfig::class)->getTable());
         self::assertSame('smtp://mailpit:1025', $container->get(SpiralMailerConfig::class)->getDSN());
         self::assertSame('sid', $container->get(SpiralSessionConfig::class)->getCookie());
-        self::assertSame('en', $container->get(SpiralTranslatorConfig::class)->getDefaultLocale());
+        self::assertSame('ru', $container->get(SpiralTranslatorConfig::class)->getDefaultLocale());
         self::assertContains('config', $container->get(SpiralScaffolderConfig::class)->getDeclarations());
     }
 

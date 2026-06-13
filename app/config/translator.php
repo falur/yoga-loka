@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 return [
     'locale' => \env('LOCALE', 'ru'),
-    'fallbackLocale' => \env('LOCALE', 'en'),
+    'fallbackLocale' => \env('FALLBACK_LOCALE', 'ru'),
     'directory' => \directory('locale'),
     'autoRegister' => \env('DEBUG', true),
 ];

@@ -21,6 +21,7 @@ final class ConfigShapeTest extends TestCase
                 'cache',
                 'cycle',
                 'database',
+                'locale',
                 'mailer',
                 'media',
                 'migration',

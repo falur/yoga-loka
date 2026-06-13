@@ -6,9 +6,9 @@ namespace Tests\Feature\Modules\System\Http;
 
 use App\Shared\Infrastructure\Framework\Bootloader\AppBootloader;
 use App\Shared\Infrastructure\Framework\Bootloader\RoutesBootloader;
+use App\Shared\Infrastructure\Framework\Middleware\LocaleMiddleware;
 use Spiral\Filters\ErrorsRendererInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
-use Spiral\Translator\TranslatorInterface;
 use Tests\TestCase;
 use GianTiaga\SpiralApiErrors\Filter\ApiValidationErrorsRenderer;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
@@ -21,7 +21,9 @@ final class ApiErrorHttpTest extends TestCase
 {
     public function testApiRouteWithDomainExceptionReturnsJsonError(): void
     {
-        $response = $this->fakeHttp()->getJson('/test/api/errors/domain');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
+            ->getJson('/test/api/errors/domain');
 
         $response->assertNotFound();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -30,9 +32,9 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testApiRouteWithInvalidDomainValueExceptionReturnsInternalServerError(): void
     {
-        $this->getContainer()->get(TranslatorInterface::class)->setLocale('ru');
-
-        $response = $this->fakeHttp()->getJson('/test/api/errors/invalid-domain-value');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
+            ->getJson('/test/api/errors/invalid-domain-value');
 
         $response->assertStatus(500);
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -41,9 +43,11 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testApiFilterValidationReturnsEnglishJsonErrorWithErrors(): void
     {
-        $response = $this->fakeHttp()->postJson('/test/api/errors/filter', [
-            'age' => 'abc',
-        ]);
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'en')
+            ->postJson('/test/api/errors/filter', [
+                'age' => 'abc',
+            ]);
 
         $response->assertUnprocessable();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -54,11 +58,11 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testApiFilterValidationReturnsRussianJsonErrorWithErrors(): void
     {
-        $this->getContainer()->get(TranslatorInterface::class)->setLocale('ru');
-
-        $response = $this->fakeHttp()->postJson('/test/api/errors/filter', [
-            'age' => 'abc',
-        ]);
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
+            ->postJson('/test/api/errors/filter', [
+                'age' => 'abc',
+            ]);
 
         $response->assertUnprocessable();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -93,7 +97,9 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testUnknownRouteReturnsEnglishJsonRouteNotFoundError(): void
     {
-        $response = $this->fakeHttp()->getJson('/test/api/errors/missing');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'en')
+            ->getJson('/test/api/errors/missing');
 
         $response->assertNotFound();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -102,9 +108,9 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testUnknownRouteReturnsRussianJsonRouteNotFoundError(): void
     {
-        $this->getContainer()->get(TranslatorInterface::class)->setLocale('ru');
-
-        $response = $this->fakeHttp()->getJson('/test/api/errors/missing');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'ru')
+            ->getJson('/test/api/errors/missing');
 
         $response->assertNotFound();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
@@ -113,14 +119,16 @@ final class ApiErrorHttpTest extends TestCase
 
     public function testWrongMethodReturnsEnglishJsonRouteNotFoundError(): void
     {
-        $response = $this->fakeHttp()->postJson('/test/api/errors/domain');
+        $response = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'en')
+            ->postJson('/test/api/errors/domain');
 
         $response->assertNotFound();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
         $response->assertBodySame('{"message":"Route not found.","code":404}');
     }
 
-    public function testRouteNotFoundMiddlewareIsRegisteredAfterErrorHandlerMiddleware(): void
+    public function testLocaleMiddlewareIsRegisteredBetweenErrorHandlerAndRouteNotFoundMiddleware(): void
     {
         $middleware = (new \ReflectionClass(RoutesBootloader::class))
             ->getMethod('globalMiddleware')
@@ -128,6 +136,7 @@ final class ApiErrorHttpTest extends TestCase
 
         self::assertIsArray($middleware);
         self::assertSame(ErrorHandlerMiddleware::class, $middleware[0] ?? null);
-        self::assertSame(RouteNotFoundMiddleware::class, $middleware[1] ?? null);
+        self::assertSame(LocaleMiddleware::class, $middleware[1] ?? null);
+        self::assertSame(RouteNotFoundMiddleware::class, $middleware[2] ?? null);
     }
 }

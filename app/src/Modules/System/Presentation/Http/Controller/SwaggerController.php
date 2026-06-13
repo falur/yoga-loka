@@ -28,7 +28,7 @@ final readonly class SwaggerController
     public function index(): HtmlResponse
     {
         if (!$this->openApiConfig->swaggerEnabled) {
-            throw new NotFoundException(message: 'Swagger UI выключен.');
+            throw new NotFoundException('app.system.swagger_ui_disabled');
         }
 
         return new HtmlResponse(html: $this->swaggerView->render());
@@ -39,7 +39,7 @@ final readonly class SwaggerController
     public function spec(): FileContentResponse
     {
         if (!$this->openApiConfig->swaggerEnabled) {
-            throw new NotFoundException(message: 'Swagger UI выключен.');
+            throw new NotFoundException('app.system.swagger_ui_disabled');
         }
 
         $openApiFile = $this->openApiConfig->outputFile(
@@ -47,7 +47,7 @@ final readonly class SwaggerController
         );
 
         if (!\is_file($openApiFile)) {
-            throw new NotFoundException(message: 'OpenAPI YAML ещё не сгенерирован.');
+            throw new NotFoundException('app.system.openapi_yaml_not_generated');
         }
 
         return new FileContentResponse(

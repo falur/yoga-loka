@@ -344,10 +344,20 @@ PHPDoc остаются текстом приложения. YAML статиче
 `packages/spiral-openapi`, потому что возвращает `ErrorResponse` и
 `ValidationErrorResponse`.
 
-Общие доменные исключения остаются в приложении в `App\Shared\Domain\Exception` и явно
-расширяют `\DomainException`. Ожидаемые клиентские ошибки с кодами 4xx
+Общие доменные исключения остаются в приложении в `App\Shared\Domain\Exception` и
+расширяют `\DomainException`. Переводимые 4xx (`NotFoundException`, `ForbiddenException`,
+`ValidationException`, `AuthenticationException`) расширяют его через общий абстрактный
+`DomainTranslatableException`, который реализует
+`GianTiaga\SpiralApiErrors\Exception\TranslatableException` и несёт ключ перевода с
+параметрами вместо готовой строки. `InvalidDomainValueException` (500) переводимым не
+является. Ожидаемые клиентские ошибки с кодами 4xx
 `GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor` превращает в JSON
-`{"message":"...","code":...}` без логирования. Доменные исключения без
+`{"message":"...","code":...}` без логирования; для `TranslatableException` сообщение
+переводится на границе в локали текущего запроса (`translationKey()` в домене
+`translationDomain()`), иначе берётся `getMessage()`. Каталоги переводов приложения
+разбиты по модулям: `translationDomain()` выводит домен (= файл `app/locale/{lang}/{domain}.php`)
+из второго сегмента ключа — `app.media.*` → `media.php`, `app.system.*` → `system.php`,
+ключи без модульного сегмента — домен `messages`. Доменные исключения без
 поддерживаемого 4xx-кода, включая `InvalidDomainValueException`, считаются
 внутренними ошибками: HTTP-ответ получает обычное сообщение 500, а исходное
 сообщение исключения пользователю не отдаётся. Ошибки Spiral Filter рендерятся через
@@ -367,8 +377,12 @@ PHPDoc остаются текстом приложения. YAML статиче
 стандартного Spiral error handler.
 
 `packages/spiral-api-errors` и `packages/spiral-openapi` только читают текущий locale Spiral
-translator. Выбор языка пользователя по HTTP-заголовкам, профилю или другому
-признаку остаётся задачей request-слоя приложения.
+translator. Выбор языка пользователя реализован в request-слое приложения:
+`App\Shared\Infrastructure\Framework\Middleware\LocaleMiddleware` определяет локаль запроса
+из заголовка `Accept-Language`, пересечённого с белым списком `LocaleConfig.supported`
+(иначе `LocaleConfig.default`), и выставляет её в Spiral translator до контроллера и до
+`RouteNotFoundMiddleware`. Для не-HTTP контекстов (queue/console/Temporal) per-request
+локали нет — там перевод на границе не выполняется, исключение несёт ключ.
 
 ### Поток консольной команды
 

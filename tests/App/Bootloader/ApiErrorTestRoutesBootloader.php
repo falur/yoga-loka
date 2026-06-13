@@ -20,6 +20,12 @@ final class ApiErrorTestRoutesBootloader extends Bootloader
             ->group(group: AppRoutesBootloader::GROUP_API);
 
         $routes
+            ->add(name: 'test.api.error.parametrized', pattern: '/test/api/errors/parametrized')
+            ->action(controller: ApiErrorTestController::class, action: 'parametrizedDomain')
+            ->methods(methods: 'GET')
+            ->group(group: AppRoutesBootloader::GROUP_API);
+
+        $routes
             ->add(name: 'test.api.error.invalid-domain-value', pattern: '/test/api/errors/invalid-domain-value')
             ->action(controller: ApiErrorTestController::class, action: 'invalidDomainValue')
             ->methods(methods: 'GET')

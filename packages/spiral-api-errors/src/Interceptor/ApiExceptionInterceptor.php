@@ -10,6 +10,7 @@ use Spiral\Interceptors\Context\CallContextInterface;
 use Spiral\Interceptors\HandlerInterface;
 use Spiral\Interceptors\InterceptorInterface;
 use Spiral\Translator\TranslatorInterface;
+use GianTiaga\SpiralApiErrors\Exception\TranslatableException;
 use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 
@@ -35,6 +36,9 @@ final readonly class ApiExceptionInterceptor implements InterceptorInterface
         $status = $this->supportedClientStatus($exception);
         if ($status === null) {
             return $this->unexpectedExceptionResponse($exception);
+        }
+        if ($exception instanceof TranslatableException) {
+            return $this->errorResponse(message: $this->translator->trans(id: $exception->translationKey(), parameters: $exception->translationParameters(), domain: $exception->translationDomain()), status: $status);
         }
         return $this->errorResponse(message: $exception->getMessage(), status: $status);
     }

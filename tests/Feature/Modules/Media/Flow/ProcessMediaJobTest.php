@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Media\Flow;
 
 use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaHandler;
+use App\Modules\Media\Application\Command\Media\RecordMediaProcessingFailure\RecordMediaProcessingFailureCommand;
 use App\Modules\Media\Application\Command\Media\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Message\MediaUploaded;
@@ -14,6 +15,7 @@ use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
+use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
@@ -138,6 +140,26 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         // WARN транзиентного ретрая.
         self::assertTrue($logger->hasLevel(LogLevel::ERROR));
         self::assertTrue($logger->hasLevel(LogLevel::WARNING));
+    }
+
+    public function testMigratedNotFoundExceptionCarriesTranslationKeyWithoutTranslationInQueueContext(): void
+    {
+        // Очередь не выполняет перевод (per-request локали нет): мигрированное исключение несёт
+        // ключ перевода, а не русский текст — getMessage() == ключ, translationKey() == ключ.
+        try {
+            $this->getContainer()->get(RecordMediaProcessingFailureHandler::class)->handle(
+                new RecordMediaProcessingFailureCommand(
+                    mediaId: Uuid::uuid7()->toString(),
+                    error: 'сбой обработки',
+                    isTransient: false,
+                ),
+            );
+            self::fail('Ожидалось NotFoundException.');
+        } catch (NotFoundException $exception) {
+            self::assertSame('app.media.not_found', $exception->translationKey());
+            self::assertSame('app.media.not_found', $exception->getMessage());
+            self::assertSame([], $exception->translationParameters());
+        }
     }
 
     /**

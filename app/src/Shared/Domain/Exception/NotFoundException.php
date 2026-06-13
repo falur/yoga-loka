@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Shared\Domain\Exception;
 
-final class NotFoundException extends \DomainException
+final class NotFoundException extends DomainTranslatableException
 {
-    private const int STATUS_CODE = 404;
-
-    public function __construct(string $message)
+    #[\Override]
+    protected function statusCode(): int
     {
-        parent::__construct(message: $message, code: self::STATUS_CODE);
+        return 404;
     }
 }

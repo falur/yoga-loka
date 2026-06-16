@@ -23,3 +23,9 @@ services:
         class: GianTiaga\PhpStanStrictRules\Rules\DisallowLooseComparisonRule
         tags:
             - phpstan.rules.rule
+    -
+        class: GianTiaga\PhpStanStrictRules\Rules\DisallowSetBasedWriteRule
+        arguments:
+            markerInterface: App\Shared\Infrastructure\Database\SetBasedWrite
+        tags:
+            - phpstan.rules.rule

@@ -16,6 +16,9 @@ final readonly class ApiValidationErrorsRenderer implements ErrorsRendererInterf
 {
     public function __construct(private LoggerInterface $logger, private TranslatorInterface $translator) {}
     /**
+     * Spiral-валидатор отдаёт `array<string, string>`, а Symfony-валидатор — список сообщений на поле.
+     * Рендерер поддерживает обе формы (см. messageText()).
+     *
      * @param array<string, string> $errors
      */
     public function render(array $errors, mixed $context = null): ResponseInterface
@@ -31,8 +34,20 @@ final readonly class ApiValidationErrorsRenderer implements ErrorsRendererInterf
     {
         $validationErrors = [];
         foreach ($errors as $field => $message) {
-            $validationErrors[] = new ValidationErrorItemResponse(field: $field, message: $message);
+            $validationErrors[] = new ValidationErrorItemResponse(field: $field, message: $this->messageText($message));
         }
         return $validationErrors;
+    }
+    /**
+     * Symfony-валидатор кладёт на каждое поле список сообщений; сводим его к одной строке.
+     *
+     * @param string|list<string> $message
+     */
+    private function messageText(string|array $message): string
+    {
+        if (\is_array($message)) {
+            return \implode(separator: ' ', array: $message);
+        }
+        return $message;
     }
 }

@@ -34,6 +34,7 @@ use Spiral\Validation\Bootloader\ValidationBootloader;
 use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
 use App\Modules\Media\Infrastructure\Bootloader\MediaBootloader;
+use App\Modules\Notifications\Infrastructure\Bootloader\NotificationsBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
 use GianTiaga\SpiralApiErrors\Bootloader\ApiErrorBootloader;
@@ -134,6 +135,7 @@ class Kernel extends \Spiral\Framework\Kernel
             CqrsBootloader::class,
             OutboxBootloader::class,
             MediaBootloader::class,
+            NotificationsBootloader::class,
 
             // Почта
             MailerBootloader::class,

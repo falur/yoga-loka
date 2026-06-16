@@ -12,7 +12,6 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxAvailableAt;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventDate;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Modules\Outbox\Domain\ValueObject\KnownOutboxEventDate;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
@@ -104,13 +103,15 @@ final class OutboxValueObjectTest extends TestCase
         $now = new \DateTimeImmutable('2026-05-25 15:37:00');
 
         self::assertTrue(OutboxEventDate::none()->isEmpty());
+        self::assertNull(OutboxEventDate::none()->value());
+        self::assertTrue(OutboxEventDate::none()->equals(OutboxEventDate::none()));
         self::assertTrue(OutboxEventDate::fromDateTime($now)->equals(OutboxEventDate::fromDateTime($now)));
         self::assertFalse(OutboxEventDate::none()->equals(OutboxEventDate::fromDateTime($now)));
         self::assertSame('', OutboxEventDate::none()->jsonSerialize());
         self::assertSame('', (string) OutboxEventDate::none());
         self::assertSame(OutboxEventDate::none()->jsonSerialize(), (string) OutboxEventDate::none());
         $knownOutboxEventDate = OutboxEventDate::fromDateTime($now);
-        self::assertInstanceOf(KnownOutboxEventDate::class, $knownOutboxEventDate);
+        self::assertFalse($knownOutboxEventDate->isEmpty());
         self::assertSame($now, $knownOutboxEventDate->value());
         self::assertFalse($knownOutboxEventDate->equals(OutboxEventDate::none()));
         self::assertSame($now->format(\DateTimeInterface::ATOM), OutboxEventDate::fromDateTime($now)->jsonSerialize());

@@ -57,9 +57,25 @@ final class OpenApiGeneratorTest extends TestCase
         $this->expectExceptionMessage('Не указан ни один каталог исходного кода API.');
         (new OpenApiGenerator(translator: self::englishTranslator()))->generate(new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: __DIR__ . '/../../runtime/openapi-invalid.yml', title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class)));
     }
-    private function generatorConfig(string $outputFile): OpenApiGeneratorConfig
+    public function testGeneratorResolvesGlobSourcePaths(): void
     {
-        return new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class));
+        $outputFile = __DIR__ . '/../../runtime/openapi-fixture-glob.yml';
+        $result = (new OpenApiGenerator(translator: self::englishTranslator()))->generate($this->generatorConfig(outputFile: $outputFile, sourcePaths: [__DIR__ . '/../Fixtures/*/Api/V1']));
+        self::assertSame(4, $result->operationCount);
+        self::assertFileExists($outputFile);
+    }
+    public function testConfigurationExceptionWhenGlobMatchesNoDirectory(): void
+    {
+        $this->expectException(OpenApiConfigurationException::class);
+        $this->expectExceptionMessage('Каталог исходного кода API не найден');
+        (new OpenApiGenerator(translator: self::englishTranslator()))->generate($this->generatorConfig(outputFile: __DIR__ . '/../../runtime/openapi-glob-missing.yml', sourcePaths: [__DIR__ . '/../Fixtures/*/Missing/Endpoint']));
+    }
+    /**
+     * @param list<string> $sourcePaths
+     */
+    private function generatorConfig(string $outputFile, array $sourcePaths = [__DIR__ . '/../Fixtures/Endpoint/Api/V1']): OpenApiGeneratorConfig
+    {
+        return new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: $sourcePaths, apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class));
     }
     private static function englishTranslator(): FakeTranslator
     {

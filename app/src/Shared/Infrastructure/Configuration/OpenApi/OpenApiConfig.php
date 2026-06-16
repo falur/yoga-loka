@@ -19,10 +19,13 @@ final readonly class OpenApiConfig implements TypedConfig
         return 'openapi';
     }
 
+    /**
+     * @param list<string> $sourcePaths
+     */
     public function __construct(
         public bool $enabled,
         public bool $swaggerEnabled,
-        public string $sourcePath,
+        public array $sourcePaths,
         public string $apiNamespace,
         public string $routePrefix,
         public string $outputFile,
@@ -31,12 +34,18 @@ final readonly class OpenApiConfig implements TypedConfig
         public bool $debug,
     ) {}
 
-    public function sourcePath(string $projectRoot): string
+    /**
+     * @return list<string>
+     */
+    public function sourcePaths(string $projectRoot): array
     {
-        return \sprintf(
-            '%s/%s',
-            \rtrim(string: $projectRoot, characters: \DIRECTORY_SEPARATOR),
-            \ltrim(string: $this->sourcePath, characters: \DIRECTORY_SEPARATOR),
+        return \array_map(
+            callback: fn(string $sourcePath): string => \sprintf(
+                '%s/%s',
+                \rtrim(string: $projectRoot, characters: \DIRECTORY_SEPARATOR),
+                \ltrim(string: $sourcePath, characters: \DIRECTORY_SEPARATOR),
+            ),
+            array: $this->sourcePaths,
         );
     }
 
@@ -53,7 +62,7 @@ final readonly class OpenApiConfig implements TypedConfig
     {
         return new OpenApiGeneratorConfig(
             projectRoot: $projectRoot,
-            sourcePaths: [$this->sourcePath(projectRoot: $projectRoot)],
+            sourcePaths: $this->sourcePaths(projectRoot: $projectRoot),
             apiNamespace: $this->apiNamespace,
             routePrefix: $this->routePrefix,
             outputFile: $this->outputFile(projectRoot: $projectRoot),

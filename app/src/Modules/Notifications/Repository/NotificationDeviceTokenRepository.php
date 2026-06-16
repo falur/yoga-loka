@@ -8,12 +8,12 @@ use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollectio
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<NotificationDeviceToken>
+ * @extends AbstractRepository<NotificationDeviceToken>
  */
-final class NotificationDeviceTokenRepository extends Repository
+final class NotificationDeviceTokenRepository extends AbstractRepository
 {
     public function findAllForUser(UserId $userId): NotificationDeviceTokenCollection
     {

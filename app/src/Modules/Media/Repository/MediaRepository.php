@@ -8,12 +8,12 @@ use App\Modules\Media\Domain\Collection\MediaCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<Media>
+ * @extends AbstractRepository<Media>
  */
-final class MediaRepository extends Repository
+final class MediaRepository extends AbstractRepository
 {
     public function findById(MediaId $mediaId): Media|null
     {

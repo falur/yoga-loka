@@ -49,6 +49,10 @@ class Kernel extends \Spiral\Framework\Kernel
         return [
             CoreBootloader::class,
             DotenvBootloader::class,
+
+            // До сканирования токенайзера: пометить @attention из докблоков Cycle игнорируемым
+            Bootloader\AnnotationsBootloader::class,
+
             TokenizerListenerBootloader::class,
 
             DumperBootloader::class,

@@ -9,13 +9,13 @@ use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
-use Cycle\ORM\Select\Repository;
 
 /**
- * @extends Repository<StoredOutboxEvent>
+ * @extends AbstractRepository<StoredOutboxEvent>
  */
-final class OutboxEventRepository extends Repository
+final class OutboxEventRepository extends AbstractRepository
 {
     public function findById(OutboxEventId $outboxEventId): StoredOutboxEvent|null
     {

@@ -9,12 +9,13 @@ use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Cycle\WhenSelect;
 
 /**
- * @extends Repository<Notification>
+ * @extends AbstractRepository<Notification>
  */
-final class NotificationRepository extends Repository
+final class NotificationRepository extends AbstractRepository
 {
     public function findByOutboxId(NotificationOutboxId $outboxId): Notification|null
     {
@@ -32,15 +33,17 @@ final class NotificationRepository extends Repository
      */
     public function findPageForRecipient(UserId $userId, NotificationId|null $cursor, int $limit): NotificationCollection
     {
-        $page = $this->select()
-            ->where('user_id', $userId->value());
-
-        if ($cursor !== null) {
-            $page->where('id', '<', $cursor->value());
-        }
+        $cursorId = $cursor?->value();
 
         return new NotificationCollection(
-            $page
+            $this->select()
+                ->where('user_id', $userId->value())
+                ->when(
+                    condition: $cursorId !== null,
+                    callback: static function (WhenSelect $query) use ($cursorId): void {
+                        $query->where('id', '<', $cursorId);
+                    },
+                )
                 ->orderBy(expression: 'id', direction: 'DESC')
                 ->limit($limit)
                 ->fetchAll(),

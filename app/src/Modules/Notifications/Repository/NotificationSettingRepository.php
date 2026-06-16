@@ -9,12 +9,12 @@ use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<NotificationSetting>
+ * @extends AbstractRepository<NotificationSetting>
  */
-final class NotificationSettingRepository extends Repository
+final class NotificationSettingRepository extends AbstractRepository
 {
     public function findForUserAndType(UserId $userId, NotificationTypeCode $type): NotificationSettingCollection
     {

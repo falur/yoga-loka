@@ -8,7 +8,9 @@ use Spiral\Bootloader\DomainBootloader;
 use Spiral\Cycle\Interceptor\CycleInterceptor;
 use Spiral\DataGrid\Interceptor\GridInterceptor;
 use Spiral\Domain\GuardInterceptor;
+use Psr\Clock\ClockInterface;
 use Spiral\Interceptors\HandlerInterface;
+use Symfony\Component\Clock\NativeClock;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
 use GianTiaga\SpiralOpenApi\Response\Interceptor\HttpResponseInterceptor;
 
@@ -31,6 +33,7 @@ final class AppBootloader extends DomainBootloader
         return [
             ...parent::defineSingletons(),
             HandlerInterface::class => [self::class, 'domainCore'],
+            ClockInterface::class => NativeClock::class,
         ];
     }
 }

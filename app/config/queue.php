@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Auth\Presentation\Job\SendLoginCodeJob;
 use App\Modules\Media\Presentation\Job\ProcessMediaJob;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
@@ -130,6 +131,7 @@ return [
             // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
             OutboxDebugLogJob::class => OutboxDebugLogJob::class,
             ProcessMediaJob::class => ProcessMediaJob::class,
+            SendLoginCodeJob::class => SendLoginCodeJob::class,
         ],
 
         /**
@@ -143,6 +145,7 @@ return [
             // \App\Modules\System\Presentation\Job\Ping::class => 'json',
             OutboxDebugLogJob::class => OutboxQueueSerializer::class,
             ProcessMediaJob::class => OutboxQueueSerializer::class,
+            SendLoginCodeJob::class => OutboxQueueSerializer::class,
         ],
     ],
 

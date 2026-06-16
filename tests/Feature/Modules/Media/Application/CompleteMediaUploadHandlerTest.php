@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Command\Media\CompleteMediaUpload\CompleteMediaUploadCommand;
-use App\Modules\Media\Application\Command\Media\CompleteMediaUpload\CompleteMediaUploadHandler;
+use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadCommand;
+use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Dto\MediaObjectHead;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;

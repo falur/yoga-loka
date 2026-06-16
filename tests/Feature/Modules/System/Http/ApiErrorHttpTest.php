@@ -52,7 +52,7 @@ final class ApiErrorHttpTest extends TestCase
         $response->assertUnprocessable();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
         $response->assertBodySame(
-            '{"message":"Validation error","code":422,"errors":[{"field":"age","message":"Возраст должен быть числом"}]}',
+            '{"message":"Validation error","code":422,"errors":[{"field":"age","messages":["Возраст должен быть числом"]}]}',
         );
     }
 
@@ -67,7 +67,7 @@ final class ApiErrorHttpTest extends TestCase
         $response->assertUnprocessable();
         $response->assertHasHeader(HttpHeader::ContentType->value, ContentType::Json->value);
         $response->assertBodySame(
-            '{"message":"Ошибка валидации","code":422,"errors":[{"field":"age","message":"Возраст должен быть числом"}]}',
+            '{"message":"Ошибка валидации","code":422,"errors":[{"field":"age","messages":["Возраст должен быть числом"]}]}',
         );
     }
 

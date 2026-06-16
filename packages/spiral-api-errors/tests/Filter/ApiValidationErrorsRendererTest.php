@@ -16,11 +16,35 @@ final class ApiValidationErrorsRendererTest extends TestCase
 {
     public function testRendererReturnsEnglishValidationErrorResponse(): void
     {
-        $this->assertValidationErrorResponse(translator: self::englishTranslator(), expectedBody: '{"message":"Validation error","code":422,"errors":[{"field":"email","message":"Некорректный email"},{"field":"password","message":"Пароль обязателен"}]}');
+        $this->assertValidationErrorResponse(translator: self::englishTranslator(), expectedBody: '{"message":"Validation error","code":422,"errors":[{"field":"email","messages":["Некорректный email"]},{"field":"password","messages":["Пароль обязателен"]}]}');
     }
     public function testRendererReturnsRussianValidationErrorResponse(): void
     {
-        $this->assertValidationErrorResponse(translator: new FakeTranslator(locale: 'ru', messages: ['gian_tiaga.spiral_api_errors.validation_error' => 'Ошибка валидации']), expectedBody: '{"message":"Ошибка валидации","code":422,"errors":[{"field":"email","message":"Некорректный email"},{"field":"password","message":"Пароль обязателен"}]}');
+        $this->assertValidationErrorResponse(translator: new FakeTranslator(locale: 'ru', messages: ['gian_tiaga.spiral_api_errors.validation_error' => 'Ошибка валидации']), expectedBody: '{"message":"Ошибка валидации","code":422,"errors":[{"field":"email","messages":["Некорректный email"]},{"field":"password","messages":["Пароль обязателен"]}]}');
+    }
+    public function testRendererReturnsAllMessagesWhenFieldErrorsAreList(): void
+    {
+        // Symfony-валидатор отдаёт сообщения поля списком, нарушая статический контракт
+        // интерфейса array<string,string>; сужаем mixed на границе так же, как делает рантайм,
+        // и возвращаем все сообщения поля.
+        $response = (new ApiValidationErrorsRenderer(logger: new NullLogger(), translator: self::englishTranslator()))->render($this->fieldErrors('{"nickname":["Никнейм имеет неверный формат","Никнейм не должен содержать две точки подряд"]}'));
+        self::assertSame(HttpStatus::UnprocessableEntity->value, $response->getStatusCode());
+        self::assertSame('{"message":"Validation error","code":422,"errors":[{"field":"nickname","messages":["Никнейм имеет неверный формат","Никнейм не должен содержать две точки подряд"]}]}', (string) $response->getBody());
+    }
+    public function testRendererReturnsEmptyListWhenFieldErrorListIsEmpty(): void
+    {
+        $response = (new ApiValidationErrorsRenderer(logger: new NullLogger(), translator: self::englishTranslator()))->render($this->fieldErrors('{"nickname":[]}'));
+        self::assertSame(HttpStatus::UnprocessableEntity->value, $response->getStatusCode());
+        self::assertSame('{"message":"Validation error","code":422,"errors":[{"field":"nickname","messages":[]}]}', (string) $response->getBody());
+    }
+    /**
+     * @return array<string, string>
+     */
+    private function fieldErrors(string $json): array
+    {
+        /** @var array<string, string> $errors */
+        $errors = \json_decode(json: $json, associative: true);
+        return $errors;
     }
     private function assertValidationErrorResponse(FakeTranslator $translator, string $expectedBody): void
     {

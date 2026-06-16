@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Flow\Fixture;
 
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaCommand;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaCommand;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 
 /**

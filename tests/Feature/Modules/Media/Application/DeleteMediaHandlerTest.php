@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Command\Media\DeleteMedia\DeleteMediaCommand;
-use App\Modules\Media\Application\Command\Media\DeleteMedia\DeleteMediaHandler;
+use App\Modules\Media\Application\Command\DeleteMedia\DeleteMediaCommand;
+use App\Modules\Media\Application\Command\DeleteMedia\DeleteMediaHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;

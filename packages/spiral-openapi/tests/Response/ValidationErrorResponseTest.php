@@ -16,11 +16,11 @@ final class ValidationErrorResponseTest extends TestCase
 {
     public function testValidationErrorResponseSerializesErrors(): void
     {
-        $response = (new ValidationErrorResponse(message: 'Ошибка валидации', code: HttpStatus::UnprocessableEntity->value, errors: [new ValidationErrorItemResponse(field: 'email', message: 'Некорректный email')]))->withStatus(HttpStatus::UnprocessableEntity);
+        $response = (new ValidationErrorResponse(message: 'Ошибка валидации', code: HttpStatus::UnprocessableEntity->value, errors: [new ValidationErrorItemResponse(field: 'email', messages: ['Некорректный email'])]))->withStatus(HttpStatus::UnprocessableEntity);
         $httpResponse = $response->toResponse();
         self::assertSame(HttpStatus::UnprocessableEntity->value, $httpResponse->getStatusCode());
         self::assertSame(ContentType::Json->value, $httpResponse->getHeaderLine(HttpHeader::ContentType->value));
-        self::assertJsonStringEqualsJsonString('{"message":"Ошибка валидации","code":422,"errors":[{"field":"email","message":"Некорректный email"}]}', (string) $httpResponse->getBody());
+        self::assertJsonStringEqualsJsonString('{"message":"Ошибка валидации","code":422,"errors":[{"field":"email","messages":["Некорректный email"]}]}', (string) $httpResponse->getBody());
     }
     public function testValidationErrorResponseSerializesEmptyErrors(): void
     {

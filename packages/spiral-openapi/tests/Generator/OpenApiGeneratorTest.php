@@ -13,6 +13,7 @@ use GianTiaga\SpiralOpenApi\Exception\OpenApiConfigurationException;
 use GianTiaga\SpiralOpenApi\OpenApiGenerator;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 use GianTiaga\SpiralOpenApi\Tests\Support\FakeTranslator;
@@ -55,11 +56,46 @@ final class OpenApiGeneratorTest extends TestCase
     {
         $this->expectException(OpenApiConfigurationException::class);
         $this->expectExceptionMessage('Не указан ни один каталог исходного кода API.');
-        (new OpenApiGenerator(translator: self::englishTranslator()))->generate(new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: __DIR__ . '/../../runtime/openapi-invalid.yml', title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class)));
+        (new OpenApiGenerator(translator: self::englishTranslator()))->generate(new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: __DIR__ . '/../../runtime/openapi-invalid.yml', title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class, emptyResponseClass: EmptySuccessResponse::class)));
     }
-    private function generatorConfig(string $outputFile): OpenApiGeneratorConfig
+    public function testFixtureProjectGeneratesOpenApi30NullableForms(): void
     {
-        return new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class));
+        $outputFile = __DIR__ . '/../../runtime/openapi-fixture-30.yml';
+        $result = (new OpenApiGenerator(translator: self::englishTranslator()))->generate($this->generatorConfig(outputFile: $outputFile, openApiVersion: '3.0.3'));
+        self::assertSame(4, $result->operationCount);
+        self::assertFileExists($outputFile);
+        $spec = Yaml::parseFile($outputFile);
+        self::assertIsArray($spec);
+        $specNode = new OpenApiSpecNode(value: $spec);
+        self::assertSame('3.0.3', $specNode->value(key: 'openapi'));
+        $schemas = $specNode->child(key: 'components')->child(key: 'schemas');
+        self::assertTrue($schemas->has(key: 'UserResource'));
+        $this->assertUserResourceNullableSchemaForOpenApi30(schemas: $schemas);
+    }
+    public function testEmptySuccessResponseGeneratesNoContentOperation(): void
+    {
+        $outputFile = __DIR__ . '/../../runtime/openapi-fixture-no-content.yml';
+        // Метод без @return-дженерика не должен бросать OpenApiGenerationException: ветка 204 перехватывает его раньше.
+        $result = (new OpenApiGenerator(translator: self::englishTranslator()))->generate(new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/NoContent/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\NoContent\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class, emptyResponseClass: EmptySuccessResponse::class)));
+        self::assertSame(1, $result->operationCount);
+        self::assertFileExists($outputFile);
+        $spec = Yaml::parseFile($outputFile);
+        self::assertIsArray($spec);
+        $specNode = new OpenApiSpecNode(value: $spec);
+        $operation = $specNode->child(key: 'paths')->child(key: '/commands/run')->child(key: 'post');
+        self::assertSame('api_v1_commands_run', $operation->value(key: 'operationId'));
+        $responses = $operation->child(key: 'responses');
+        self::assertTrue($responses->has(key: 204));
+        self::assertFalse($responses->has(key: 200));
+        $noContentResponse = $responses->child(key: 204);
+        self::assertSame('Successful response.', $noContentResponse->value(key: 'description'));
+        self::assertFalse($noContentResponse->has(key: 'content'));
+        $schemas = $specNode->child(key: 'components')->child(key: 'schemas');
+        self::assertFalse($schemas->has(key: 'EmptySuccessResponse'));
+    }
+    private function generatorConfig(string $outputFile, string $openApiVersion = '3.1.0'): OpenApiGeneratorConfig
+    {
+        return new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class, emptyResponseClass: EmptySuccessResponse::class), openApiVersion: $openApiVersion);
     }
     private static function englishTranslator(): FakeTranslator
     {
@@ -97,6 +133,65 @@ final class OpenApiGeneratorTest extends TestCase
         self::assertTrue($schemas->has(key: 'UserResource'));
         self::assertTrue($schemas->has(key: 'ErrorResponse'));
         self::assertFalse($paths->has(key: '/internal-docs'));
+        $this->assertUserResourceNullableSchema(schemas: $schemas);
+    }
+    private function assertUserResourceNullableSchema(OpenApiSpecNode $schemas): void
+    {
+        $userResource = $schemas->child(key: 'UserResource');
+        $properties = $userResource->child(key: 'properties');
+        $nickname = $properties->child(key: 'nickname');
+        $health = $properties->child(key: 'health');
+        $tags = $properties->child(key: 'tags');
+        // OpenAPI 3.1 выражает обнуляемость через тип-объединение и oneOf, ключ nullable удалён из стандарта.
+        self::assertFalse($nickname->has(key: 'nullable'));
+        self::assertFalse($health->has(key: 'nullable'));
+        self::assertFalse($tags->has(key: 'nullable'));
+        // Скаляр: type: [string, null].
+        self::assertSame(['string', 'null'], $nickname->value(key: 'type'));
+        // Список: type: [array, null] с сохранённым items.
+        self::assertSame(['array', 'null'], $tags->value(key: 'type'));
+        self::assertSame(['type' => 'string'], $tags->value(key: 'items'));
+        // Ссылка: oneOf со ссылкой и {type: null}, без соседства nullable с $ref.
+        self::assertFalse($health->has(key: 'type'));
+        self::assertFalse($health->has(key: '$ref'));
+        self::assertSame(
+            [['$ref' => '#/components/schemas/HealthResource'], ['type' => 'null']],
+            $health->value(key: 'oneOf'),
+        );
+        $required = $userResource->value(key: 'required');
+        self::assertIsArray($required);
+        self::assertContains('id', $required);
+        self::assertContains('email', $required);
+        self::assertNotContains('nickname', $required);
+        self::assertNotContains('health', $required);
+        self::assertNotContains('tags', $required);
+    }
+    private function assertUserResourceNullableSchemaForOpenApi30(OpenApiSpecNode $schemas): void
+    {
+        $userResource = $schemas->child(key: 'UserResource');
+        $properties = $userResource->child(key: 'properties');
+        $nickname = $properties->child(key: 'nickname');
+        $health = $properties->child(key: 'health');
+        $tags = $properties->child(key: 'tags');
+        // OpenAPI 3.0 выражает обнуляемость ключом nullable: true, тип-объединение 3.1 не используется.
+        self::assertSame('string', $nickname->value(key: 'type'));
+        self::assertTrue($nickname->value(key: 'nullable'));
+        // Список: type: array + nullable: true, items сохранены.
+        self::assertSame('array', $tags->value(key: 'type'));
+        self::assertTrue($tags->value(key: 'nullable'));
+        self::assertSame(['type' => 'string'], $tags->value(key: 'items'));
+        // Ссылка: $ref оборачивается в allOf, рядом с которым nullable: true не игнорируется.
+        self::assertFalse($health->has(key: '$ref'));
+        self::assertFalse($health->has(key: 'oneOf'));
+        self::assertSame([['$ref' => '#/components/schemas/HealthResource']], $health->value(key: 'allOf'));
+        self::assertTrue($health->value(key: 'nullable'));
+        $required = $userResource->value(key: 'required');
+        self::assertIsArray($required);
+        self::assertContains('id', $required);
+        self::assertContains('email', $required);
+        self::assertNotContains('nickname', $required);
+        self::assertNotContains('health', $required);
+        self::assertNotContains('tags', $required);
     }
     private function assertStandardResponseDescriptions(OpenApiSpecNode $operation, string $successDescription, string $errorDescription): void
     {

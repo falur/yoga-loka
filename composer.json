@@ -24,6 +24,7 @@
         "illuminate/support": "^13.0",
         "intervention/image": "^4",
         "league/flysystem-aws-s3-v3": "^3.34",
+        "psr/clock": "^1.0",
         "spiral-packages/league-event": "^1.0.1",
         "spiral-packages/scheduler": "^2.1",
         "spiral-packages/symfony-validator": "^1.5",
@@ -38,7 +39,8 @@
         "spiral/temporal-bridge": "^3.3",
         "spiral/translator": "^3.15",
         "spiral/twig-bridge": "^2.0.1",
-        "swagger-api/swagger-ui": "^5.32"
+        "swagger-api/swagger-ui": "^5.32",
+        "symfony/clock": "^8.0"
     },
     "require-dev": {
         "brianium/paratest": "7.22.4",

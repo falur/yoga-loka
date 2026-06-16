@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaCommand;
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaHandler;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaCommand;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
 use App\Modules\Media\Application\Dto\MediaConversionResult;

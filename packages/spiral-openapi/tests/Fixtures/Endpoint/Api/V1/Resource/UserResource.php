@@ -6,5 +6,11 @@ namespace GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1\Resource;
 
 final readonly class UserResource extends AbstractResource
 {
-    public function __construct(public string $id, public string $email) {}
+    /** @var list<string>|null */
+    public array|null $tags;
+
+    public function __construct(public string $id, public string $email, public string|null $nickname = null, public HealthResource|null $health = null)
+    {
+        $this->tags = null;
+    }
 }

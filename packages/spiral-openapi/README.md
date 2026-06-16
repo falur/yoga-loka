@@ -37,6 +37,7 @@ use GianTiaga\SpiralOpenApi\Config\ResponseWrapperMapping;
 use GianTiaga\SpiralOpenApi\OpenApiGenerator;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 
@@ -53,6 +54,7 @@ $result = $generator->generate(new OpenApiGeneratorConfig(
         collectionResponseClass: CollectionResponse::class,
         paginationResponseClass: PaginationResponse::class,
         errorResponseClass: ErrorResponse::class,
+        emptyResponseClass: EmptySuccessResponse::class,
     ),
 ));
 ```

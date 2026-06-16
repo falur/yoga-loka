@@ -31,8 +31,21 @@ final readonly class ApiValidationErrorsRenderer implements ErrorsRendererInterf
     {
         $validationErrors = [];
         foreach ($errors as $field => $message) {
-            $validationErrors[] = new ValidationErrorItemResponse(field: $field, message: $message);
+            $validationErrors[] = new ValidationErrorItemResponse(field: $field, messages: $this->messages($message));
         }
         return $validationErrors;
+    }
+    /**
+     * Symfony-валидатор отдаёт сообщения поля списком, а casting-ошибки — строкой. Возвращаем
+     * все сообщения поля списком, не теряя дополнительные нарушения. Контракт остаётся
+     * array<string, string> (как у vendor-интерфейса) — список разворачивается здесь, без
+     * вложенного массива в типе.
+     *
+     * @param string|list<string> $message
+     * @return list<string>
+     */
+    private function messages(string|array $message): array
+    {
+        return \is_array($message) ? $message : [$message];
     }
 }

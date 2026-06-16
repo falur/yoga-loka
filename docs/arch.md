@@ -226,11 +226,14 @@ app/
           Job/                    # Технические Job outbox
 
       System/
+        Infrastructure/
+          Bootloader/             # SystemBootloader: регистрация namespace `system` для view
         Presentation/
           Http/                   # Health, Swagger UI, OpenAPI YAML route
           Console/                # openapi:* команды
           Exception/              # Исключения слоя Presentation (публикация ассетов OpenAPI)
           Temporal/               # технические workflow
+          views/                  # twig-шаблоны модуля (swagger/index), namespace `system`
 
     Shared/
       Domain/
@@ -331,6 +334,13 @@ response wrappers и вызывает пакет через команду `open
 записывается в `public/openapi/openapi.yml`, а Swagger UI по `/api/docs` читает
 тот же файл через route `/api/docs/openapi.yml`.
 
+Генератор сканирует все модули приложения: `openapi.sourcePath` = `app/src/Modules`,
+`openapi.apiNamespace` = `App\Modules`. Он отбирает классы по префиксу namespace и строит
+операции только из публичных методов с атрибутом `#[Route]`. Поэтому любой модуль с
+`#[Route]`-контроллером автоматически попадает в публичную спецификацию. Если контроллер не
+должен публиковаться (внутренний/служебный эндпоинт), его исключают через
+`#[OpenApi(ignore: true)]`, а не через сужение области сканирования.
+
 `packages/spiral-openapi` использует Spiral translator только для стандартных описаний
 response по ключам `gian_tiaga.spiral_openapi.successful_response` и
 `gian_tiaga.spiral_openapi.api_error`. Описания из `#[OpenApi(description: ...)]` и
@@ -428,7 +438,11 @@ adapter, как HTTP controller или queue job.
 ## Правила CQRS
 
 CQRS используется на уровне use-case-ов: Command изменяет состояние, Query читает
-данные. Каждый use-case живёт в отдельной папке действия внутри
+данные. Каждый use-case живёт в отдельной папке действия. Пока в модуле одна
+область (Area), действие лежит прямо в корне:
+`Modules/{Module}/Application/Command/{Action}` или
+`Modules/{Module}/Application/Query/{Action}`. Уровень области добавляется только
+когда областей становится несколько — тогда действия группируются по областям:
 `Modules/{Module}/Application/Command/{Area}/{Action}` или
 `Modules/{Module}/Application/Query/{Area}/{Action}`.
 
@@ -634,6 +648,7 @@ Pass-through обёртки над `ValueObjectCast` не создаются.
 
 ```text
 API           -> Modules/{Module}/Presentation/Http -> Filter DTO, Resource, Response
+Views         -> Modules/{Module}/Presentation/views -> namespace `{module}:<view>` (bootloader модуля)
 Configuration -> app/config -> Shared/Infrastructure/Configuration
 Persistence   -> Modules/{Module}/Repository -> Cycle ORM
 Typecast      -> Shared/Infrastructure/Cycle + Modules/{Module}/Infrastructure/Cycle
@@ -644,3 +659,11 @@ Quality       -> PHPStan level max, 100% coverage, all HTTP routes integration-t
 ```
 
 Framework, config, persistence, logging и error rendering не попадают в `Domain`.
+
+Что колокейтим в модуль, а что осознанно глобально: view-шаблоны (twig) — живой ассет
+Presentation-слоя и лежат в `Modules/{Module}/Presentation/views`, регистрируясь под namespace
+модуля его bootloader-ом (правило `rules.md` «View-шаблоны живут в модуле»). А config-файлы и
+миграции остаются глобальными намеренно: config-DTO предписано единое размещение в
+`Shared/Infrastructure/Configuration` (см. раздел про `TypedConfig` выше и `app/config`), а
+миграции (`app/database/migrations`) образуют единую линейную историю схемы, которая часто
+кросс-модульная и проигрывается мигратором по общему порядку — дробить её по модулям нельзя.

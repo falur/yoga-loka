@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Query\Media\CheckMediaExists\CheckMediaExistsHandler;
-use App\Modules\Media\Application\Query\Media\CheckMediaExists\CheckMediaExistsQuery;
-use App\Modules\Media\Application\Query\Media\CheckMediaIsImage\CheckMediaIsImageHandler;
-use App\Modules\Media\Application\Query\Media\CheckMediaIsImage\CheckMediaIsImageQuery;
+use App\Modules\Media\Application\Query\CheckMediaExists\CheckMediaExistsHandler;
+use App\Modules\Media\Application\Query\CheckMediaExists\CheckMediaExistsQuery;
+use App\Modules\Media\Application\Query\CheckMediaIsImage\CheckMediaIsImageHandler;
+use App\Modules\Media\Application\Query\CheckMediaIsImage\CheckMediaIsImageQuery;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Shared\Domain\ValueObject\UserId;
 

@@ -11,6 +11,7 @@ use GianTiaga\SpiralOpenApi\Logging\DebugLogger;
 use GianTiaga\SpiralOpenApi\Model\ClassMetadata;
 use GianTiaga\SpiralOpenApi\Model\MethodMetadata;
 use GianTiaga\SpiralOpenApi\Model\PropertyMetadata;
+use GianTiaga\SpiralOpenApi\Schema\NullableSchema;
 use GianTiaga\SpiralOpenApi\Schema\SchemaBuilder;
 use GianTiaga\SpiralOpenApi\Schema\SchemaRegistry;
 
@@ -25,7 +26,8 @@ final readonly class SpecBuilder
         $classesByName = $this->classesByName($classes);
         $classesByShortName = $this->classesByShortName($classes);
         $schemaRegistry = new SchemaRegistry();
-        $schemaBuilder = new SchemaBuilder(classesByName: $classesByName, classesByShortName: $classesByShortName, schemaRegistry: $schemaRegistry);
+        $nullableSchema = new NullableSchema(openApiVersion: $config->openApiVersion);
+        $schemaBuilder = new SchemaBuilder(classesByName: $classesByName, classesByShortName: $classesByShortName, schemaRegistry: $schemaRegistry, nullableSchema: $nullableSchema);
         $paths = [];
         $operationIds = [];
         $operationCount = 0;
@@ -44,12 +46,12 @@ final readonly class SpecBuilder
                 }
                 $operationIds[$operationId] = true;
                 foreach ($methodMetadata->route->methods as $httpMethod) {
-                    $paths[$this->pathWithoutRoutePrefix(routePath: $methodMetadata->route->path, routePrefix: $config->routePrefix)][\strtolower($httpMethod)] = $this->operation(classMetadata: $classMetadata, methodMetadata: $methodMetadata, operationId: $operationId, schemaBuilder: $schemaBuilder, classesByName: $classesByName, config: $config);
+                    $paths[$this->pathWithoutRoutePrefix(routePath: $methodMetadata->route->path, routePrefix: $config->routePrefix)][\strtolower($httpMethod)] = $this->operation(classMetadata: $classMetadata, methodMetadata: $methodMetadata, operationId: $operationId, schemaBuilder: $schemaBuilder, classesByName: $classesByName, config: $config, nullableSchema: $nullableSchema);
                     $operationCount++;
                 }
             }
         }
-        $this->ensureErrorResponseSchema(schemaRegistry: $schemaRegistry, config: $config);
+        $this->ensureErrorResponseSchema(schemaRegistry: $schemaRegistry, config: $config, nullableSchema: $nullableSchema);
         return new OpenApiBuildResult(
             spec: ['openapi' => $config->openApiVersion, 'info' => ['title' => $config->title, 'version' => $config->version], 'servers' => [['url' => $config->routePrefix]], 'paths' => $paths, 'components' => ['schemas' => $schemaRegistry->all()]],
             operationCount: $operationCount,
@@ -83,9 +85,12 @@ final readonly class SpecBuilder
      * @param array<string, ClassMetadata> $classesByName
      * @return array<string, mixed>
      */
-    private function operation(ClassMetadata $classMetadata, MethodMetadata $methodMetadata, string $operationId, SchemaBuilder $schemaBuilder, array $classesByName, OpenApiGeneratorConfig $config): array
+    private function operation(ClassMetadata $classMetadata, MethodMetadata $methodMetadata, string $operationId, SchemaBuilder $schemaBuilder, array $classesByName, OpenApiGeneratorConfig $config, NullableSchema $nullableSchema): array
     {
-        $operation = ['operationId' => $operationId, 'description' => $methodMetadata->openApi?->description ?: $methodMetadata->summary, 'parameters' => $this->parameters(methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, classesByName: $classesByName), 'responses' => ['200' => $this->successResponse(classMetadata: $classMetadata, methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, config: $config), 'default' => ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.api_error'), 'content' => ['application/json' => ['schema' => $this->errorResponseSchema(config: $config)]]]]];
+        $successResponses = $this->successResponses(classMetadata: $classMetadata, methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, config: $config, nullableSchema: $nullableSchema);
+        $errorResponse = ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.api_error'), 'content' => ['application/json' => ['schema' => $this->errorResponseSchema(config: $config)]]];
+        // Union (+) сохраняет числовой ключ кода ответа (200/204); spread [...$successResponses] переиндексировал бы его в 0.
+        $operation = ['operationId' => $operationId, 'description' => $methodMetadata->openApi?->description ?: $methodMetadata->summary, 'parameters' => $this->parameters(methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, classesByName: $classesByName), 'responses' => $successResponses + ['default' => $errorResponse]];
         $requestBody = $this->requestBody(methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, classesByName: $classesByName);
         if ($requestBody !== null) {
             $operation['requestBody'] = $requestBody;
@@ -93,9 +98,20 @@ final readonly class SpecBuilder
         return $operation;
     }
     /**
+     * @return array<int, mixed>
+     */
+    private function successResponses(ClassMetadata $classMetadata, MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, OpenApiGeneratorConfig $config, NullableSchema $nullableSchema): array
+    {
+        if ($methodMetadata->returnType !== null && $methodMetadata->returnType === $config->responseWrapperMapping->emptyResponseClass) {
+            $this->logger->debug(\sprintf('Операция %s::%s отдаёт 204 No Content (EmptySuccessResponse).', $classMetadata->className, $methodMetadata->name));
+            return ['204' => ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.successful_response')]];
+        }
+        return ['200' => $this->successResponse(classMetadata: $classMetadata, methodMetadata: $methodMetadata, schemaBuilder: $schemaBuilder, config: $config, nullableSchema: $nullableSchema)];
+    }
+    /**
      * @return array<string, mixed>
      */
-    private function successResponse(ClassMetadata $classMetadata, MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, OpenApiGeneratorConfig $config): array
+    private function successResponse(ClassMetadata $classMetadata, MethodMetadata $methodMetadata, SchemaBuilder $schemaBuilder, OpenApiGeneratorConfig $config, NullableSchema $nullableSchema): array
     {
         if ($methodMetadata->fileResponse !== null) {
             return ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.successful_response'), 'content' => [$this->mediaType(contentType: $methodMetadata->fileResponse->contentType) => ['schema' => $methodMetadata->fileResponse->binary ? ['type' => 'string', 'format' => 'binary'] : ['type' => 'string']]]];
@@ -104,20 +120,20 @@ final readonly class SpecBuilder
         if ($genericReturnType === null) {
             throw new OpenApiGenerationException(\sprintf('Для метода %s::%s отсутствует PHPDoc @return с generic-типом ответа.', $classMetadata->className, $methodMetadata->name));
         }
-        return ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.successful_response'), 'content' => ['application/json' => ['schema' => $this->responseSchema(wrapperClass: $genericReturnType->wrapperClass, resourceClass: $genericReturnType->resourceClass, schemaBuilder: $schemaBuilder, config: $config)]]];
+        return ['description' => $this->translator->trans(id: 'gian_tiaga.spiral_openapi.successful_response'), 'content' => ['application/json' => ['schema' => $this->responseSchema(wrapperClass: $genericReturnType->wrapperClass, resourceClass: $genericReturnType->resourceClass, schemaBuilder: $schemaBuilder, config: $config, nullableSchema: $nullableSchema)]]];
     }
     private function mediaType(string $contentType): string
     {
         $mediaType = \strstr(haystack: $contentType, needle: ';', before_needle: true);
         return $mediaType === false ? $contentType : $mediaType;
     }
-    private function ensureErrorResponseSchema(SchemaRegistry $schemaRegistry, OpenApiGeneratorConfig $config): void
+    private function ensureErrorResponseSchema(SchemaRegistry $schemaRegistry, OpenApiGeneratorConfig $config, NullableSchema $nullableSchema): void
     {
         $schemaName = $this->shortName(className: $config->responseWrapperMapping->errorResponseClass);
         if ($schemaRegistry->has($schemaName)) {
             return;
         }
-        $schemaRegistry->add(schemaName: $schemaName, schema: ['type' => 'object', 'properties' => ['message' => ['type' => 'string'], 'code' => ['type' => 'integer', 'nullable' => true]], 'required' => ['message']]);
+        $schemaRegistry->add(schemaName: $schemaName, schema: ['type' => 'object', 'properties' => ['message' => ['type' => 'string'], 'code' => $nullableSchema->makeNullable(['type' => 'integer'])], 'required' => ['message']]);
     }
     /**
      * @return array<string, string>
@@ -171,7 +187,7 @@ final readonly class SpecBuilder
     /**
      * @return array<string, mixed>
      */
-    private function responseSchema(string $wrapperClass, string $resourceClass, SchemaBuilder $schemaBuilder, OpenApiGeneratorConfig $config): array
+    private function responseSchema(string $wrapperClass, string $resourceClass, SchemaBuilder $schemaBuilder, OpenApiGeneratorConfig $config, NullableSchema $nullableSchema): array
     {
         $wrapperShortName = $this->shortName($wrapperClass);
         if ($this->shortName($config->responseWrapperMapping->dataResponseClass) === $wrapperShortName) {
@@ -181,7 +197,7 @@ final readonly class SpecBuilder
             return ['type' => 'object', 'properties' => ['data' => ['type' => 'array', 'items' => $schemaBuilder->referenceFor($resourceClass)]], 'required' => ['data']];
         }
         if ($this->shortName($config->responseWrapperMapping->paginationResponseClass) === $wrapperShortName) {
-            return ['type' => 'object', 'properties' => ['data' => ['type' => 'array', 'items' => $schemaBuilder->referenceFor($resourceClass)], 'meta' => ['type' => 'object', 'properties' => ['nextCursor' => ['type' => 'string', 'nullable' => true], 'limit' => ['type' => 'integer']], 'required' => ['nextCursor', 'limit']]], 'required' => ['data', 'meta']];
+            return ['type' => 'object', 'properties' => ['data' => ['type' => 'array', 'items' => $schemaBuilder->referenceFor($resourceClass)], 'meta' => ['type' => 'object', 'properties' => ['nextCursor' => $nullableSchema->makeNullable(['type' => 'string']), 'limit' => ['type' => 'integer']], 'required' => ['nextCursor', 'limit']]], 'required' => ['data', 'meta']];
         }
         throw new OpenApiGenerationException(\sprintf('Неизвестная обёртка ответа: %s.', $wrapperClass));
     }

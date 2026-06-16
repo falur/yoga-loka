@@ -14,6 +14,6 @@ final readonly class SwaggerView
 
     public function render(): string
     {
-        return $this->views->render(path: 'swagger/index');
+        return $this->views->render(path: 'system:swagger/index');
     }
 }

@@ -14,7 +14,7 @@ final readonly class SchemaBuilder
      * @param array<string, ClassMetadata> $classesByName
      * @param array<string, ClassMetadata> $classesByShortName
      */
-    public function __construct(private array $classesByName, private array $classesByShortName, private SchemaRegistry $schemaRegistry) {}
+    public function __construct(private array $classesByName, private array $classesByShortName, private SchemaRegistry $schemaRegistry, private NullableSchema $nullableSchema) {}
     /**
      * @return array<string, mixed>
      */
@@ -53,12 +53,9 @@ final readonly class SchemaBuilder
      */
     public function schemaForProperty(PropertyMetadata $propertyMetadata): array
     {
-        if ($propertyMetadata->listItemType !== null) {
-            return ['type' => 'array', 'items' => $this->schemaForType($propertyMetadata->listItemType)];
-        }
-        $schema = $this->schemaForType($propertyMetadata->type);
+        $schema = $propertyMetadata->listItemType !== null ? ['type' => 'array', 'items' => $this->schemaForType($propertyMetadata->listItemType)] : $this->schemaForType($propertyMetadata->type);
         if ($propertyMetadata->nullable) {
-            $schema['nullable'] = true;
+            return $this->nullableSchema->makeNullable($schema);
         }
         return $schema;
     }

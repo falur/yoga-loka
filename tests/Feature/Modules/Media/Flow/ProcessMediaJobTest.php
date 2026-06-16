@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Flow;
 
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaHandler;
-use App\Modules\Media\Application\Command\Media\RecordMediaProcessingFailure\RecordMediaProcessingFailureCommand;
-use App\Modules\Media\Application\Command\Media\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
+use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureCommand;
+use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Enum\MediaStatus;

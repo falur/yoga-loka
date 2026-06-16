@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Media\Application;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Query\Media\GetMediaUrl\GetMediaUrlHandler;
-use App\Modules\Media\Application\Query\Media\GetMediaUrl\GetMediaUrlQuery;
+use App\Modules\Media\Application\Query\GetMediaUrl\GetMediaUrlHandler;
+use App\Modules\Media\Application\Query\GetMediaUrl\GetMediaUrlQuery;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;

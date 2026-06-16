@@ -22,3 +22,11 @@ parameters:
             paths:
                 - app/src/Modules/User/Domain/ValueObject/UserName.php
                 - app/src/Modules/User/Domain/ValueObject/UserSpiritualName.php
+        # PSR-7 ServerRequestInterface::withAttribute объявляет первый параметр как $name, но
+        # реализации (Nyholm — $attribute) расходятся в имени, поэтому named arguments вызвали бы
+        # ошибку рантайма — здесь допустимы позиционные аргументы.
+        -
+            identifier: gianTiaga.phpstanStrictRules.namedArgumentsRequired
+            message: '#Calls with two or more ordinary arguments must use named arguments\.#'
+            paths:
+                - app/src/Modules/Auth/Presentation/Http/Middleware/AuthContextAttributeMiddleware.php

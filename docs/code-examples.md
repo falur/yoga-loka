@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Application\Command\Auth\Login;
+namespace App\Modules\Auth\Application\Command\Login;
 
 final readonly class LoginCommand
 {
@@ -25,7 +25,7 @@ final readonly class LoginCommand
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Application\Command\Auth\Login;
+namespace App\Modules\Auth\Application\Command\Login;
 
 use App\Shared\Domain\Exception\AuthenticationException;
 use App\Modules\User\Domain\ValueObject\Email;
@@ -61,7 +61,7 @@ final readonly class LoginHandler
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Application\Query\User\GetUserProfile;
+namespace App\Modules\User\Application\Query\GetUserProfile;
 
 final readonly class GetUserProfileQuery
 {
@@ -153,7 +153,7 @@ final class PaymentConfigTest extends TestCase
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Application\Query\User\GetUserProfile;
+namespace App\Modules\User\Application\Query\GetUserProfile;
 
 use App\Modules\User\Domain\Entity\User;
 use App\Shared\Domain\Exception\NotFoundException;
@@ -182,8 +182,8 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Presentation\Http\Controller;
 
-use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileHandler;
-use App\Modules\User\Application\Query\User\GetUserProfile\GetUserProfileQuery;
+use App\Modules\User\Application\Query\GetUserProfile\GetUserProfileHandler;
+use App\Modules\User\Application\Query\GetUserProfile\GetUserProfileQuery;
 use App\Modules\User\Presentation\Http\Resource\UserResource;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
@@ -415,8 +415,8 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Presentation\Console;
 
-use App\Modules\User\Application\Command\User\CreateUser\CreateUserCommand;
-use App\Modules\User\Application\Command\User\CreateUser\CreateUserHandler;
+use App\Modules\User\Application\Command\CreateUser\CreateUserCommand;
+use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Console\Attribute\Argument;
 use Spiral\Console\Attribute\AsCommand;

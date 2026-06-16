@@ -197,7 +197,7 @@ final readonly class PhpAstParser
             foreach ($property->props as $propertyProperty) {
                 $type = $property->type instanceof Node ? $this->typeName($property->type) : 'string';
                 $attributeGroups = \array_values(array: $property->attrGroups);
-                $properties[] = new PropertyMetadata(name: $this->inputName(attributeGroups: $attributeGroups, fallback: $propertyProperty->name->toString()), type: $this->baseTypeName($type), nullable: $property->type instanceof Node\NullableType, hasDefault: $propertyProperty->default !== null, source: $this->inputSource(attributeGroups: $attributeGroups), listItemType: $this->listItemType($property->getDocComment()?->getText()));
+                $properties[] = new PropertyMetadata(name: $this->inputName(attributeGroups: $attributeGroups, fallback: $propertyProperty->name->toString()), type: $this->baseTypeName($type), nullable: $this->isNullableType($property->type), hasDefault: $propertyProperty->default !== null, source: $this->inputSource(attributeGroups: $attributeGroups), listItemType: $this->listItemType($property->getDocComment()?->getText()));
             }
         }
         foreach ($class->getMethods() as $method) {
@@ -209,7 +209,7 @@ final readonly class PhpAstParser
                     continue;
                 }
                 $type = $parameter->type instanceof Node ? $this->typeName($parameter->type) : 'string';
-                $properties[] = new PropertyMetadata(name: $parameter->var instanceof Expr\Variable && \is_string($parameter->var->name) ? $parameter->var->name : 'value', type: $this->baseTypeName($type), nullable: $parameter->type instanceof Node\NullableType, hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE);
+                $properties[] = new PropertyMetadata(name: $parameter->var instanceof Expr\Variable && \is_string($parameter->var->name) ? $parameter->var->name : 'value', type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type), hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE);
             }
         }
         return $properties;
@@ -225,7 +225,7 @@ final readonly class PhpAstParser
                 continue;
             }
             $type = $parameter->type instanceof Node ? $this->typeName($parameter->type) : 'string';
-            $parameters[] = new ParameterMetadata(name: $parameter->var->name, type: $this->baseTypeName($type), nullable: $parameter->type instanceof Node\NullableType);
+            $parameters[] = new ParameterMetadata(name: $parameter->var->name, type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type));
         }
         return $parameters;
     }
@@ -380,6 +380,28 @@ final readonly class PhpAstParser
         }
         return null;
     }
+    /**
+     * Тип nullable, если это `?T` (NullableType) или union, содержащий `null`
+     * (`T|null`, `null|T`). PHP допускает обе формы, генератор должен трактовать их одинаково.
+     */
+    private function isNullableType(Node|null $type): bool
+    {
+        if ($type instanceof Node\NullableType) {
+            return true;
+        }
+        if (!$type instanceof Node\UnionType) {
+            return false;
+        }
+        foreach ($type->types as $unionType) {
+            if ($unionType instanceof Node\Identifier && \strtolower($unionType->toString()) === 'null') {
+                return true;
+            }
+            if ($unionType instanceof Name && \strtolower($this->resolvedName($unionType)) === 'null') {
+                return true;
+            }
+        }
+        return false;
+    }
     private function typeName(Node $type): string
     {
         if ($type instanceof Node\NullableType) {
@@ -398,7 +420,14 @@ final readonly class PhpAstParser
     }
     private function baseTypeName(string $type): string
     {
-        return \ltrim(string: \str_replace(search: '?', replace: '', subject: \explode(separator: '|', string: $type)[0]), characters: '\\');
+        $parts = \explode(separator: '|', string: \str_replace(search: '?', replace: '', subject: $type));
+        foreach ($parts as $part) {
+            $normalizedPart = \ltrim(string: $part, characters: '\\');
+            if ($normalizedPart !== '' && \strtolower($normalizedPart) !== 'null') {
+                return $normalizedPart;
+            }
+        }
+        return \ltrim(string: $parts[0], characters: '\\');
     }
     private function resolvedName(Node $node): string
     {

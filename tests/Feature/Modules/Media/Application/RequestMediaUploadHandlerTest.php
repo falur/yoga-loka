@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Command\Media\RequestMediaUpload\RequestMediaUploadCommand;
-use App\Modules\Media\Application\Command\Media\RequestMediaUpload\RequestMediaUploadHandler;
+use App\Modules\Media\Application\Command\RequestMediaUpload\RequestMediaUploadCommand;
+use App\Modules\Media\Application\Command\RequestMediaUpload\RequestMediaUploadHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Dto\MediaFileMeta;
 use App\Modules\Media\Application\Dto\MediaPresignedPart;

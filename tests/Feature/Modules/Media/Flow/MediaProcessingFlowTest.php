@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Flow;
 
-use App\Modules\Media\Application\Command\Media\CompleteMediaUpload\CompleteMediaUploadCommand;
-use App\Modules\Media\Application\Command\Media\CompleteMediaUpload\CompleteMediaUploadHandler;
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaCommand;
-use App\Modules\Media\Application\Command\Media\ProcessMedia\ProcessMediaHandler;
+use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadCommand;
+use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadHandler;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaCommand;
+use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Dto\MediaConversionSpec;
 use App\Modules\Media\Domain\Entity\Media;

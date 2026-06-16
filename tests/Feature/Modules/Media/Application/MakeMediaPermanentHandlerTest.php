@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Command\Media\MakeMediaPermanent\MakeMediaPermanentCommand;
-use App\Modules\Media\Application\Command\Media\MakeMediaPermanent\MakeMediaPermanentHandler;
+use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentCommand;
+use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
 use App\Shared\Domain\Exception\ForbiddenException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\Exception\ValidationException;

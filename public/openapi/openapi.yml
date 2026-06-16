@@ -6,6 +6,80 @@ servers:
   -
     url: /api/v1
 paths:
+  /auth/code/request:
+    post:
+      operationId: api_v1_auth_code_request
+      description: 'Запрос кода входа на email. Ответ всегда 204 (наличие пользователя не раскрываем).'
+      parameters: {  }
+      responses:
+        204:
+          description: 'Успешный ответ.'
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { email: { type: string } }, required: [email] } }
+  /auth/code/verify:
+    post:
+      operationId: api_v1_auth_code_verify
+      description: 'Проверка кода: пара токенов существующему пользователю или талон регистрации новому email.'
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/VerifyResultResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { email: { type: string }, code: { type: string } }, required: [email, code] } }
+  /auth/register:
+    post:
+      operationId: api_v1_auth_register
+      description: 'Завершение регистрации по талону: создаёт пользователя и выдаёт пару токенов.'
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/TokenPairResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { ticket: { type: string }, name: { type: string }, nickname: { type: string } }, required: [ticket, name, nickname] } }
+  /auth/refresh:
+    post:
+      operationId: api_v1_auth_refresh
+      description: 'Обновление пары токенов по refresh-токену (ротация).'
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/TokenPairResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { refreshToken: { type: string } }, required: [refreshToken] } }
+  /auth/logout:
+    post:
+      operationId: api_v1_auth_logout
+      description: 'Выход: отзыв всех токенов текущей сессии. Требует Bearer access-токен.'
+      parameters: {  }
+      responses:
+        204:
+          description: 'Успешный ответ.'
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
   /health:
     get:
       operationId: health
@@ -13,10 +87,10 @@ paths:
       parameters: {  }
       responses:
         200:
-          description: 'Successful response.'
+          description: 'Успешный ответ.'
           content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/HealthResource' } }, required: [data] } } }
         default:
-          description: 'API error.'
+          description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
 components:
   schemas:
@@ -26,8 +100,7 @@ components:
         message:
           type: string
         code:
-          type: integer
-          nullable: true
+          type: [integer, 'null']
       required:
         - message
     HealthResource:
@@ -41,3 +114,30 @@ components:
       type: string
       enum:
         - ok
+    TokenPairResource:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+        expiresIn:
+          type: integer
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+    VerifyResultResource:
+      type: object
+      properties:
+        needsProfile:
+          type: boolean
+        tokens:
+          oneOf: [{ $ref: '#/components/schemas/TokenPairResource' }, { type: 'null' }]
+        registrationTicket:
+          type: [string, 'null']
+      required:
+        - needsProfile

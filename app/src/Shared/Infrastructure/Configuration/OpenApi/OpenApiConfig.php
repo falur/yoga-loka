@@ -9,6 +9,7 @@ use GianTiaga\SpiralOpenApi\Config\OpenApiGeneratorConfig;
 use GianTiaga\SpiralOpenApi\Config\ResponseWrapperMapping;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
+use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 
@@ -64,6 +65,7 @@ final readonly class OpenApiConfig implements TypedConfig
                 collectionResponseClass: CollectionResponse::class,
                 paginationResponseClass: PaginationResponse::class,
                 errorResponseClass: ErrorResponse::class,
+                emptyResponseClass: EmptySuccessResponse::class,
             ),
             debug: $this->debug,
         );

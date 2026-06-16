@@ -12,10 +12,15 @@ use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
+use App\Modules\Auth\Domain\ValueObject\KnownIp;
+use App\Modules\Auth\Domain\ValueObject\KnownUserAgent;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Domain\ValueObject\UnknownIp;
+use App\Modules\Auth\Domain\ValueObject\UnknownUserAgent;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 
@@ -112,6 +117,7 @@ final class AuthEntityTest extends TestCase
             type: AuthTokenType::Access,
             tokenHash: TokenHash::fromRawToken('access-raw'),
             expiration: Expiration::after($now, 3600),
+            device: SessionDevice::fromRequest(ip: '192.0.2.5', userAgent: 'Browser/9'),
             now: $now,
         );
         $refreshToken = AuthToken::issue(
@@ -121,6 +127,7 @@ final class AuthEntityTest extends TestCase
             type: AuthTokenType::Refresh,
             tokenHash: TokenHash::fromRawToken('refresh-raw'),
             expiration: Expiration::after($now, 5_184_000),
+            device: SessionDevice::unknown(),
             now: $now,
         );
 
@@ -131,5 +138,12 @@ final class AuthEntityTest extends TestCase
         self::assertTrue($accessToken->sessionId->equals($refreshToken->sessionId));
         self::assertFalse($accessToken->isExpired($now));
         self::assertTrue($accessToken->isExpired($now->add(new \DateInterval('PT3601S'))));
+
+        self::assertInstanceOf(KnownIp::class, $accessToken->ip);
+        self::assertSame('192.0.2.5', $accessToken->ip->toNullableString());
+        self::assertInstanceOf(KnownUserAgent::class, $accessToken->userAgent);
+        self::assertSame('Browser/9', $accessToken->userAgent->toNullableString());
+        self::assertInstanceOf(UnknownIp::class, $refreshToken->ip);
+        self::assertInstanceOf(UnknownUserAgent::class, $refreshToken->userAgent);
     }
 }

@@ -10,4 +10,5 @@ return [
     'app.auth.invalid_ticket' => 'The registration ticket is invalid or has expired.',
     'app.auth.invalid_refresh' => 'The refresh token is invalid or has expired.',
     'app.auth.unauthenticated' => 'Authentication required.',
+    'app.auth.session_not_found' => 'Session not found.',
 ];

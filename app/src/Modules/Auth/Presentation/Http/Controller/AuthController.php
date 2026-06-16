@@ -12,21 +12,32 @@ use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensCommand;
 use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensHandler;
 use App\Modules\Auth\Application\Command\RequestLoginCode\RequestLoginCodeCommand;
 use App\Modules\Auth\Application\Command\RequestLoginCode\RequestLoginCodeHandler;
+use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionCommand;
+use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionHandler;
 use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeCommand;
 use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeHandler;
+use App\Modules\Auth\Application\Query\GetUserSessions\AuthSession;
+use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsHandler;
+use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsQuery;
+use App\Modules\Auth\Presentation\Http\Filter\ListSessionsFilter;
 use App\Modules\Auth\Presentation\Http\Filter\LogoutFilter;
 use App\Modules\Auth\Presentation\Http\Filter\RefreshFilter;
 use App\Modules\Auth\Presentation\Http\Filter\RegisterFilter;
 use App\Modules\Auth\Presentation\Http\Filter\RequestCodeFilter;
+use App\Modules\Auth\Presentation\Http\Filter\RevokeSessionFilter;
 use App\Modules\Auth\Presentation\Http\Filter\VerifyCodeFilter;
 use App\Modules\Auth\Presentation\Http\Middleware\AuthContextAttributeMiddleware;
 use App\Modules\Auth\Presentation\Http\Middleware\RequireAuthenticatedMiddleware;
+use App\Modules\Auth\Presentation\Http\Resource\SessionResource;
 use App\Modules\Auth\Presentation\Http\Resource\TokenPairResource;
 use App\Modules\Auth\Presentation\Http\Resource\VerifyResultResource;
 use App\Shared\Infrastructure\Framework\Middleware\RateLimitMiddleware;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
+use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
+use Illuminate\Support\Collection;
 use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Core\Container\Autowire;
 use Spiral\Router\Annotation\Route;
@@ -83,7 +94,12 @@ final readonly class AuthController
         VerifyLoginCodeHandler $verifyLoginCodeHandler,
     ): DataResponse {
         $verifyLoginCodeResult = $commandBus->dispatch(
-            command: new VerifyLoginCodeCommand(email: $verifyCodeFilter->email, code: $verifyCodeFilter->code),
+            command: new VerifyLoginCodeCommand(
+                email: $verifyCodeFilter->email,
+                code: $verifyCodeFilter->code,
+                ip: $verifyCodeFilter->clientIp,
+                userAgent: $verifyCodeFilter->userAgent,
+            ),
             handler: $verifyLoginCodeHandler->handle(...),
         );
 
@@ -116,6 +132,8 @@ final readonly class AuthController
                 name: $registerFilter->name,
                 nickname: $registerFilter->nickname,
                 requestLocale: $translator->getLocale(),
+                ip: $registerFilter->clientIp,
+                userAgent: $registerFilter->userAgent,
             ),
             handler: $completeRegistrationHandler->handle(...),
         );
@@ -143,7 +161,11 @@ final readonly class AuthController
         RefreshTokensHandler $refreshTokensHandler,
     ): DataResponse {
         $tokens = $commandBus->dispatch(
-            command: new RefreshTokensCommand(refreshToken: $refreshFilter->refreshToken),
+            command: new RefreshTokensCommand(
+                refreshToken: $refreshFilter->refreshToken,
+                ip: $refreshFilter->clientIp,
+                userAgent: $refreshFilter->userAgent,
+            ),
             handler: $refreshTokensHandler->handle(...),
         );
 
@@ -175,6 +197,81 @@ final readonly class AuthController
         $commandBus->dispatch(
             command: new LogoutCommand(authSessionId: $logoutFilter->authSessionId),
             handler: $logoutHandler->handle(...),
+        );
+
+        return new EmptySuccessResponse();
+    }
+
+    /**
+     * Список своих активных сессий с устройством, IP и пометкой текущей. Требует Bearer access-токен.
+     *
+     * @return CollectionResponse<SessionResource>
+     */
+    #[Route(
+        route: '/api/v1/auth/sessions',
+        name: 'api.v1.auth.sessions.index',
+        methods: ['GET'],
+        group: 'api',
+        middleware: [
+            new Autowire(
+                alias: AuthTransportWithStorageMiddleware::class,
+                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
+            ),
+            AuthContextAttributeMiddleware::class,
+            RequireAuthenticatedMiddleware::class,
+        ],
+    )]
+    public function sessions(
+        ListSessionsFilter $listSessionsFilter,
+        GetUserSessionsHandler $getUserSessionsHandler,
+        QueryBusInterface $queryBus,
+    ): CollectionResponse {
+        $userSessions = $queryBus->dispatch(
+            query: new GetUserSessionsQuery(userId: $listSessionsFilter->authUserId),
+            handler: $getUserSessionsHandler->handle(...),
+        );
+
+        $sessionResources = \array_values(
+            (new Collection($userSessions->all()))
+                ->map(static fn(AuthSession $session): SessionResource => SessionResource::fromSession(
+                    session: $session,
+                    currentSessionId: $listSessionsFilter->authSessionId,
+                ))
+                ->all(),
+        );
+
+        return new CollectionResponse($sessionResources);
+    }
+
+    /**
+     * Отзыв своей сессии по её id; требует Bearer access-токен; чужая/несуществующая → 404.
+     */
+    #[Route(
+        route: '/api/v1/auth/sessions/<sessionId>',
+        name: 'api.v1.auth.sessions.revoke',
+        methods: ['DELETE'],
+        group: 'api',
+        middleware: [
+            new Autowire(
+                alias: AuthTransportWithStorageMiddleware::class,
+                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
+            ),
+            AuthContextAttributeMiddleware::class,
+            RequireAuthenticatedMiddleware::class,
+        ],
+    )]
+    public function revokeSession(
+        string $sessionId,
+        RevokeSessionFilter $revokeSessionFilter,
+        CommandBusInterface $commandBus,
+        RevokeUserSessionHandler $revokeUserSessionHandler,
+    ): EmptySuccessResponse {
+        $commandBus->dispatch(
+            command: new RevokeUserSessionCommand(
+                userId: $revokeSessionFilter->authUserId,
+                sessionId: $sessionId,
+            ),
+            handler: $revokeUserSessionHandler->handle(...),
         );
 
         return new EmptySuccessResponse();

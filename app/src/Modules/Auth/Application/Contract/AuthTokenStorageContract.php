@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Contract;
 
 use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Shared\Domain\ValueObject\UserId;
 
@@ -15,9 +16,11 @@ use App\Shared\Domain\ValueObject\UserId;
  */
 interface AuthTokenStorageContract
 {
-    public function issuePair(UserId $userId): IssuedTokenPair;
+    public function issuePair(UserId $userId, SessionDevice $device): IssuedTokenPair;
 
-    public function rotate(string $refreshRaw): IssuedTokenPair;
+    public function rotate(string $refreshRaw, SessionDevice $device): IssuedTokenPair;
 
     public function revokeSession(SessionId $sessionId): void;
+
+    public function revokeUserSession(UserId $userId, SessionId $sessionId): void;
 }

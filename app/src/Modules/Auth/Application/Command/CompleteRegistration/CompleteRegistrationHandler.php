@@ -8,6 +8,7 @@ use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Dto\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Repository\RegistrationTicketRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserCommand;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
@@ -62,7 +63,10 @@ final readonly class CompleteRegistrationHandler
             handler: $this->createUserHandler->handle(...),
         );
 
-        $tokens = $this->authTokenStorage->issuePair(UserId::fromString($createUserResult->userId));
+        $tokens = $this->authTokenStorage->issuePair(
+            userId: UserId::fromString($createUserResult->userId),
+            device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
+        );
         $this->entityManager->run();
 
         $this->logger->info(message: 'Регистрация завершена.', context: [

@@ -93,6 +93,25 @@ final class OpenApiGeneratorTest extends TestCase
         $schemas = $specNode->child(key: 'components')->child(key: 'schemas');
         self::assertFalse($schemas->has(key: 'EmptySuccessResponse'));
     }
+    public function testRoutePathParameterIsNormalizedToOpenApiForm(): void
+    {
+        $outputFile = __DIR__ . '/../../runtime/openapi-fixture-path-param.yml';
+        $result = (new OpenApiGenerator(translator: self::englishTranslator()))->generate(new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/PathParam/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\PathParam\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class, emptyResponseClass: EmptySuccessResponse::class)));
+        self::assertSame(1, $result->operationCount);
+        self::assertFileExists($outputFile);
+        $spec = Yaml::parseFile($outputFile);
+        self::assertIsArray($spec);
+        $specNode = new OpenApiSpecNode(value: $spec);
+        $paths = $specNode->child(key: 'paths');
+        // Spiral <sessionId> нормализуется в OpenApiForm {sessionId}; старая форма отсутствует.
+        self::assertTrue($paths->has(key: '/sessions/{sessionId}'));
+        self::assertFalse($paths->has(key: '/sessions/<sessionId>'));
+        $operation = $paths->child(key: '/sessions/{sessionId}')->child(key: 'delete');
+        $firstParameter = $operation->child(key: 'parameters')->child(key: 0);
+        self::assertSame('sessionId', $firstParameter->value(key: 'name'));
+        self::assertSame('path', $firstParameter->value(key: 'in'));
+        self::assertTrue($firstParameter->value(key: 'required'));
+    }
     private function generatorConfig(string $outputFile, string $openApiVersion = '3.1.0'): OpenApiGeneratorConfig
     {
         return new OpenApiGeneratorConfig(projectRoot: __DIR__ . '/../..', sourcePaths: [__DIR__ . '/../Fixtures/Endpoint/Api/V1'], apiNamespace: 'GianTiaga\SpiralOpenApi\Tests\Fixtures\Endpoint\Api\V1', routePrefix: '/api/v1', outputFile: $outputFile, title: 'Fixture API', version: '1.0.0', responseWrapperMapping: new ResponseWrapperMapping(dataResponseClass: DataResponse::class, collectionResponseClass: CollectionResponse::class, paginationResponseClass: PaginationResponse::class, errorResponseClass: ErrorResponse::class, emptyResponseClass: EmptySuccessResponse::class), openApiVersion: $openApiVersion);

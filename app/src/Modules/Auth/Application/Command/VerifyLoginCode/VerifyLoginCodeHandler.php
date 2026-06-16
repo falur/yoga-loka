@@ -27,7 +27,12 @@ final readonly class VerifyLoginCodeHandler
     public function handle(VerifyLoginCodeCommand $command): VerifyLoginCodeResult
     {
         $resolution = $this->commandBus->dispatch(
-            command: new ResolveLoginCodeCommand(email: $command->email, code: $command->code),
+            command: new ResolveLoginCodeCommand(
+                email: $command->email,
+                code: $command->code,
+                ip: $command->ip,
+                userAgent: $command->userAgent,
+            ),
             handler: $this->resolveLoginCodeHandler->handle(...),
         );
 

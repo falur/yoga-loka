@@ -8,6 +8,8 @@ use App\Modules\Auth\Domain\Collection\AuthTokenCollection;
 use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Shared\Domain\ValueObject\UserId;
+use App\Shared\Infrastructure\Database\DatabaseDateTimeFormat;
 use Cycle\ORM\Select\Repository;
 
 /**
@@ -43,6 +45,38 @@ final class AuthTokenRepository extends Repository
     {
         return new AuthTokenCollection(
             $this->select()
+                ->where('session_id', $sessionId->value())
+                ->forUpdate()
+                ->fetchAll(),
+        );
+    }
+
+    /**
+     * Все не истёкшие токены пользователя — для вывода списка его сессий. Read-only, без
+     * блокировки. session_id DESC = новые сессии сверху (UUID v7 хронологичен). Оператор `>`
+     * согласован с Expiration::isExpired (now >= value = истёк).
+     */
+    public function findActiveByUserId(UserId $userId, \DateTimeImmutable $now): AuthTokenCollection
+    {
+        return new AuthTokenCollection(
+            $this->select()
+                ->where('user_id', $userId->value())
+                ->where('expires_at', '>', $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS))
+                ->orderBy(expression: 'session_id', direction: 'DESC')
+                ->orderBy(expression: 'created_at')
+                ->fetchAll(),
+        );
+    }
+
+    /**
+     * Все токены конкретной сессии конкретного пользователя с блокировкой строк — для отзыва
+     * сессии с проверкой владельца. Чужая сессия → пустая коллекция.
+     */
+    public function findByUserAndSessionForUpdate(UserId $userId, SessionId $sessionId): AuthTokenCollection
+    {
+        return new AuthTokenCollection(
+            $this->select()
+                ->where('user_id', $userId->value())
                 ->where('session_id', $sessionId->value())
                 ->forUpdate()
                 ->fetchAll(),

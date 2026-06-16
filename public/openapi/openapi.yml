@@ -80,6 +80,34 @@ paths:
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  /auth/sessions:
+    get:
+      operationId: api_v1_auth_sessions_index
+      description: 'Список своих активных сессий с устройством, IP и пометкой текущей. Требует Bearer access-токен.'
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/SessionResource' } } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  '/auth/sessions/{sessionId}':
+    delete:
+      operationId: api_v1_auth_sessions_revoke
+      description: 'Отзыв своей сессии по её id; требует Bearer access-токен; чужая/несуществующая → 404.'
+      parameters:
+        -
+          name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        204:
+          description: 'Успешный ответ.'
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
   /health:
     get:
       operationId: health
@@ -114,6 +142,26 @@ components:
       type: string
       enum:
         - ok
+    SessionResource:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+        expiresAt:
+          type: string
+        ip:
+          type: [string, 'null']
+        device:
+          type: [string, 'null']
+        current:
+          type: boolean
+      required:
+        - id
+        - createdAt
+        - expiresAt
+        - current
     TokenPairResource:
       type: object
       properties:

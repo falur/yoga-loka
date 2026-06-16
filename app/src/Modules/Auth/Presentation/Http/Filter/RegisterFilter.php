@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Presentation\Http\Filter;
 
+use Spiral\Filters\Attribute\Input\Header;
 use Spiral\Filters\Attribute\Input\Post;
+use Spiral\Filters\Attribute\Input\RemoteAddress;
 use Spiral\Validation\Symfony\AttributesFilter;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -34,4 +36,12 @@ final class RegisterFilter extends AttributesFilter
     #[Assert\Regex(pattern: '/^[a-z0-9](?:[a-z0-9._-]{1,28})[a-z0-9]$/i')]
     #[Assert\Regex(pattern: '/\.\./', match: false)]
     public string $nickname;
+
+    // Захватываются из соединения и заголовка автоматически (клиент ничего не присылает) для
+    // метаданных сессии. SOURCE_NONE — в OpenAPI-контракт тела запроса не попадают.
+    #[RemoteAddress]
+    public string|null $clientIp = null;
+
+    #[Header(key: 'User-Agent')]
+    public string|null $userAgent = null;
 }

@@ -6,6 +6,7 @@ namespace App\Modules\Auth\Application\Command\RefreshTokens;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -25,7 +26,10 @@ final readonly class RefreshTokensHandler
     #[LogOperation]
     public function handle(RefreshTokensCommand $command): IssuedTokenPair
     {
-        $tokens = $this->authTokenStorage->rotate($command->refreshToken);
+        $tokens = $this->authTokenStorage->rotate(
+            refreshRaw: $command->refreshToken,
+            device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
+        );
 
         $this->logger->debug(message: 'Пара токенов ротирована.');
 

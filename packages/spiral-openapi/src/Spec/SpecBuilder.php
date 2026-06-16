@@ -75,7 +75,10 @@ final readonly class SpecBuilder
     }
     private function pathWithLeadingSlash(string $path): string
     {
-        $trimmedPath = \trim(string: $path, characters: '/');
+        // Spiral объявляет path-параметры как <name>, OpenAPI 3.1 требует {name}; нормализуем
+        // ключ пути, иначе ключ вида /auth/sessions/<sessionId> делает спецификацию невалидной.
+        $normalizedPath = \preg_replace(pattern: '/<([^>]+)>/', replacement: '{$1}', subject: $path) ?? $path;
+        $trimmedPath = \trim(string: $normalizedPath, characters: '/');
         if ($trimmedPath === '') {
             return '/';
         }

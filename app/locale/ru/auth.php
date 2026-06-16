@@ -10,4 +10,5 @@ return [
     'app.auth.invalid_ticket' => 'Талон регистрации недействителен или его срок истёк.',
     'app.auth.invalid_refresh' => 'Токен обновления недействителен или его срок истёк.',
     'app.auth.unauthenticated' => 'Требуется аутентификация.',
+    'app.auth.session_not_found' => 'Сессия не найдена.',
 ];

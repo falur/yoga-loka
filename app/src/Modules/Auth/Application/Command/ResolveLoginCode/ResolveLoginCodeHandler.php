@@ -12,6 +12,7 @@ use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Repository\LoginCodeRepository;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthQuery;
@@ -71,11 +72,18 @@ final readonly class ResolveLoginCodeHandler
         $loginCode->consume($now);
         $this->entityManager->persist($loginCode);
 
-        return $this->resolveVerifiedCode(email: $email, now: $now);
+        return $this->resolveVerifiedCode(
+            email: $email,
+            now: $now,
+            device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
+        );
     }
 
-    private function resolveVerifiedCode(EmailAddress $email, \DateTimeImmutable $now): LoginCodeResolution
-    {
+    private function resolveVerifiedCode(
+        EmailAddress $email,
+        \DateTimeImmutable $now,
+        SessionDevice $device,
+    ): LoginCodeResolution {
         $userAuthView = $this->queryBus->dispatch(
             query: new FindUserForAuthQuery(email: $email->value()),
             handler: $this->findUserForAuthHandler->handle(...),
@@ -91,7 +99,10 @@ final readonly class ResolveLoginCodeHandler
             return LoginCodeResolution::failed(LoginCodeOutcome::NotAllowed);
         }
 
-        $tokens = $this->authTokenStorage->issuePair(UserId::fromString($userAuthView->userId));
+        $tokens = $this->authTokenStorage->issuePair(
+            userId: UserId::fromString($userAuthView->userId),
+            device: $device,
+        );
         $this->entityManager->run();
 
         return LoginCodeResolution::verified($tokens);

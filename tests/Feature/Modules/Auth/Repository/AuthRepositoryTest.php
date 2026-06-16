@@ -12,10 +12,15 @@ use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
+use App\Modules\Auth\Domain\ValueObject\KnownIp;
+use App\Modules\Auth\Domain\ValueObject\KnownUserAgent;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Domain\ValueObject\UnknownIp;
+use App\Modules\Auth\Domain\ValueObject\UnknownUserAgent;
 use App\Modules\Auth\Repository\AuthTokenRepository;
 use App\Modules\Auth\Repository\LoginCodeRepository;
 use App\Modules\Auth\Repository\RegistrationTicketRepository;
@@ -131,8 +136,22 @@ final class AuthRepositoryTest extends DatabaseTestCase
     {
         $userId = UserId::generate();
         $sessionId = SessionId::generate();
-        $accessToken = $this->authToken($userId, $sessionId, AuthTokenType::Access, 'access-raw', 3600);
-        $refreshToken = $this->authToken($userId, $sessionId, AuthTokenType::Refresh, 'refresh-raw', 5_184_000);
+        $accessToken = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionId,
+            type: AuthTokenType::Access,
+            rawToken: 'access-raw',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+        $refreshToken = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionId,
+            type: AuthTokenType::Refresh,
+            rawToken: 'refresh-raw',
+            ttlSeconds: 5_184_000,
+            device: SessionDevice::unknown(),
+        );
         $this->persist($accessToken, $refreshToken);
         $this->cleanOrmHeap();
 
@@ -149,6 +168,129 @@ final class AuthRepositoryTest extends DatabaseTestCase
         self::assertCount(2, $sessionTokens);
     }
 
+    public function testHydratesAuthTokenDeviceForKnownAndUnknownValues(): void
+    {
+        $userId = UserId::generate();
+        $knownDeviceToken = $this->authToken(
+            userId: $userId,
+            sessionId: SessionId::generate(),
+            type: AuthTokenType::Access,
+            rawToken: 'known-device',
+            ttlSeconds: 3600,
+            device: SessionDevice::fromRequest(ip: '203.0.113.7', userAgent: 'Mozilla/5.0 Test'),
+        );
+        $unknownDeviceToken = $this->authToken(
+            userId: $userId,
+            sessionId: SessionId::generate(),
+            type: AuthTokenType::Access,
+            rawToken: 'unknown-device',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+        $this->persist($knownDeviceToken, $unknownDeviceToken);
+        $this->cleanOrmHeap();
+
+        $restoredKnown = $this->authTokenRepository()->findByHash(TokenHash::fromRawToken('known-device'));
+        $restoredUnknown = $this->authTokenRepository()->findByHash(TokenHash::fromRawToken('unknown-device'));
+
+        self::assertInstanceOf(AuthToken::class, $restoredKnown);
+        self::assertInstanceOf(KnownIp::class, $restoredKnown->ip);
+        self::assertSame('203.0.113.7', $restoredKnown->ip->toNullableString());
+        self::assertInstanceOf(KnownUserAgent::class, $restoredKnown->userAgent);
+        self::assertSame('Mozilla/5.0 Test', $restoredKnown->userAgent->toNullableString());
+
+        self::assertInstanceOf(AuthToken::class, $restoredUnknown);
+        self::assertInstanceOf(UnknownIp::class, $restoredUnknown->ip);
+        self::assertNull($restoredUnknown->ip->toNullableString());
+        self::assertInstanceOf(UnknownUserAgent::class, $restoredUnknown->userAgent);
+        self::assertNull($restoredUnknown->userAgent->toNullableString());
+    }
+
+    public function testFindActiveByUserIdReturnsOnlyOwnActiveTokensNewestSessionFirst(): void
+    {
+        $userId = UserId::generate();
+        $sessionA = SessionId::generate();
+        $sessionB = SessionId::generate();
+        $ownTokenA = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionA,
+            type: AuthTokenType::Access,
+            rawToken: 'active-a',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+        $ownTokenB = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionB,
+            type: AuthTokenType::Refresh,
+            rawToken: 'active-b',
+            ttlSeconds: 5_184_000,
+            device: SessionDevice::unknown(),
+        );
+        $foreignToken = $this->authToken(
+            userId: UserId::generate(),
+            sessionId: SessionId::generate(),
+            type: AuthTokenType::Access,
+            rawToken: 'foreign',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+        $expiredToken = AuthToken::issue(
+            id: AuthTokenId::generate(),
+            userId: $userId,
+            sessionId: SessionId::generate(),
+            type: AuthTokenType::Refresh,
+            tokenHash: TokenHash::fromRawToken('expired'),
+            expiration: Expiration::fromDateTime($this->now->sub(new \DateInterval('PT1H'))),
+            device: SessionDevice::unknown(),
+            now: $this->now->sub(new \DateInterval('P1D')),
+        );
+        $this->persist($ownTokenA, $ownTokenB, $foreignToken, $expiredToken);
+        $this->cleanOrmHeap();
+
+        $activeTokens = $this->authTokenRepository()->findActiveByUserId($userId, $this->now);
+
+        self::assertCount(2, $activeTokens);
+        $firstToken = $activeTokens->first();
+        self::assertInstanceOf(AuthToken::class, $firstToken);
+        $expectedNewestSession = \strcmp($sessionA->value(), $sessionB->value()) > 0 ? $sessionA : $sessionB;
+        self::assertTrue($expectedNewestSession->equals($firstToken->sessionId));
+        foreach ($activeTokens as $activeToken) {
+            self::assertTrue($activeToken->userId->equals($userId));
+        }
+    }
+
+    public function testFindByUserAndSessionForUpdateReturnsOnlyOwnSessionTokens(): void
+    {
+        $userId = UserId::generate();
+        $sessionId = SessionId::generate();
+        $accessToken = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionId,
+            type: AuthTokenType::Access,
+            rawToken: 'own-access',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+        $refreshToken = $this->authToken(
+            userId: $userId,
+            sessionId: $sessionId,
+            type: AuthTokenType::Refresh,
+            rawToken: 'own-refresh',
+            ttlSeconds: 5_184_000,
+            device: SessionDevice::unknown(),
+        );
+        $this->persist($accessToken, $refreshToken);
+        $this->cleanOrmHeap();
+
+        $ownTokens = $this->authTokenRepository()->findByUserAndSessionForUpdate($userId, $sessionId);
+        $foreignTokens = $this->authTokenRepository()
+            ->findByUserAndSessionForUpdate(UserId::generate(), $sessionId);
+
+        self::assertCount(2, $ownTokens);
+        self::assertTrue($foreignTokens->isEmpty());
+    }
+
     public function testReturnsNullForUnknownTokenHash(): void
     {
         self::assertNull($this->authTokenRepository()->findByHash(TokenHash::fromRawToken('missing')));
@@ -158,8 +300,26 @@ final class AuthRepositoryTest extends DatabaseTestCase
     {
         $userId = UserId::generate();
         $sessionId = SessionId::generate();
-        $this->entityManager()->persist($this->authToken($userId, $sessionId, AuthTokenType::Access, 'dup', 3600));
-        $this->entityManager()->persist($this->authToken($userId, $sessionId, AuthTokenType::Refresh, 'dup', 3600));
+        $this->entityManager()->persist(
+            $this->authToken(
+                userId: $userId,
+                sessionId: $sessionId,
+                type: AuthTokenType::Access,
+                rawToken: 'dup',
+                ttlSeconds: 3600,
+                device: SessionDevice::unknown(),
+            ),
+        );
+        $this->entityManager()->persist(
+            $this->authToken(
+                userId: $userId,
+                sessionId: $sessionId,
+                type: AuthTokenType::Refresh,
+                rawToken: 'dup',
+                ttlSeconds: 3600,
+                device: SessionDevice::unknown(),
+            ),
+        );
 
         $this->expectException(\Throwable::class);
 
@@ -194,6 +354,7 @@ final class AuthRepositoryTest extends DatabaseTestCase
         AuthTokenType $type,
         string $rawToken,
         int $ttlSeconds,
+        SessionDevice $device,
     ): AuthToken {
         return AuthToken::issue(
             id: AuthTokenId::generate(),
@@ -202,6 +363,7 @@ final class AuthRepositoryTest extends DatabaseTestCase
             type: $type,
             tokenHash: TokenHash::fromRawToken($rawToken),
             expiration: Expiration::after($this->now, $ttlSeconds),
+            device: $device,
             now: $this->now,
         );
     }

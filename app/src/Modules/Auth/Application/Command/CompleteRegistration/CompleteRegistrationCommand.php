@@ -11,5 +11,7 @@ final readonly class CompleteRegistrationCommand
         public string $name,
         public string $nickname,
         public string $requestLocale,
+        public string|null $ip = null,
+        public string|null $userAgent = null,
     ) {}
 }

@@ -7,9 +7,14 @@ namespace App\Modules\Auth\Domain\Entity;
 use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
+use App\Modules\Auth\Domain\ValueObject\Ip;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Domain\ValueObject\UserAgent;
 use App\Modules\Auth\Infrastructure\Cycle\ExpirationTypecast;
+use App\Modules\Auth\Infrastructure\Cycle\IpTypecast;
+use App\Modules\Auth\Infrastructure\Cycle\UserAgentTypecast;
 use App\Modules\Auth\Repository\AuthTokenRepository;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
@@ -46,6 +51,12 @@ final class AuthToken
     #[Column(type: 'datetime', name: 'expires_at', typecast: ExpirationTypecast::class)]
     public private(set) Expiration $expiration;
 
+    #[Column(type: 'string(45)', name: 'ip', nullable: true, typecast: IpTypecast::class)]
+    public private(set) Ip $ip;
+
+    #[Column(type: 'text', name: 'user_agent', nullable: true, typecast: UserAgentTypecast::class)]
+    public private(set) UserAgent $userAgent;
+
     public static function issue(
         AuthTokenId $id,
         UserId $userId,
@@ -53,6 +64,7 @@ final class AuthToken
         AuthTokenType $type,
         TokenHash $tokenHash,
         Expiration $expiration,
+        SessionDevice $device,
         \DateTimeImmutable $now,
     ): self {
         $authToken = new self();
@@ -62,6 +74,8 @@ final class AuthToken
         $authToken->type = $type;
         $authToken->tokenHash = $tokenHash;
         $authToken->expiration = $expiration;
+        $authToken->ip = $device->ip;
+        $authToken->userAgent = $device->userAgent;
         $authToken->initializeTimestamps($now);
 
         return $authToken;

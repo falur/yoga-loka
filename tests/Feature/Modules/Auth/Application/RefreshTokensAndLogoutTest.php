@@ -8,6 +8,7 @@ use App\Modules\Auth\Application\Command\Logout\LogoutCommand;
 use App\Modules\Auth\Application\Command\Logout\LogoutHandler;
 use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensCommand;
 use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensHandler;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Shared\Domain\Exception\AuthenticationException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
@@ -17,7 +18,7 @@ final class RefreshTokensAndLogoutTest extends AuthApplicationTestCase
 {
     public function testRefreshIssuesNewPairAndInvalidatesOldRefresh(): void
     {
-        $pair = $this->tokenStorage()->issuePair(UserId::generate());
+        $pair = $this->tokenStorage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
 
         $newPair = $this->refreshHandler()->handle(new RefreshTokensCommand(refreshToken: $pair->refreshToken));
 
@@ -36,7 +37,7 @@ final class RefreshTokensAndLogoutTest extends AuthApplicationTestCase
 
     public function testLogoutRevokesWholeSession(): void
     {
-        $pair = $this->tokenStorage()->issuePair(UserId::generate());
+        $pair = $this->tokenStorage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
         $accessView = $this->tokenStorage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 

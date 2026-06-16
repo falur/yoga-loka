@@ -6,8 +6,14 @@ namespace Tests\Unit\Modules\Auth\Infrastructure\Cycle;
 
 use App\Modules\Auth\Domain\ValueObject\Consumption;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
+use App\Modules\Auth\Domain\ValueObject\KnownIp;
+use App\Modules\Auth\Domain\ValueObject\KnownUserAgent;
+use App\Modules\Auth\Domain\ValueObject\UnknownIp;
+use App\Modules\Auth\Domain\ValueObject\UnknownUserAgent;
 use App\Modules\Auth\Infrastructure\Cycle\ConsumptionTypecast;
 use App\Modules\Auth\Infrastructure\Cycle\ExpirationTypecast;
+use App\Modules\Auth\Infrastructure\Cycle\IpTypecast;
+use App\Modules\Auth\Infrastructure\Cycle\UserAgentTypecast;
 use PHPUnit\Framework\TestCase;
 
 final class AuthTypecastTest extends TestCase
@@ -46,5 +52,29 @@ final class AuthTypecastTest extends TestCase
         );
         self::assertNull(ConsumptionTypecast::uncastValue(Consumption::notConsumed()));
         self::assertSame($immutable, ConsumptionTypecast::uncastValue(Consumption::at($immutable)));
+    }
+
+    public function testIpTypecast(): void
+    {
+        self::assertInstanceOf(UnknownIp::class, IpTypecast::castDatabaseValue(null));
+
+        $knownIp = IpTypecast::castDatabaseValue('203.0.113.7');
+
+        self::assertInstanceOf(KnownIp::class, $knownIp);
+        self::assertSame('203.0.113.7', $knownIp->toNullableString());
+        self::assertNull(IpTypecast::uncastValue(new UnknownIp()));
+        self::assertSame('203.0.113.7', IpTypecast::uncastValue(KnownIp::fromString('203.0.113.7')));
+    }
+
+    public function testUserAgentTypecast(): void
+    {
+        self::assertInstanceOf(UnknownUserAgent::class, UserAgentTypecast::castDatabaseValue(null));
+
+        $knownUserAgent = UserAgentTypecast::castDatabaseValue('Browser/1');
+
+        self::assertInstanceOf(KnownUserAgent::class, $knownUserAgent);
+        self::assertSame('Browser/1', $knownUserAgent->toNullableString());
+        self::assertNull(UserAgentTypecast::uncastValue(new UnknownUserAgent()));
+        self::assertSame('Browser/1', UserAgentTypecast::uncastValue(KnownUserAgent::fromString('Browser/1')));
     }
 }

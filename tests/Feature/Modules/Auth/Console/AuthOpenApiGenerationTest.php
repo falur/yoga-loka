@@ -23,6 +23,11 @@ final class AuthOpenApiGenerationTest extends TestCase
         self::assertStringContainsString('/auth/register:', $contents);
         self::assertStringContainsString('/auth/refresh:', $contents);
         self::assertStringContainsString('/auth/logout:', $contents);
+        self::assertStringContainsString('/auth/sessions:', $contents);
+        // DELETE-путь с path-параметром записан в OpenAPI-форме {sessionId}, а не Spiral <sessionId>.
+        // В YAML ключ с фигурными скобками заключается в кавычки: '/auth/sessions/{sessionId}'.
+        self::assertStringContainsString("'/auth/sessions/{sessionId}':", $contents);
+        self::assertStringNotContainsString('<sessionId>', $contents);
     }
 
     #[Config('openapi.outputFile', 'runtime/openapi-auth-schema-test.yml')]

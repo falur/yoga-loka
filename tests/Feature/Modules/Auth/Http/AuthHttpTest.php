@@ -7,6 +7,7 @@ namespace Tests\Feature\Modules\Auth\Http;
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Domain\Collection\AuthTokenCollection;
 use App\Modules\Auth\Domain\Entity\LoginCode;
 use App\Modules\Auth\Domain\Entity\RegistrationTicket;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
@@ -14,6 +15,8 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
+use App\Modules\Auth\Repository\AuthTokenRepository;
 use App\Modules\Auth\Repository\LoginCodeRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
@@ -24,6 +27,7 @@ use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\Database\DatabaseInterface;
 use Cycle\ORM\EntityManagerInterface;
+use Spiral\Auth\TokenInterface;
 use Spiral\Testing\Http\FakeHttp;
 use Tests\NonTransactionalDatabaseTestCase;
 
@@ -269,6 +273,168 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
         $http->postJson('/api/v1/auth/code/verify', $payload)->assertStatus(429);
     }
 
+    public function testSessionsListsOwnSessionsWithCurrentFlag(): void
+    {
+        $userId = UserId::generate();
+        $currentPair = $this->issuePairFor(userId: $userId, ip: '203.0.113.10', userAgent: 'CurrentAgent');
+        $this->issuePairFor(userId: $userId, ip: '203.0.113.20', userAgent: 'OtherAgent');
+
+        $response = $this->http()
+            ->withAuthorizationToken($currentPair->accessToken)
+            ->getJson('/api/v1/auth/sessions');
+
+        $response->assertOk();
+        $response->assertBodyContains('"ip":"203.0.113.10","device":"CurrentAgent","current":true');
+        $response->assertBodyContains('"ip":"203.0.113.20","device":"OtherAgent","current":false');
+    }
+
+    public function testSessionsListsSessionWithoutDeviceAsNull(): void
+    {
+        $pair = $this->issueTokenPair();
+
+        $response = $this->http()
+            ->withAuthorizationToken($pair->accessToken)
+            ->getJson('/api/v1/auth/sessions');
+
+        $response->assertOk();
+        $response->assertBodyContains('"ip":null,"device":null');
+    }
+
+    public function testSessionsWithoutTokenReturns401(): void
+    {
+        $this->http()->getJson('/api/v1/auth/sessions')->assertUnauthorized();
+    }
+
+    public function testSessionsWithRefreshTokenAsBearerReturns401(): void
+    {
+        $pair = $this->issueTokenPair();
+
+        $this->http()
+            ->withAuthorizationToken($pair->refreshToken)
+            ->getJson('/api/v1/auth/sessions')
+            ->assertUnauthorized();
+    }
+
+    public function testRevokeSessionRevokesOwnSessionAndDropsItFromList(): void
+    {
+        $userId = UserId::generate();
+        $currentPair = $this->issuePairFor(userId: $userId, ip: '203.0.113.10', userAgent: 'CurrentAgent');
+        $targetPair = $this->issuePairFor(userId: $userId, ip: '203.0.113.20', userAgent: 'TargetAgent');
+        $targetSessionId = $this->sessionIdOf($targetPair->accessToken);
+
+        $this->http()
+            ->withAuthorizationToken($currentPair->accessToken)
+            ->deleteJson(\sprintf('/api/v1/auth/sessions/%s', $targetSessionId))
+            ->assertNoContent();
+
+        $this->http()
+            ->withAuthorizationToken($targetPair->accessToken)
+            ->getJson('/api/v1/auth/sessions')
+            ->assertUnauthorized();
+
+        $remainingSessions = $this->http()
+            ->withAuthorizationToken($currentPair->accessToken)
+            ->getJson('/api/v1/auth/sessions');
+        $remainingSessions->assertOk();
+        self::assertStringContainsString('203.0.113.10', (string) $remainingSessions);
+        self::assertStringNotContainsString('203.0.113.20', (string) $remainingSessions);
+    }
+
+    public function testRevokeOwnCurrentSessionRevokesItAndInvalidatesToken(): void
+    {
+        $pair = $this->issueTokenPair();
+        $currentSessionId = $this->sessionIdOf($pair->accessToken);
+
+        $this->http()
+            ->withAuthorizationToken($pair->accessToken)
+            ->deleteJson(\sprintf('/api/v1/auth/sessions/%s', $currentSessionId))
+            ->assertNoContent();
+
+        $this->http()
+            ->withAuthorizationToken($pair->accessToken)
+            ->getJson('/api/v1/auth/sessions')
+            ->assertUnauthorized();
+    }
+
+    public function testRevokeForeignSessionReturns404(): void
+    {
+        $ownerPair = $this->issuePairFor(userId: UserId::generate(), ip: '203.0.113.30', userAgent: 'OwnerAgent');
+        $foreignSessionId = $this->sessionIdOf($ownerPair->accessToken);
+        $attackerPair = $this->issueTokenPair();
+
+        $this->http()
+            ->withAuthorizationToken($attackerPair->accessToken)
+            ->deleteJson(\sprintf('/api/v1/auth/sessions/%s', $foreignSessionId))
+            ->assertStatus(404);
+    }
+
+    public function testRevokeWithInvalidSessionIdReturns404(): void
+    {
+        $pair = $this->issueTokenPair();
+
+        $this->http()
+            ->withAuthorizationToken($pair->accessToken)
+            ->deleteJson('/api/v1/auth/sessions/not-a-uuid')
+            ->assertStatus(404);
+    }
+
+    public function testRevokeWithoutTokenReturns401(): void
+    {
+        $pair = $this->issueTokenPair();
+        $sessionId = $this->sessionIdOf($pair->accessToken);
+
+        $this->http()
+            ->deleteJson(\sprintf('/api/v1/auth/sessions/%s', $sessionId))
+            ->assertUnauthorized();
+    }
+
+    public function testVerifyStoresClientDeviceOnIssuedTokens(): void
+    {
+        $this->seedActiveUser('device-verify@example.com', 'device.verify');
+        $this->seedLoginCode('device-verify@example.com', '123456');
+
+        $this->fakeHttp()
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.42'])
+            ->withHeader('Accept-Language', 'ru')
+            ->withHeader('User-Agent', 'IntegrationAgent/1.0')
+            ->postJson('/api/v1/auth/code/verify', [
+                'email' => 'device-verify@example.com',
+                'code' => '123456',
+            ])
+            ->assertOk();
+
+        $this->cleanOrmHeap();
+        $deviceTokens = $this->activeTokensFor('device-verify@example.com');
+
+        self::assertGreaterThan(0, $deviceTokens->count());
+        foreach ($deviceTokens as $deviceToken) {
+            self::assertSame('203.0.113.42', $deviceToken->ip->toNullableString());
+            self::assertSame('IntegrationAgent/1.0', $deviceToken->userAgent->toNullableString());
+        }
+    }
+
+    public function testRefreshStoresClientDeviceFromCurrentRequestOnNewPair(): void
+    {
+        $userId = UserId::generate();
+        $initialPair = $this->issuePairFor(userId: $userId, ip: '198.51.100.1', userAgent: 'OldAgent/1.0');
+
+        $this->fakeHttp()
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.55'])
+            ->withHeader('Accept-Language', 'ru')
+            ->withHeader('User-Agent', 'RefreshAgent/2.0')
+            ->postJson('/api/v1/auth/refresh', ['refreshToken' => $initialPair->refreshToken])
+            ->assertOk();
+
+        $this->cleanOrmHeap();
+        $rotatedTokens = $this->activeTokensForUser($userId);
+
+        self::assertGreaterThan(0, $rotatedTokens->count());
+        foreach ($rotatedTokens as $rotatedToken) {
+            self::assertSame('203.0.113.55', $rotatedToken->ip->toNullableString());
+            self::assertSame('RefreshAgent/2.0', $rotatedToken->userAgent->toNullableString());
+        }
+    }
+
     public function testSystemHealthRouteStillWorks(): void
     {
         $this->http()->getJson('/api/v1/health')->assertOk();
@@ -348,7 +514,40 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
 
     private function issueTokenPair(): IssuedTokenPair
     {
-        return $this->getContainer()->get(AuthTokenStorageContract::class)->issuePair(UserId::generate());
+        return $this->getContainer()->get(AuthTokenStorageContract::class)
+            ->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
+    }
+
+    private function issuePairFor(UserId $userId, string $ip, string $userAgent): IssuedTokenPair
+    {
+        return $this->getContainer()->get(AuthTokenStorageContract::class)
+            ->issuePair(userId: $userId, device: SessionDevice::fromRequest(ip: $ip, userAgent: $userAgent));
+    }
+
+    private function sessionIdOf(string $accessToken): string
+    {
+        $token = $this->getContainer()->get(AuthTokenStorageContract::class)->load($accessToken);
+        self::assertInstanceOf(TokenInterface::class, $token);
+
+        return $token->getPayload()['sessionID'];
+    }
+
+    private function activeTokensFor(string $email): AuthTokenCollection
+    {
+        $user = $this->userRepository()->findByEmail(Email::fromString($email));
+        self::assertInstanceOf(User::class, $user);
+
+        return $this->authTokenRepository()->findActiveByUserId($user->id, new \DateTimeImmutable());
+    }
+
+    private function activeTokensForUser(UserId $userId): AuthTokenCollection
+    {
+        return $this->authTokenRepository()->findActiveByUserId($userId, new \DateTimeImmutable());
+    }
+
+    private function authTokenRepository(): AuthTokenRepository
+    {
+        return $this->getContainer()->get(AuthTokenRepository::class);
     }
 
     private function secretHasher(): SecretHasherContract

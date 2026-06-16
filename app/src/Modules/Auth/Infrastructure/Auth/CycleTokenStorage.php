@@ -11,11 +11,13 @@ use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
 use App\Modules\Auth\Repository\AuthTokenRepository;
 use App\Shared\Domain\Exception\AuthenticationException;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
+use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Spiral\Auth\TokenInterface;
@@ -84,6 +86,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
             type: AuthTokenType::from($type),
             sessionId: SessionId::fromString($sessionId),
             expiresAt: $expiresAt,
+            device: SessionDevice::unknown(),
         );
     }
 
@@ -101,7 +104,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
     }
 
     #[\Override]
-    public function issuePair(UserId $userId): IssuedTokenPair
+    public function issuePair(UserId $userId, SessionDevice $device): IssuedTokenPair
     {
         $sessionId = SessionId::generate();
         $now = new \DateTimeImmutable();
@@ -111,12 +114,14 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
             type: AuthTokenType::Access,
             sessionId: $sessionId,
             expiresAt: $now->add(new \DateInterval(\sprintf('PT%dS', self::ACCESS_TTL_SECONDS))),
+            device: $device,
         );
         $refreshToken = $this->issueToken(
             userId: $userId,
             type: AuthTokenType::Refresh,
             sessionId: $sessionId,
             expiresAt: $now->add(new \DateInterval(\sprintf('PT%dS', self::REFRESH_TTL_SECONDS))),
+            device: $device,
         );
 
         return new IssuedTokenPair(
@@ -127,7 +132,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
     }
 
     #[\Override]
-    public function rotate(string $refreshRaw): IssuedTokenPair
+    public function rotate(string $refreshRaw, SessionDevice $device): IssuedTokenPair
     {
         $authToken = $this->authTokenRepository->findByHashForUpdate(TokenHash::fromRawToken($refreshRaw))
             ?? throw new AuthenticationException('app.auth.invalid_refresh');
@@ -139,13 +144,34 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
         $userId = $authToken->userId;
         $this->revokeSession($authToken->sessionId);
 
-        return $this->issuePair($userId);
+        // Device берётся из текущего запроса (нового refresh): IP/устройство сессии обновляются
+        // на актуальные, значения старого отзываемого токена отбрасываются.
+        return $this->issuePair(userId: $userId, device: $device);
     }
 
     #[\Override]
     public function revokeSession(SessionId $sessionId): void
     {
         $sessionTokens = $this->authTokenRepository->findBySessionIdForUpdate($sessionId);
+
+        foreach ($sessionTokens as $sessionToken) {
+            $this->entityManager->delete($sessionToken);
+        }
+
+        $this->entityManager->run();
+    }
+
+    #[\Override]
+    public function revokeUserSession(UserId $userId, SessionId $sessionId): void
+    {
+        $sessionTokens = $this->authTokenRepository->findByUserAndSessionForUpdate(
+            userId: $userId,
+            sessionId: $sessionId,
+        );
+
+        if ($sessionTokens->isEmpty()) {
+            throw new NotFoundException('app.auth.session_not_found');
+        }
 
         foreach ($sessionTokens as $sessionToken) {
             $this->entityManager->delete($sessionToken);
@@ -164,6 +190,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
         AuthTokenType $type,
         SessionId $sessionId,
         \DateTimeInterface $expiresAt,
+        SessionDevice $device,
     ): AuthTokenView {
         $rawToken = $this->tokenGenerator->generate();
         $expiration = Expiration::fromDateTime(\DateTimeImmutable::createFromInterface($expiresAt));
@@ -174,6 +201,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
             type: $type,
             tokenHash: TokenHash::fromRawToken($rawToken),
             expiration: $expiration,
+            device: $device,
             now: new \DateTimeImmutable(),
         );
 

@@ -8,8 +8,15 @@ use App\Modules\Auth\Domain\ValueObject\CodeAttempts;
 use App\Modules\Auth\Domain\ValueObject\Consumption;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
+use App\Modules\Auth\Domain\ValueObject\Ip;
+use App\Modules\Auth\Domain\ValueObject\KnownIp;
+use App\Modules\Auth\Domain\ValueObject\KnownUserAgent;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
+use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Domain\ValueObject\UnknownIp;
+use App\Modules\Auth\Domain\ValueObject\UnknownUserAgent;
+use App\Modules\Auth\Domain\ValueObject\UserAgent;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -200,5 +207,152 @@ final class AuthValueObjectTest extends TestCase
         self::assertFalse(
             Consumption::at($moment)->equals(Consumption::at($moment->add(new \DateInterval('PT1S')))),
         );
+    }
+
+    #[DataProvider('validIpProvider')]
+    public function testKnownIpAcceptsValidAddresses(string $rawIp): void
+    {
+        $ip = Ip::fromNullable($rawIp);
+
+        self::assertInstanceOf(KnownIp::class, $ip);
+        self::assertSame($rawIp, $ip->value());
+        self::assertSame($rawIp, $ip->toNullableString());
+        self::assertSame($rawIp, $ip->jsonSerialize());
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function validIpProvider(): array
+    {
+        return [
+            'IPv4' => ['203.0.113.7'],
+            'IPv6' => ['2001:db8::1'],
+        ];
+    }
+
+    #[DataProvider('absentIpProvider')]
+    public function testUnknownIpForNullEmptyOrInvalid(string|null $rawIp): void
+    {
+        $ip = Ip::fromNullable($rawIp);
+
+        self::assertInstanceOf(UnknownIp::class, $ip);
+        self::assertNull($ip->toNullableString());
+        self::assertNull($ip->jsonSerialize());
+    }
+
+    /**
+     * @return array<string, array{string|null}>
+     */
+    public static function absentIpProvider(): array
+    {
+        return [
+            'null' => [null],
+            'пусто' => [''],
+            'пробелы' => ['   '],
+            'не IP' => ['not-an-ip'],
+        ];
+    }
+
+    public function testKnownIpTrimsAndRejectsInvalid(): void
+    {
+        self::assertSame('203.0.113.7', KnownIp::fromString('  203.0.113.7  ')->value());
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        KnownIp::fromString('999.999.999.999');
+    }
+
+    public function testIpEquality(): void
+    {
+        $knownIp = Ip::fromNullable('203.0.113.7');
+        $unknownIp = Ip::fromNullable(null);
+
+        self::assertTrue($knownIp->equals(Ip::fromNullable('203.0.113.7')));
+        self::assertFalse($knownIp->equals(Ip::fromNullable('198.51.100.1')));
+        self::assertFalse($knownIp->equals($unknownIp));
+        self::assertTrue($unknownIp->equals(Ip::fromNullable('')));
+        self::assertFalse($unknownIp->equals($knownIp));
+    }
+
+    public function testKnownUserAgentNormalizesAndTruncates(): void
+    {
+        $userAgent = UserAgent::fromNullable('  Mozilla/5.0 Test  ');
+
+        self::assertInstanceOf(KnownUserAgent::class, $userAgent);
+        self::assertSame('Mozilla/5.0 Test', $userAgent->value());
+        self::assertSame('Mozilla/5.0 Test', $userAgent->toNullableString());
+        self::assertSame('Mozilla/5.0 Test', $userAgent->jsonSerialize());
+
+        $longUserAgent = UserAgent::fromNullable(\str_repeat('a', 2000));
+
+        self::assertInstanceOf(KnownUserAgent::class, $longUserAgent);
+        self::assertSame(1024, \mb_strlen((string) $longUserAgent->value()));
+    }
+
+    #[DataProvider('absentUserAgentProvider')]
+    public function testUnknownUserAgentForNullOrEmpty(string|null $rawUserAgent): void
+    {
+        $userAgent = UserAgent::fromNullable($rawUserAgent);
+
+        self::assertInstanceOf(UnknownUserAgent::class, $userAgent);
+        self::assertNull($userAgent->toNullableString());
+        self::assertNull($userAgent->jsonSerialize());
+    }
+
+    /**
+     * @return array<string, array{string|null}>
+     */
+    public static function absentUserAgentProvider(): array
+    {
+        return [
+            'null' => [null],
+            'пусто' => [''],
+            'пробелы' => ['   '],
+        ];
+    }
+
+    public function testKnownUserAgentRejectsBlankValue(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        KnownUserAgent::fromString('   ');
+    }
+
+    public function testUserAgentEquality(): void
+    {
+        $knownUserAgent = UserAgent::fromNullable('Browser/1');
+        $unknownUserAgent = UserAgent::fromNullable(null);
+
+        self::assertTrue($knownUserAgent->equals(UserAgent::fromNullable('Browser/1')));
+        self::assertFalse($knownUserAgent->equals(UserAgent::fromNullable('Browser/2')));
+        self::assertFalse($knownUserAgent->equals($unknownUserAgent));
+        self::assertTrue($unknownUserAgent->equals(UserAgent::fromNullable('')));
+        self::assertFalse($unknownUserAgent->equals($knownUserAgent));
+    }
+
+    public function testSessionDeviceFromRequestAndUnknown(): void
+    {
+        $device = SessionDevice::fromRequest(ip: '203.0.113.7', userAgent: 'Browser/1');
+
+        self::assertInstanceOf(KnownIp::class, $device->ip);
+        self::assertSame('203.0.113.7', $device->ip->toNullableString());
+        self::assertInstanceOf(KnownUserAgent::class, $device->userAgent);
+        self::assertSame('Browser/1', $device->userAgent->toNullableString());
+
+        $unknownDevice = SessionDevice::unknown();
+
+        self::assertInstanceOf(UnknownIp::class, $unknownDevice->ip);
+        self::assertInstanceOf(UnknownUserAgent::class, $unknownDevice->userAgent);
+        self::assertTrue($unknownDevice->equals(SessionDevice::fromRequest(ip: null, userAgent: null)));
+    }
+
+    public function testSessionDeviceEquality(): void
+    {
+        $device = SessionDevice::fromRequest(ip: '203.0.113.7', userAgent: 'Browser/1');
+
+        self::assertTrue($device->equals(SessionDevice::fromRequest(ip: '203.0.113.7', userAgent: 'Browser/1')));
+        self::assertFalse($device->equals(SessionDevice::fromRequest(ip: '198.51.100.1', userAgent: 'Browser/1')));
+        self::assertFalse($device->equals(SessionDevice::fromRequest(ip: '203.0.113.7', userAgent: 'Browser/2')));
     }
 }

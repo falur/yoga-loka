@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Outbox\Infrastructure\Cycle;
 
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventDate;
-use App\Modules\Outbox\Domain\ValueObject\KnownOutboxEventDate;
 use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 
 final class OutboxEventDateTypecast implements ColumnValueTypecast
@@ -31,14 +30,6 @@ final class OutboxEventDateTypecast implements ColumnValueTypecast
     public static function uncastValue(
         OutboxEventDate|null $value,
     ): \DateTimeImmutable|null {
-        if ($value === null || $value->isEmpty()) {
-            return null;
-        }
-
-        if (!$value instanceof KnownOutboxEventDate) {
-            throw new \UnexpectedValueException('Outbox-дата имеет неизвестное состояние.');
-        }
-
-        return $value->value();
+        return $value?->value();
     }
 }

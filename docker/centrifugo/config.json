@@ -11,5 +11,15 @@
   },
   "http_api": {
     "key": "dev-centrifugo-api-key"
+  },
+  "channel": {
+    "namespaces": [
+      {
+        "name": "personal",
+        "allow_subscribe_for_client": true,
+        "allow_user_limited_channels": true,
+        "presence": true
+      }
+    ]
   }
 }

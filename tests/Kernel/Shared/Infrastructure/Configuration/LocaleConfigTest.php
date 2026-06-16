@@ -22,7 +22,9 @@ final class LocaleConfigTest extends TestCase
         $localeConfig = $this->getContainer()->get(LocaleConfig::class);
 
         self::assertSame(['ru', 'en'], $localeConfig->supported);
-        self::assertSame('ru', $localeConfig->default);
+        // Базовая локаль приходит из env(LOCALE) — проверяем не конкретное значение, а инвариант:
+        // default входит в supported (точный маппинг покрыт testMapsLocaleConfigSection через стаб).
+        self::assertContains($localeConfig->default, $localeConfig->supported);
     }
 
     public function testSupportedLocalesMatchDomainEnum(): void

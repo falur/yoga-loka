@@ -108,6 +108,123 @@ paths:
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  /notifications:
+    get:
+      operationId: api_v1_notifications_list
+      description: ''
+      parameters:
+        -
+          name: cursor
+          in: query
+          required: false
+          schema: { type: [string, 'null'] }
+        -
+          name: limit
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationResource' } }, meta: { type: object, properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }, required: [nextCursor, limit] } }, required: [data, meta] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  /notifications/unread-count:
+    get:
+      operationId: api_v1_notifications_unread_count
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/UnreadCountResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  '/notifications/{id}/read':
+    post:
+      operationId: api_v1_notifications_read
+      description: ''
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  /notifications/read-all:
+    post:
+      operationId: api_v1_notifications_read_all
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/UnreadCountResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  /notification-device-tokens:
+    post:
+      operationId: api_v1_notification_device_tokens_register
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationDeviceTokenResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { token: { type: string }, platform: { type: string } }, required: [token, platform] } }
+    delete:
+      operationId: api_v1_notification_device_tokens_remove
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationDeviceTokenResource' } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, properties: { token: { type: string } }, required: [token] } }
+  /notification-settings:
+    get:
+      operationId: api_v1_notification_settings_get
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationSettingResource' } } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    put:
+      operationId: api_v1_notification_settings_update
+      description: ''
+      parameters: {  }
+      responses:
+        200:
+          description: 'Успешный ответ.'
+          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationSettingResource' } } }, required: [data] } } }
+        default:
+          description: 'Ошибка API.'
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
   /health:
     get:
       operationId: health
@@ -142,6 +259,84 @@ components:
       type: string
       enum:
         - ok
+    NotificationActionResource:
+      type: object
+      properties:
+        actionType:
+          type: string
+        actionId:
+          type: string
+      required:
+        - actionType
+        - actionId
+    NotificationActorResource:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: string
+      required:
+        - id
+        - name
+        - avatarUrl
+    NotificationDeviceTokenResource:
+      type: object
+      properties:
+        id:
+          type: string
+        platform:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - platform
+        - createdAt
+    NotificationResource:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        action:
+          oneOf: [{ $ref: '#/components/schemas/NotificationActionResource' }, { type: 'null' }]
+        actor:
+          oneOf: [{ $ref: '#/components/schemas/NotificationActorResource' }, { type: 'null' }]
+        read:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - title
+        - body
+        - read
+        - createdAt
+    NotificationSettingResource:
+      type: object
+      properties:
+        type:
+          type: string
+        channel:
+          type: string
+        enabled:
+          type: boolean
+        default:
+          type: boolean
+      required:
+        - type
+        - channel
+        - enabled
+        - default
     SessionResource:
       type: object
       properties:
@@ -178,6 +373,13 @@ components:
         - refreshToken
         - tokenType
         - expiresIn
+    UnreadCountResource:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
     VerifyResultResource:
       type: object
       properties:

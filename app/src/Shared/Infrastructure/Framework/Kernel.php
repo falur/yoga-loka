@@ -35,6 +35,7 @@ use Spiral\Validation\Symfony\Bootloader\ValidatorBootloader;
 use Spiral\Views\Bootloader\ViewsBootloader;
 use App\Modules\Auth\Infrastructure\Bootloader\AuthBootloader;
 use App\Modules\Media\Infrastructure\Bootloader\MediaBootloader;
+use App\Modules\Notifications\Infrastructure\Bootloader\NotificationsBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
 use App\Modules\System\Infrastructure\Bootloader\SystemBootloader;
@@ -50,6 +51,10 @@ class Kernel extends \Spiral\Framework\Kernel
         return [
             CoreBootloader::class,
             DotenvBootloader::class,
+
+            // До сканирования токенайзера: пометить @attention из докблоков Cycle игнорируемым
+            Bootloader\AnnotationsBootloader::class,
+
             TokenizerListenerBootloader::class,
 
             DumperBootloader::class,
@@ -138,6 +143,7 @@ class Kernel extends \Spiral\Framework\Kernel
             MediaBootloader::class,
             AuthBootloader::class,
             SystemBootloader::class,
+            NotificationsBootloader::class,
 
             // Почта
             MailerBootloader::class,

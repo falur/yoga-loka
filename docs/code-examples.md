@@ -347,12 +347,12 @@ namespace App\Modules\User\Repository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\Username;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<User>
+ * @extends AbstractRepository<User>
  */
-final class UserRepository extends Repository
+final class UserRepository extends AbstractRepository
 {
     public function findByEmail(Email $email): ?User
     {

@@ -19,6 +19,7 @@ final class ConfigShapeTest extends TestCase
         self::assertSame(
             [
                 'cache',
+                'centrifugo',
                 'cycle',
                 'database',
                 'locale',
@@ -27,6 +28,7 @@ final class ConfigShapeTest extends TestCase
                 'migration',
                 'openapi',
                 'outbox',
+                'push',
                 'queue',
                 'scaffolder',
                 'session',

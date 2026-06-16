@@ -34,11 +34,13 @@ final class OutboxInfrastructureEdgeTest extends TestCase
         ));
     }
 
-    public function testEventDateTypecastRejectsUnknownDateStateOnUncast(): void
+    public function testEventDateTypecastUncastsNullAndDate(): void
     {
-        $this->expectException(\UnexpectedValueException::class);
+        $now = new \DateTimeImmutable('2026-05-25T16:06:00+00:00');
 
-        OutboxEventDateTypecast::uncastValue(new UnknownOutboxEventDate());
+        self::assertNull(OutboxEventDateTypecast::uncastValue(null));
+        self::assertNull(OutboxEventDateTypecast::uncastValue(OutboxEventDate::none()));
+        self::assertSame($now, OutboxEventDateTypecast::uncastValue(OutboxEventDate::fromDateTime($now)));
     }
 
     public function testLastErrorTypecastUncastsNull(): void
@@ -125,33 +127,6 @@ final class OutboxInfrastructureEdgeTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
 
         $nonEmptyHeaderValue->invoke($outboxQueuePublisher, '');
-    }
-}
-
-final readonly class UnknownOutboxEventDate extends OutboxEventDate
-{
-    #[\Override]
-    public function isEmpty(): bool
-    {
-        return false;
-    }
-
-    #[\Override]
-    public function equals(OutboxEventDate $other): bool
-    {
-        return false;
-    }
-
-    #[\Override]
-    public function __toString(): string
-    {
-        return 'unknown';
-    }
-
-    #[\Override]
-    public function jsonSerialize(): string
-    {
-        return 'unknown';
     }
 }
 

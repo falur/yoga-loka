@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Modules\Auth\Presentation\Job\SendLoginCodeJob;
 use App\Modules\Media\Presentation\Job\ProcessMediaJob;
+use App\Modules\Notifications\Presentation\Job\DispatchNotificationJob;
+use App\Modules\Notifications\Presentation\Job\PublishRealtimeNotificationJob;
+use App\Modules\Notifications\Presentation\Job\SendPushNotificationJob;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
@@ -132,6 +135,9 @@ return [
             OutboxDebugLogJob::class => OutboxDebugLogJob::class,
             ProcessMediaJob::class => ProcessMediaJob::class,
             SendLoginCodeJob::class => SendLoginCodeJob::class,
+            DispatchNotificationJob::class => DispatchNotificationJob::class,
+            SendPushNotificationJob::class => SendPushNotificationJob::class,
+            PublishRealtimeNotificationJob::class => PublishRealtimeNotificationJob::class,
         ],
 
         /**
@@ -146,6 +152,9 @@ return [
             OutboxDebugLogJob::class => OutboxQueueSerializer::class,
             ProcessMediaJob::class => OutboxQueueSerializer::class,
             SendLoginCodeJob::class => OutboxQueueSerializer::class,
+            DispatchNotificationJob::class => OutboxQueueSerializer::class,
+            SendPushNotificationJob::class => OutboxQueueSerializer::class,
+            PublishRealtimeNotificationJob::class => OutboxQueueSerializer::class,
         ],
     ],
 

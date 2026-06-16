@@ -23,6 +23,7 @@
         "illuminate/collections": "^13.0",
         "illuminate/support": "^13.0",
         "intervention/image": "^4",
+        "kreait/firebase-php": "^8.2",
         "league/flysystem-aws-s3-v3": "^3.34",
         "psr/clock": "^1.0",
         "spiral-packages/league-event": "^1.0.1",

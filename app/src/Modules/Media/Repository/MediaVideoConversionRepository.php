@@ -7,12 +7,12 @@ namespace App\Modules\Media\Repository;
 use App\Modules\Media\Domain\Collection\MediaVideoConversionCollection;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<MediaVideoConversion>
+ * @extends AbstractRepository<MediaVideoConversion>
  */
-final class MediaVideoConversionRepository extends Repository
+final class MediaVideoConversionRepository extends AbstractRepository
 {
     public function findByMediaId(MediaId $mediaId): MediaVideoConversionCollection
     {

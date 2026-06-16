@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Kernel\Shared\Infrastructure\Configuration;
 
+use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
 use App\Shared\Infrastructure\Configuration\Mailer\MailerConfig;
 use App\Shared\Infrastructure\Configuration\Migration\MigrationConfig;
 use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
@@ -54,7 +55,9 @@ final class SimpleConfigBindingTest extends TestCase
         self::assertSame('migrations', $migrationConfig->table);
         self::assertSame('smtp://mailpit:1025', $mailerConfig->dsn);
         self::assertSame('local', $mailerConfig->queue);
-        self::assertSame('ru', $translatorConfig->locale);
+        // locale приходит из env(LOCALE); вместо конкретного значения сверяем единый источник:
+        // typed translator-конфиг и locale-конфиг читают ту же переменную, значит совпадают.
+        self::assertSame($container->get(LocaleConfig::class)->default, $translatorConfig->locale);
         self::assertArrayHasKey('php', $translatorConfig->loaders);
         self::assertArrayHasKey('messages', $translatorConfig->domains);
         self::assertSame(86400, $sessionConfig->lifetime);
@@ -87,7 +90,12 @@ final class SimpleConfigBindingTest extends TestCase
         self::assertSame('migrations', $container->get(CycleMigrationConfig::class)->getTable());
         self::assertSame('smtp://mailpit:1025', $container->get(SpiralMailerConfig::class)->getDSN());
         self::assertSame('sid', $container->get(SpiralSessionConfig::class)->getCookie());
-        self::assertSame('ru', $container->get(SpiralTranslatorConfig::class)->getDefaultLocale());
+        // Нативный translator-конфиг читает ту же env(LOCALE), что и наш typed-конфиг — сверяем их,
+        // а не конкретную локаль, чтобы тест не зависел от значения LOCALE в окружении.
+        self::assertSame(
+            $container->get(TranslatorConfig::class)->locale,
+            $container->get(SpiralTranslatorConfig::class)->getDefaultLocale(),
+        );
         self::assertContains('config', $container->get(SpiralScaffolderConfig::class)->getDeclarations());
     }
 

@@ -3,7 +3,7 @@ version: 1
 defaults:
   # Включает strict-режим по умолчанию для eda-explore, eda-plan и eda-review.
   # true | false
-  strict: false
+  strict: true
   # Задаёт размер плана по умолчанию для eda-plan.
   # normal | short | ask_each_time
   plan_size: ask_each_time

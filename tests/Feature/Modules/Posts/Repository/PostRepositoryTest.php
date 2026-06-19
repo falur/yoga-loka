@@ -166,6 +166,67 @@ final class PostRepositoryTest extends PostsRepositoryTestCase
         self::assertCount(1, $this->postRepository()->findByUserId($user->id, PostStatus::Blocked, null, 10));
     }
 
+    public function testFindVisibleByUserIdExcludesBlockedAndSoftDeleted(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+
+        $published = $this->newPost($user->id, PostStatus::Published);
+        $this->persist($published);
+        $draft = $this->newPost($user->id, PostStatus::Draft);
+        $this->persist($draft);
+        $this->persist($this->newPost($user->id, PostStatus::Blocked));
+        $softDeleted = $this->newPost($user->id, PostStatus::Published);
+        $softDeleted->softDelete(new \DateTimeImmutable());
+        $this->persist($softDeleted);
+        $this->cleanOrmHeap();
+
+        // Лента владельца: все статусы, кроме Blocked, и без мягко удалённых.
+        $ownerFeed = $this->postRepository()->findVisibleByUserId(
+            userId: $user->id,
+            status: null,
+            excludeStatus: PostStatus::Blocked,
+            cursor: null,
+            limit: 10,
+        );
+        self::assertSame(
+            $this->idsDesc([$published, $draft]),
+            $this->ids($ownerFeed->all()),
+        );
+
+        // Чужая лента: только Published.
+        $strangerFeed = $this->postRepository()->findVisibleByUserId(
+            userId: $user->id,
+            status: PostStatus::Published,
+            excludeStatus: null,
+            cursor: null,
+            limit: 10,
+        );
+        self::assertSame([$published->id->value()], $this->ids($strangerFeed->all()));
+    }
+
+    public function testFindByIdsReturnsRequestedPosts(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+
+        $first = $this->newPost($user->id, PostStatus::Published);
+        $this->persist($first);
+        $second = $this->newPost($user->id, PostStatus::Published);
+        $this->persist($second);
+        $this->persist($this->newPost($user->id, PostStatus::Published));
+        $this->cleanOrmHeap();
+
+        $found = $this->postRepository()->findByIds($first->id, $second->id);
+
+        self::assertCount(2, $found);
+        self::assertSame(
+            $this->idsDesc([$first, $second]),
+            $this->idsDesc($found->all()),
+        );
+        self::assertCount(0, $this->postRepository()->findByIds());
+    }
+
     public function testFindRepostsOf(): void
     {
         $user = $this->createUser();

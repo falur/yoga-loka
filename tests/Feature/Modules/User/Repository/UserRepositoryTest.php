@@ -91,6 +91,22 @@ final class UserRepositoryTest extends DatabaseTestCase
         self::assertFalse($restoredUser->deletion->isDeleted());
     }
 
+    public function testCountByIdsCountsOnlyExistingUsers(): void
+    {
+        $first = $this->createUser(email: 'count.first@example.com', nickname: 'count.first');
+        $second = $this->createUser(email: 'count.second@example.com', nickname: 'count.second');
+
+        $this->entityManager()->persist($first);
+        $this->entityManager()->persist($second);
+        $this->entityManager()->run();
+        $this->cleanOrmHeap();
+
+        self::assertSame(0, $this->userRepository()->countByIds());
+        self::assertSame(2, $this->userRepository()->countByIds($first->id, $second->id));
+        self::assertSame(1, $this->userRepository()->countByIds($first->id, UserId::generate()));
+        self::assertCount(0, $this->userRepository()->findByIds());
+    }
+
     public function testStoresAndFindsActiveUserBans(): void
     {
         $user = $this->createUser();

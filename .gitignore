@@ -13,3 +13,4 @@
 /*.cache
 .codex/
 .claude/
+/.phpactor.json

@@ -45,6 +45,11 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
         self::assertCount(0, $this->tagRepository()->findByTexts(TagText::fromString('пранаяма')));
     }
 
+    public function testFindByTextsWithoutArgumentsReturnsEmptyCollection(): void
+    {
+        self::assertCount(0, $this->tagRepository()->findByTexts());
+    }
+
     public function testTagTextIsUnique(): void
     {
         $user = $this->createUser();

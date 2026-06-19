@@ -9,6 +9,7 @@ use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Shared\Domain\ValueObject\TagId;
 use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use Cycle\Database\Injection\Parameter;
 
 /**
  * @extends AbstractRepository<PostTag>
@@ -20,6 +21,25 @@ final class PostTagRepository extends AbstractRepository
         return new PostTagCollection(
             $this->select()
                 ->where('post_id', $postId->value())
+                ->fetchAll(),
+        );
+    }
+
+    /**
+     * Теги набора записей — для сборки листинга ленты без N+1.
+     */
+    public function findByPostIds(PostId ...$postIds): PostTagCollection
+    {
+        if ($postIds === []) {
+            return new PostTagCollection();
+        }
+
+        return new PostTagCollection(
+            $this->select()
+                ->where('post_id', 'in', new Parameter(\array_map(
+                    static fn(PostId $postId): string => $postId->value(),
+                    $postIds,
+                )))
                 ->fetchAll(),
         );
     }

@@ -58,6 +58,49 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         self::assertSame(0, $restoredPost->media->first()?->position->value());
     }
 
+    public function testFindByPostIdsBatchesAcrossPostsOrderedByPostAndPosition(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+        $firstMedia = $this->createMedia($user->id);
+        $this->persist($firstMedia);
+        $secondMedia = $this->createMedia($user->id);
+        $this->persist($secondMedia);
+
+        $firstPost = $this->newPost($user->id);
+        $this->persist($firstPost);
+        $secondPost = $this->newPost($user->id);
+        $this->persist($secondPost);
+
+        $this->persist(PostMedia::create(
+            post: $firstPost,
+            media: PostMediaReference::fromString($firstMedia->id->value()),
+            position: MediaPosition::fromInt(0),
+        ));
+        $this->persist(PostMedia::create(
+            post: $secondPost,
+            media: PostMediaReference::fromString($secondMedia->id->value()),
+            position: MediaPosition::fromInt(0),
+        ));
+        $this->cleanOrmHeap();
+
+        $attachments = $this->postMediaRepository()->findByPostIds($firstPost->id, $secondPost->id);
+
+        self::assertInstanceOf(PostMediaCollection::class, $attachments);
+        self::assertCount(2, $attachments);
+        $postIds = $attachments->map(static fn(PostMedia $postMedia): string => $postMedia->postId->value())->all();
+        self::assertContains($firstPost->id->value(), $postIds);
+        self::assertContains($secondPost->id->value(), $postIds);
+    }
+
+    public function testFindByPostIdsReturnsEmptyForEmptyInput(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+
+        self::assertCount(0, $this->postMediaRepository()->findByPostIds());
+    }
+
     public function testPostMediaBelongsToLazyLoadsPost(): void
     {
         $user = $this->createUser();

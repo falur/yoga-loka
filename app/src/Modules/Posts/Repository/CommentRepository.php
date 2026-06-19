@@ -40,6 +40,30 @@ final class CommentRepository extends AbstractRepository
         );
     }
 
+    /**
+     * Комментарии верхнего уровня записи (parent_comment_id IS NULL), без удалённых, cursor-пагинация.
+     */
+    public function findTopLevelByPostId(PostId $postId, CommentId|null $cursor, int $limit): CommentCollection
+    {
+        $cursorId = $cursor?->value();
+
+        return new CommentCollection(
+            $this->select()
+                ->where('post_id', $postId->value())
+                ->where('parent_comment_id', '=', null)
+                ->where('deleted_at', '=', null)
+                ->when(
+                    condition: $cursorId !== null,
+                    callback: static function (WhenSelect $query) use ($cursorId): void {
+                        $query->where('id', '<', $cursorId);
+                    },
+                )
+                ->orderBy(expression: 'id', direction: 'DESC')
+                ->limit($limit)
+                ->fetchAll(),
+        );
+    }
+
     public function findReplies(CommentId $parentId, CommentId|null $cursor, int $limit): CommentCollection
     {
         $cursorId = $cursor?->value();
@@ -47,6 +71,7 @@ final class CommentRepository extends AbstractRepository
         return new CommentCollection(
             $this->select()
                 ->where('parent_comment_id', $parentId->value())
+                ->where('deleted_at', '=', null)
                 ->when(
                     condition: $cursorId !== null,
                     callback: static function (WhenSelect $query) use ($cursorId): void {

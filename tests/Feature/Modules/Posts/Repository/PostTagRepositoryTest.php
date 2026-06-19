@@ -32,6 +32,26 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
 
         self::assertCount(1, $this->postTagRepository()->findByPostId($post->id));
         self::assertCount(1, $this->postTagRepository()->findByTagId($tag->id));
+        self::assertCount(1, $this->postTagRepository()->findByPostIds($post->id));
+        self::assertCount(0, $this->postTagRepository()->findByPostIds());
+    }
+
+    public function testFindByPostIdsBatchesAcrossPosts(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+        $firstPost = $this->createPostFor($user->id);
+        $secondPost = $this->createPostFor($user->id);
+        $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
+        $this->persist($tag);
+        $this->persist(PostTag::create(postId: $firstPost->id, tagId: $tag->id));
+        $this->persist(PostTag::create(postId: $secondPost->id, tagId: $tag->id));
+        $this->cleanOrmHeap();
+
+        $links = $this->postTagRepository()->findByPostIds($firstPost->id, $secondPost->id);
+
+        self::assertInstanceOf(PostTagCollection::class, $links);
+        self::assertCount(2, $links);
     }
 
     public function testPostHasManyTagsHydratesFromDatabase(): void

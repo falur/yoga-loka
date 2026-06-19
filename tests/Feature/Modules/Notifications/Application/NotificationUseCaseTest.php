@@ -231,8 +231,11 @@ final class NotificationUseCaseTest extends DatabaseTestCase
             new GetNotificationSettingsQuery(userId: $userId->value()),
         );
 
-        // Один вид × три канала.
-        self::assertCount(3, $views);
+        // Матрица содержит все зарегистрированные виды; у фикстурного вида ровно три канала.
+        $fixtureViews = $views->filter(
+            static fn(NotificationSettingView $view): bool => $view->type->value() === self::TYPE,
+        );
+        self::assertCount(3, $fixtureViews);
         self::assertTrue($this->viewFor($views->all(), NotificationChannel::Push)->enabled);
         self::assertFalse($this->viewFor($views->all(), NotificationChannel::Realtime)->enabled);
         self::assertTrue($this->viewFor($views->all(), NotificationChannel::Realtime)->default);
@@ -261,7 +264,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     private function viewFor(array $views, NotificationChannel $channel): NotificationSettingView
     {
         foreach ($views as $view) {
-            if ($view->channel === $channel) {
+            if ($view->channel === $channel && $view->type->value() === self::TYPE) {
                 return $view;
             }
         }

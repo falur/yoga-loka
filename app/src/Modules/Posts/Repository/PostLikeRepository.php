@@ -9,6 +9,7 @@ use App\Modules\Posts\Domain\Entity\PostLike;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use Cycle\Database\Injection\Parameter;
 
 /**
  * @extends AbstractRepository<PostLike>
@@ -31,6 +32,26 @@ final class PostLikeRepository extends AbstractRepository
             $this->select()
                 ->where('user_id', $userId->value())
                 ->orderBy(expression: 'id', direction: 'DESC')
+                ->fetchAll(),
+        );
+    }
+
+    /**
+     * Лайки пользователя по набору записей — для флага likedByMe в листингах без N+1.
+     */
+    public function findByUserAndPostIds(UserId $userId, PostId ...$postIds): PostLikeCollection
+    {
+        if ($postIds === []) {
+            return new PostLikeCollection();
+        }
+
+        return new PostLikeCollection(
+            $this->select()
+                ->where('user_id', $userId->value())
+                ->where('post_id', 'in', new Parameter(\array_map(
+                    static fn(PostId $postId): string => $postId->value(),
+                    $postIds,
+                )))
                 ->fetchAll(),
         );
     }

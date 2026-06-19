@@ -38,6 +38,7 @@ use App\Modules\Media\Infrastructure\Bootloader\MediaBootloader;
 use App\Modules\Notifications\Infrastructure\Bootloader\NotificationsBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
 use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
+use App\Modules\Posts\Infrastructure\Bootloader\PostsBootloader;
 use App\Modules\System\Infrastructure\Bootloader\SystemBootloader;
 use GianTiaga\SpiralApiErrors\Bootloader\ApiErrorBootloader;
 use GianTiaga\SpiralCqrs\Bootloader\CqrsBootloader;
@@ -144,6 +145,7 @@ class Kernel extends \Spiral\Framework\Kernel
             AuthBootloader::class,
             SystemBootloader::class,
             NotificationsBootloader::class,
+            PostsBootloader::class,
 
             // Почта
             MailerBootloader::class,

@@ -28,11 +28,31 @@ final class TagRepository extends AbstractRepository
 
     public function findByTexts(TagText ...$tagTexts): TagCollection
     {
+        if ($tagTexts === []) {
+            return new TagCollection();
+        }
+
         return new TagCollection(
             $this->select()
                 ->where('text', 'in', new Parameter(\array_map(
                     static fn(TagText $tagText): string => $tagText->value(),
                     $tagTexts,
+                )))
+                ->fetchAll(),
+        );
+    }
+
+    public function findByIds(TagId ...$tagIds): TagCollection
+    {
+        if ($tagIds === []) {
+            return new TagCollection();
+        }
+
+        return new TagCollection(
+            $this->select()
+                ->where('id', 'in', new Parameter(\array_map(
+                    static fn(TagId $tagId): string => $tagId->value(),
+                    $tagIds,
                 )))
                 ->fetchAll(),
         );

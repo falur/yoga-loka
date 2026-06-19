@@ -9,7 +9,10 @@ final readonly class UserResource extends AbstractResource
     /** @var list<string>|null */
     public array|null $tags;
 
-    public function __construct(public string $id, public string $email, public string|null $nickname = null, public HealthResource|null $health = null)
+    /**
+     * @param list<HealthResource> $healthChecks
+     */
+    public function __construct(public string $id, public string $email, public array $healthChecks, public string|null $nickname = null, public HealthResource|null $health = null)
     {
         $this->tags = null;
     }

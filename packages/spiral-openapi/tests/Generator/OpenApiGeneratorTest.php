@@ -186,6 +186,11 @@ final class OpenApiGeneratorTest extends TestCase
         // Список: type: [array, null] с сохранённым items.
         self::assertSame(['array', 'null'], $tags->value(key: 'type'));
         self::assertSame(['type' => 'string'], $tags->value(key: 'items'));
+        // Список объектов из promoted-параметра конструктора (@param list<HealthResource>):
+        // items ссылается на схему объекта через $ref, а не на { type: string }.
+        $healthChecks = $properties->child(key: 'healthChecks');
+        self::assertSame('array', $healthChecks->value(key: 'type'));
+        self::assertSame(['$ref' => '#/components/schemas/HealthResource'], $healthChecks->value(key: 'items'));
         // Ссылка: oneOf со ссылкой и {type: null}, без соседства nullable с $ref.
         self::assertFalse($health->has(key: 'type'));
         self::assertFalse($health->has(key: '$ref'));

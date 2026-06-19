@@ -204,12 +204,14 @@ final readonly class PhpAstParser
             if ($method->name->toString() !== '__construct') {
                 continue;
             }
+            $constructorDocComment = $method->getDocComment()?->getText();
             foreach ($method->params as $parameter) {
                 if (($parameter->flags & Stmt\Class_::MODIFIER_PUBLIC) !== Stmt\Class_::MODIFIER_PUBLIC) {
                     continue;
                 }
                 $type = $parameter->type instanceof Node ? $this->typeName($parameter->type) : 'string';
-                $properties[] = new PropertyMetadata(name: $parameter->var instanceof Expr\Variable && \is_string($parameter->var->name) ? $parameter->var->name : 'value', type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type), hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE);
+                $parameterName = $parameter->var instanceof Expr\Variable && \is_string($parameter->var->name) ? $parameter->var->name : 'value';
+                $properties[] = new PropertyMetadata(name: $parameterName, type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type), hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE, listItemType: $this->paramListItemType(docComment: $constructorDocComment, parameterName: $parameterName));
             }
         }
         return $properties;
@@ -480,5 +482,20 @@ final readonly class PhpAstParser
             return null;
         }
         return \substr(string: $tail, offset: 0, length: $end);
+    }
+    /**
+     * Тип элемента списка для promoted-параметра конструктора. PHPDoc такого свойства живёт на
+     * `@param list<T> $name` конструктора, поэтому тип элемента ищется по конкретному имени параметра,
+     * а не как первый попавшийся `list<` (иначе несколько списков в одном докблоке перепутаются).
+     */
+    private function paramListItemType(string|null $docComment, string $parameterName): string|null
+    {
+        if ($docComment === null) {
+            return null;
+        }
+        if (\preg_match(pattern: \sprintf('/@param\s+list<([^>]+)>\s+\$%s\b/', \preg_quote(str: $parameterName, delimiter: '/')), subject: $docComment, matches: $matches) !== 1) {
+            return null;
+        }
+        return \trim(string: $matches[1]);
     }
 }

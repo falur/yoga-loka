@@ -180,8 +180,12 @@ final class NotificationHttpTest extends DatabaseTestCase
         );
 
         $response->assertOk();
-        // Один фикстурный вид × три канала.
-        self::assertCount(3, $this->json($response)['data']);
+        // Матрица содержит все зарегистрированные виды; у фикстурного вида ровно три канала.
+        $fixtureRows = \array_filter(
+            $this->json($response)['data'],
+            static fn(array $row): bool => $row['type'] === self::TYPE,
+        );
+        self::assertCount(3, $fixtureRows);
     }
 
     public function testUpdateNotificationSettings(): void
@@ -336,7 +340,7 @@ final class NotificationHttpTest extends DatabaseTestCase
     private function settingRow(array $rows, string $channel): array
     {
         foreach ($rows as $row) {
-            if ($row['channel'] === $channel) {
+            if ($row['channel'] === $channel && $row['type'] === self::TYPE) {
                 return $row;
             }
         }

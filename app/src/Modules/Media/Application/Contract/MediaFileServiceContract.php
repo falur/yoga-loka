@@ -85,6 +85,24 @@ interface MediaFileServiceContract
     public function getObjectContents(MediaStorage $storage, MediaPath $path): string;
 
     /**
+     * Скачивает объект в локальный временный файл и возвращает его путь. Стримовое чтение без
+     * полного буфера в памяти (для ffmpeg-обработки видео/аудио). Владелец файла — вызыватель:
+     * он обязан удалить его после использования (процессор делает это в finally).
+     */
+    public function downloadToFile(MediaStorage $storage, MediaPath $path): string;
+
+    /**
+     * Заливает локальный файл (результат ffmpeg-обработки) в хранилище стримом, без полного
+     * буфера в памяти. Локальный файл не удаляется — его владелец вызыватель.
+     */
+    public function uploadFromFile(
+        MediaStorage $storage,
+        MediaPath $path,
+        string $localFile,
+        MediaMimeType $mimeType,
+    ): void;
+
+    /**
      * Заливает объект (результат конверсии) в хранилище.
      */
     public function putObject(

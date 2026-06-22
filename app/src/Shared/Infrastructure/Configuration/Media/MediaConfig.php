@@ -19,6 +19,10 @@ final readonly class MediaConfig implements TypedConfig
         public int $multipartThresholdBytes,
         public int $multipartPartSizeBytes,
         public string $imageProcessingDriver,
+        public string $ffmpegBinaryPath,
+        public string $ffprobeBinaryPath,
+        public int $ffmpegTimeoutSeconds,
+        public int $ffmpegThreads,
     ) {
         // Порог multipart должен быть не меньше размера части: иначе файл чуть больше порога,
         // но меньше одной части ушёл бы в multipart с единственной частью — это бессмысленно

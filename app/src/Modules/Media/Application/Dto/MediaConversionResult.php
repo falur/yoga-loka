@@ -11,7 +11,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 /**
  * Результат конверсии изображения от MediaImageProcessorContract. Несёт байты результата и
  * фактические mimeType/size/width/height — они нужны для MediaImageConversion::create()
- * (в MediaConversionSpec их нет).
+ * (в MediaImageConversionSpec их нет).
  */
 final readonly class MediaConversionResult
 {

@@ -8,6 +8,7 @@ use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureCommand;
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
+use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Presentation\Job\ProcessMediaJob;
@@ -38,7 +39,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), conversions: []));
+        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $job = $this->getContainer()->get(ProcessMediaJob::class);
 
@@ -74,7 +75,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), conversions: []));
+        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $logger = new RecordingMediaLogger();
         $job = $this->getContainer()->get(ProcessMediaJob::class);
@@ -90,7 +91,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
                 logger: $logger,
             );
         } catch (\Throwable) {
-            // Job всегда пробрасывает: транзиентный -> RetryException, постоянный -> исходное.
+            // Job всегда пробрасывает: временный -> RetryException, постоянный -> исходное.
         }
 
         self::assertTrue($logger->hasLevel($expectedLevel));
@@ -102,11 +103,11 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         // Сценарий ревью: медиа конкурентно удалили к моменту записи ошибки -> запись
         // (RecordMediaProcessingFailureHandler::handle -> findById ?? throw NotFoundException)
         // падает. Вторичный сбой записи не должен подменять исходную классификацию:
-        // для транзиентного исходного сбоя Job всё равно бросает RetryException.
+        // для временного исходного сбоя Job всё равно бросает RetryException.
         $missingMediaId = Uuid::uuid7()->toString();
 
         $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $missingMediaId, conversions: []));
+        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $missingMediaId, plan: $this->emptyPlan()));
 
         $storageError = new \RuntimeException('сырой AWS-сбой');
         $transientException = MediaFileServiceFailedException::transient(
@@ -134,10 +135,10 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $thrown = $caught;
         }
 
-        // Исходная причина не подменяется: транзиентный сбой -> RetryException, а не NotFoundException.
+        // Исходная причина не подменяется: временный сбой -> RetryException, а не NotFoundException.
         self::assertInstanceOf(RetryException::class, $thrown);
         // Вторичный сбой записи залогирован как ERROR (rules.md:84), плюс ERROR классификации не мешает
-        // WARN транзиентного ретрая.
+        // WARN временного повтора.
         self::assertTrue($logger->hasLevel(LogLevel::ERROR));
         self::assertTrue($logger->hasLevel(LogLevel::WARNING));
     }
@@ -180,6 +181,16 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
                 LogLevel::ERROR,
                 LogLevel::WARNING,
             ],
+            'временный сбой процессора -> WARNING' => [
+                MediaProcessorFailedException::transient(message: 'Не удалось обработать медиа.', previous: $storageError),
+                LogLevel::WARNING,
+                LogLevel::ERROR,
+            ],
+            'постоянный сбой процессора -> ERROR' => [
+                MediaProcessorFailedException::permanent(message: 'Не удалось обработать медиа.', previous: $storageError),
+                LogLevel::ERROR,
+                LogLevel::WARNING,
+            ],
         ];
     }
 
@@ -200,6 +211,14 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             'постоянный сбой хранилища -> терминально' => [
                 MediaFileServiceFailedException::permanent(message: 'Ошибка хранилища.', previous: $storageError),
                 MediaFileServiceFailedException::class,
+            ],
+            'временный сбой процессора -> повтор' => [
+                MediaProcessorFailedException::transient(message: 'Не удалось обработать медиа.', previous: $storageError),
+                RetryException::class,
+            ],
+            'постоянный сбой процессора -> терминально' => [
+                MediaProcessorFailedException::permanent(message: 'Не удалось обработать медиа.', previous: $storageError),
+                MediaProcessorFailedException::class,
             ],
             'ошибка Imagick -> терминально' => [
                 new \RuntimeException('повреждённое изображение'),

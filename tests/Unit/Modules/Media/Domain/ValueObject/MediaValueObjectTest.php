@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Domain\ValueObject;
 
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;
@@ -25,7 +27,10 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingAttempts;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
+use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
+use App\Modules\Media\Domain\ValueObject\MediaWaveformPeakCount;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
@@ -90,6 +95,30 @@ final class MediaValueObjectTest extends TestCase
             'videos/ab/ab111111-1111-4111-8111-111111111111/source.mp4',
             (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Video, extension: 'mp4'),
         );
+        self::assertSame(
+            'audios/ab/ab111111-1111-4111-8111-111111111111/source.m4a',
+            (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Audio, extension: 'm4a'),
+        );
+        self::assertSame(
+            'videos/ab/ab111111-1111-4111-8111-111111111111/normalizedMp4H264.mp4',
+            (string) MediaPath::videoConversion(
+                storageKey: $storageKey,
+                type: MediaVideoConversionType::NormalizedMp4H264,
+                extension: 'MP4',
+            ),
+        );
+        self::assertSame(
+            'audios/ab/ab111111-1111-4111-8111-111111111111/normalizedAacM4a.m4a',
+            (string) MediaPath::audioConversion(
+                storageKey: $storageKey,
+                type: MediaAudioConversionType::NormalizedAacM4a,
+                extension: 'm4a',
+            ),
+        );
+        self::assertSame(
+            'audios/ab/ab111111-1111-4111-8111-111111111111/source.m4a',
+            MediaPath::fromString('audios/ab/ab111111-1111-4111-8111-111111111111/source.m4a')->value(),
+        );
     }
 
     public function testMediaPathExtensionReadsLastSegment(): void
@@ -104,7 +133,35 @@ final class MediaValueObjectTest extends TestCase
     {
         $this->expectException(InvalidDomainValueException::class);
 
-        MediaPath::originalReady(storageKey: MediaStorageKey::generate(), type: MediaType::Audio, extension: 'mp3');
+        MediaPath::originalReady(
+            storageKey: MediaStorageKey::generate(),
+            type: MediaType::Document,
+            extension: 'pdf',
+        );
+    }
+
+    public function testWaveformValidatesPeaksAndSerializes(): void
+    {
+        $waveform = MediaWaveform::fromPeaks([0, 128, 255]);
+
+        self::assertSame([0, 128, 255], $waveform->peaks());
+        self::assertSame([0, 128, 255], $waveform->jsonSerialize());
+        self::assertTrue($waveform->equals(MediaWaveform::fromPeaks([0, 128, 255])));
+        self::assertFalse($waveform->equals(MediaWaveform::fromPeaks([0, 128, 254])));
+    }
+
+    public function testWaveformRejectsEmptyPeaks(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaWaveform::fromPeaks([]);
+    }
+
+    public function testWaveformRejectsPeakOutOfRange(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaWaveform::fromPeaks([0, 256]);
     }
 
     public function testMediaPathFactoryRejectsInvalidExtension(): void
@@ -315,5 +372,7 @@ final class MediaValueObjectTest extends TestCase
         yield MediaMultipartPartSize::class => [MediaMultipartPartSize::class, 5_242_880, 5_242_879];
         yield MediaMultipartPartNumber::class => [MediaMultipartPartNumber::class, 10_000, 10_001];
         yield MediaPresignedTtl::class => [MediaPresignedTtl::class, 604_800, 604_801];
+        yield MediaSampleRate::class => [MediaSampleRate::class, 192_000, 192_001];
+        yield MediaWaveformPeakCount::class => [MediaWaveformPeakCount::class, 4096, 4097];
     }
 }

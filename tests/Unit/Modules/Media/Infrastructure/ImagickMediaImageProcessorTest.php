@@ -69,6 +69,10 @@ final class ImagickMediaImageProcessorTest extends TestCase
             multipartThresholdBytes: 16_777_216,
             multipartPartSizeBytes: 8_388_608,
             imageProcessingDriver: $driver,
+            ffmpegBinaryPath: '/usr/bin/ffmpeg',
+            ffprobeBinaryPath: '/usr/bin/ffprobe',
+            ffmpegTimeoutSeconds: 1800,
+            ffmpegThreads: 0,
         ));
     }
 

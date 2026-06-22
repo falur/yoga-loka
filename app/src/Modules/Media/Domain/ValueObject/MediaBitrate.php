@@ -10,5 +10,5 @@ final readonly class MediaBitrate extends AbstractIntegerValue
 {
     protected const int MIN = 1;
     protected const int MAX = 1_000_000_000;
-    protected const string NAME = 'Bitrate видео';
+    protected const string NAME = 'Битрейт';
 }

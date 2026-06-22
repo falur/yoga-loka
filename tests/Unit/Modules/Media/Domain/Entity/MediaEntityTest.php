@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Domain\Entity;
 
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Entity\MediaAudioConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
+use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
+use App\Modules\Media\Domain\ValueObject\MediaBitrate;
+use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
+use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 
@@ -154,6 +161,37 @@ final class MediaEntityTest extends TestCase
         $this->expectException(InvalidDomainValueException::class);
 
         $media->markReadyMovedTo(MediaStorage::Public, $this->readyPath());
+    }
+
+    public function testAudioConversionCreateInitializesFields(): void
+    {
+        $media = $this->createMedia();
+
+        $audioConversion = MediaAudioConversion::create(
+            media: $media,
+            type: MediaAudioConversionType::NormalizedAacM4a,
+            status: MediaConversionStatus::Ready,
+            storage: MediaStorage::Public,
+            path: MediaPath::audioConversion(
+                storageKey: $media->storageKey,
+                type: MediaAudioConversionType::NormalizedAacM4a,
+                extension: 'm4a',
+            ),
+            mimeType: MediaMimeType::fromString('audio/mp4'),
+            size: MediaFileSize::fromInt(2048),
+            duration: MediaDuration::fromInt(1000),
+            bitrate: MediaBitrate::fromInt(128_000),
+            sampleRate: MediaSampleRate::fromInt(44_100),
+            waveform: MediaWaveform::fromPeaks([0, 64, 128, 255]),
+        );
+
+        self::assertSame(MediaAudioConversionType::NormalizedAacM4a, $audioConversion->type);
+        self::assertSame(MediaConversionStatus::Ready, $audioConversion->status);
+        self::assertSame($media, $audioConversion->media);
+        self::assertTrue($media->id->equals($audioConversion->mediaId));
+        self::assertSame(44_100, $audioConversion->sampleRate->value());
+        self::assertSame([0, 64, 128, 255], $audioConversion->waveform->peaks());
+        self::assertSame($audioConversion->createdAt, $audioConversion->updatedAt);
     }
 
     private function readyPath(): MediaPath

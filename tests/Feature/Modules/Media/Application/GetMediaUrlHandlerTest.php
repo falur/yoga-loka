@@ -8,16 +8,24 @@ use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Query\GetMediaUrl\GetMediaUrlHandler;
 use App\Modules\Media\Application\Query\GetMediaUrl\GetMediaUrlQuery;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
+use App\Modules\Media\Domain\Entity\MediaVideoConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\ValueObject\MediaBitrate;
+use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
+use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
@@ -138,6 +146,59 @@ final class GetMediaUrlHandlerTest extends MediaApplicationTestCase
         );
     }
 
+    public function testReturnsUrlForVideoConversion(): void
+    {
+        $media = $this->readyMedia(MediaVisibility::Public);
+        $conversion = $this->videoConversion($media);
+        $this->persist($media, $conversion);
+
+        $capturedPath = null;
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('publicUrl')->willReturnCallback(
+            static function (MediaStorage $storage, MediaPath $path) use (&$capturedPath): string {
+                $capturedPath = $path->value();
+
+                return 'http://minio/media-public/normalized.mp4';
+            },
+        );
+
+        $result = $this->handler($fileService)->handle(new GetMediaUrlQuery(
+            mediaId: $media->id->value(),
+            presignedTtlSeconds: 300,
+            conversionType: MediaVideoConversionType::NormalizedMp4H264,
+        ));
+
+        self::assertSame('http://minio/media-public/normalized.mp4', $result->url);
+        self::assertSame($conversion->path->value(), $capturedPath);
+        self::assertNull($result->expiresAt);
+    }
+
+    public function testReturnsUrlForAudioConversion(): void
+    {
+        $media = $this->readyMedia(MediaVisibility::Public);
+        $conversion = $this->audioConversion($media);
+        $this->persist($media, $conversion);
+
+        $capturedPath = null;
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('publicUrl')->willReturnCallback(
+            static function (MediaStorage $storage, MediaPath $path) use (&$capturedPath): string {
+                $capturedPath = $path->value();
+
+                return 'http://minio/media-public/normalized.m4a';
+            },
+        );
+
+        $result = $this->handler($fileService)->handle(new GetMediaUrlQuery(
+            mediaId: $media->id->value(),
+            presignedTtlSeconds: 300,
+            conversionType: MediaAudioConversionType::NormalizedAacM4a,
+        ));
+
+        self::assertSame('http://minio/media-public/normalized.m4a', $result->url);
+        self::assertSame($conversion->path->value(), $capturedPath);
+    }
+
     public function testRejectsMissingConversion(): void
     {
         $media = $this->readyMedia(MediaVisibility::Private);
@@ -176,6 +237,8 @@ final class GetMediaUrlHandlerTest extends MediaApplicationTestCase
         return new GetMediaUrlHandler(
             mediaRepository: $this->mediaRepository(),
             mediaImageConversionRepository: $this->imageConversionRepository(),
+            mediaVideoConversionRepository: $this->videoConversionRepository(),
+            mediaAudioConversionRepository: $this->audioConversionRepository(),
             mediaFileService: $fileService,
         );
     }
@@ -191,6 +254,48 @@ final class GetMediaUrlHandlerTest extends MediaApplicationTestCase
         );
 
         return $media;
+    }
+
+    private function videoConversion(Media $media): MediaVideoConversion
+    {
+        return MediaVideoConversion::create(
+            media: $media,
+            type: MediaVideoConversionType::NormalizedMp4H264,
+            status: MediaConversionStatus::Ready,
+            storage: $media->storage,
+            path: MediaPath::videoConversion(
+                storageKey: $media->storageKey,
+                type: MediaVideoConversionType::NormalizedMp4H264,
+                extension: 'mp4',
+            ),
+            mimeType: MediaMimeType::fromString('video/mp4'),
+            size: MediaFileSize::fromInt(4096),
+            width: MediaPixelDimension::fromInt(1280),
+            height: MediaPixelDimension::fromInt(720),
+            duration: MediaDuration::fromInt(2000),
+            bitrate: MediaBitrate::fromInt(900_000),
+        );
+    }
+
+    private function audioConversion(Media $media): MediaAudioConversion
+    {
+        return MediaAudioConversion::create(
+            media: $media,
+            type: MediaAudioConversionType::NormalizedAacM4a,
+            status: MediaConversionStatus::Ready,
+            storage: $media->storage,
+            path: MediaPath::audioConversion(
+                storageKey: $media->storageKey,
+                type: MediaAudioConversionType::NormalizedAacM4a,
+                extension: 'm4a',
+            ),
+            mimeType: MediaMimeType::fromString('audio/mp4'),
+            size: MediaFileSize::fromInt(2048),
+            duration: MediaDuration::fromInt(3000),
+            bitrate: MediaBitrate::fromInt(128_000),
+            sampleRate: MediaSampleRate::fromInt(44_100),
+            waveform: MediaWaveform::fromPeaks([0, 64, 128, 255]),
+        );
     }
 
     private function thumbnailConversion(Media $media): MediaImageConversion

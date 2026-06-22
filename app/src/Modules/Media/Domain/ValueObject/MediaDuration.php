@@ -10,5 +10,5 @@ final readonly class MediaDuration extends AbstractIntegerValue
 {
     protected const int MIN = 1;
     protected const int MAX = 604_800_000;
-    protected const string NAME = 'Длительность видео';
+    protected const string NAME = 'Длительность';
 }

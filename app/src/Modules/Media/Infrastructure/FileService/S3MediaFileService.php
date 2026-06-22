@@ -213,6 +213,51 @@ final readonly class S3MediaFileService implements MediaFileServiceContract
     }
 
     #[\Override]
+    public function downloadToFile(MediaStorage $storage, MediaPath $path): string
+    {
+        // Уникальный путь без предварительного создания файла: 'SaveAs' создаёт его сам,
+        // стримя тело из S3 на диск без полного буфера в памяти. Владелец файла — вызыватель.
+        $localFile = \sprintf('%s/media_download_%s', \sys_get_temp_dir(), \bin2hex(\random_bytes(16)));
+
+        try {
+            $this->client($storage)->getObject([
+                'Bucket' => $this->bucketName($storage),
+                'Key' => $this->objectKey(storage: $storage, path: $path),
+                'SaveAs' => $localFile,
+            ]);
+        } catch (AwsException $exception) {
+            // 'SaveAs' мог записать частичный файл до обрыва. Вызыватель пути ещё не получил, очистить
+            // его некому — удаляем здесь, чтобы сбой скачивания не оставлял мусор во временном каталоге.
+            if (\is_file($localFile)) {
+                \unlink($localFile);
+            }
+
+            throw $this->awsFailure($exception);
+        }
+
+        return $localFile;
+    }
+
+    #[\Override]
+    public function uploadFromFile(
+        MediaStorage $storage,
+        MediaPath $path,
+        string $localFile,
+        MediaMimeType $mimeType,
+    ): void {
+        try {
+            $this->client($storage)->putObject([
+                'Bucket' => $this->bucketName($storage),
+                'Key' => $this->objectKey(storage: $storage, path: $path),
+                'SourceFile' => $localFile,
+                'ContentType' => $mimeType->value(),
+            ]);
+        } catch (AwsException $exception) {
+            throw $this->awsFailure($exception);
+        }
+    }
+
+    #[\Override]
     public function putObject(
         MediaStorage $storage,
         MediaPath $path,
@@ -333,7 +378,7 @@ final readonly class S3MediaFileService implements MediaFileServiceContract
 
     /**
      * Классифицирует сырое AWS-исключение в исключение контракта с типизированным признаком
-     * транзиентности. Знание об AWS остаётся в Infrastructure; наружу уходит только контрактный
+     * временной ошибки. Знание об AWS остаётся в Infrastructure; наружу уходит только контрактный
      * сигнал isTransient(). Сообщение — безопасная предопределённая строка без сырого текста AWS.
      */
     private function awsFailure(AwsException $exception): MediaFileServiceFailedException

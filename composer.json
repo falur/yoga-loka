@@ -25,6 +25,7 @@
         "intervention/image": "^4",
         "kreait/firebase-php": "^8.2",
         "league/flysystem-aws-s3-v3": "^3.34",
+        "php-ffmpeg/php-ffmpeg": "^1.4",
         "psr/clock": "^1.0",
         "spiral-packages/league-event": "^1.0.1",
         "spiral-packages/scheduler": "^2.1",

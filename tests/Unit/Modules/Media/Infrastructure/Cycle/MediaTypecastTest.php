@@ -10,9 +10,12 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartNumber;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Modules\Media\Infrastructure\Cycle\MediaExpirationTypecast;
 use App\Modules\Media\Infrastructure\Cycle\MediaMultipartPartCollectionTypecast;
 use App\Modules\Media\Infrastructure\Cycle\MediaProcessingErrorTypecast;
+use App\Modules\Media\Infrastructure\Cycle\MediaWaveformTypecast;
+use App\Shared\Domain\Exception\InvalidDomainValueException;
 use PHPUnit\Framework\TestCase;
 
 final class MediaTypecastTest extends TestCase
@@ -92,5 +95,35 @@ final class MediaTypecastTest extends TestCase
         ]);
 
         self::assertSame('[{"partNumber":1,"eTag":"first"}]', MediaMultipartPartCollectionTypecast::uncastValue($parts));
+    }
+
+    public function testWaveformTypecastRoundTripsJson(): void
+    {
+        $waveform = MediaWaveformTypecast::castDatabaseValue('[0,128,255]');
+
+        self::assertSame([0, 128, 255], $waveform->peaks());
+        self::assertSame('[0,128,255]', MediaWaveformTypecast::uncastValue($waveform));
+        self::assertSame('[0,128,255]', MediaWaveformTypecast::uncastValue(MediaWaveform::fromPeaks([0, 128, 255])));
+    }
+
+    public function testWaveformTypecastRejectsNonArrayJson(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        MediaWaveformTypecast::castDatabaseValue('123');
+    }
+
+    public function testWaveformTypecastRejectsNonIntElement(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        MediaWaveformTypecast::castDatabaseValue('[1, "two"]');
+    }
+
+    public function testWaveformTypecastRejectsPeakOutOfRange(): void
+    {
+        $this->expectException(InvalidDomainValueException::class);
+
+        MediaWaveformTypecast::castDatabaseValue('[0, 256]');
     }
 }

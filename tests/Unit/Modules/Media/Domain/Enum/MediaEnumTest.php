@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Domain\Enum;
 
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStatus;
@@ -56,6 +57,11 @@ final class MediaEnumTest extends TestCase
     public function testVideoConversionTypeValues(): void
     {
         self::assertSame(['normalizedMp4H264'], $this->values(MediaVideoConversionType::cases()));
+    }
+
+    public function testAudioConversionTypeValues(): void
+    {
+        self::assertSame(['normalizedAacM4a'], $this->values(MediaAudioConversionType::cases()));
     }
 
     public function testConversionStatusValues(): void

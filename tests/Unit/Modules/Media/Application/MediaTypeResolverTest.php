@@ -13,12 +13,14 @@ use PHPUnit\Framework\TestCase;
 
 final class MediaTypeResolverTest extends TestCase
 {
-    public function testResolvesImageAndVideo(): void
+    public function testResolvesImageVideoAndAudio(): void
     {
         $resolver = new MediaTypeResolver();
 
         self::assertSame(MediaType::Image, $resolver->resolve(MediaMimeType::fromString('image/jpeg')));
         self::assertSame(MediaType::Video, $resolver->resolve(MediaMimeType::fromString('video/mp4')));
+        self::assertSame(MediaType::Audio, $resolver->resolve(MediaMimeType::fromString('audio/mpeg')));
+        self::assertSame(MediaType::Audio, $resolver->resolve(MediaMimeType::fromString('audio/mp4')));
     }
 
     #[DataProvider('unsupportedMimeTypeProvider')]
@@ -34,6 +36,6 @@ final class MediaTypeResolverTest extends TestCase
      */
     public static function unsupportedMimeTypeProvider(): array
     {
-        return [['audio/mpeg'], ['application/pdf'], ['text/plain']];
+        return [['application/pdf'], ['text/plain'], ['font/woff2']];
     }
 }

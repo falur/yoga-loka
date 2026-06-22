@@ -12,9 +12,9 @@ use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Фиксирует ошибку обработки на Media. Доменные методы записи транзиентной и постоянной
+ * Фиксирует ошибку обработки на Media. Доменные методы записи временной и постоянной
  * ошибки идентичны (ProcessingFailed + инкремент попыток), поэтому вызывается один; флаг
- * isTransient влияет только на решение ProcessMediaJob о ретрае и идёт сюда лишь как контекст
+ * isTransient влияет только на решение ProcessMediaJob о повторе и идёт сюда лишь как контекст
  * лога.
  */
 final readonly class RecordMediaProcessingFailureHandler

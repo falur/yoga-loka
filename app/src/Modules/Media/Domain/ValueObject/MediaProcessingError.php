@@ -29,7 +29,7 @@ final readonly class MediaProcessingError implements \Stringable, \JsonSerializa
 
         if (
             \preg_match(
-                pattern: '/(?:uploads|images|videos)\/[0-9a-f]{2}\/[0-9a-f-]{36}\/\S+/i',
+                pattern: '/(?:uploads|images|videos|audios)\/[0-9a-f]{2}\/[0-9a-f-]{36}\/\S+/i',
                 subject: $value,
             ) === 1
             || \preg_match(pattern: '/\betag\b/i', subject: $value) === 1

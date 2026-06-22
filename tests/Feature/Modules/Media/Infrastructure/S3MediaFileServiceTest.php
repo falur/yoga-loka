@@ -192,6 +192,38 @@ final class S3MediaFileServiceTest extends TestCase
         self::assertNull($this->fileService()->headObject(MediaStorage::Upload, $this->uploadPath()));
     }
 
+    public function testDownloadToFileAndUploadFromFileRoundTrip(): void
+    {
+        $fileService = $this->fileService();
+        $sourcePath = $this->uploadPath();
+        $targetPath = $this->imagesPath();
+        $bytes = \random_bytes(1500);
+        $this->track(MediaStorage::Upload, $sourcePath);
+        $this->track(MediaStorage::Public, $targetPath);
+
+        $fileService->putObject(
+            storage: MediaStorage::Upload,
+            path: $sourcePath,
+            contents: $bytes,
+            mimeType: MediaMimeType::fromString(self::MIME),
+        );
+
+        $localFile = $fileService->downloadToFile(MediaStorage::Upload, $sourcePath);
+
+        self::assertFileExists($localFile);
+        self::assertSame($bytes, (string) \file_get_contents($localFile));
+
+        $fileService->uploadFromFile(
+            storage: MediaStorage::Public,
+            path: $targetPath,
+            localFile: $localFile,
+            mimeType: MediaMimeType::fromString(self::MIME),
+        );
+        \unlink($localFile);
+
+        self::assertSame($bytes, $fileService->getObjectContents(MediaStorage::Public, $targetPath));
+    }
+
     public function testAbortMultipartUploadIsIdempotent(): void
     {
         $fileService = $this->fileService();

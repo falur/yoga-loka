@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Command\ProcessMedia;
 
-use App\Modules\Media\Application\Dto\MediaConversionSpec;
+use App\Modules\Media\Application\Dto\MediaConversionPlan;
 
 final readonly class ProcessMediaCommand
 {
-    /**
-     * @param list<MediaConversionSpec> $conversions
-     */
     public function __construct(
         public string $mediaId,
-        public array $conversions,
+        public MediaConversionPlan $plan,
     ) {}
 }

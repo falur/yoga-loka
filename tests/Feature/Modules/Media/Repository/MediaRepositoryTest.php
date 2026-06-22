@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Repository;
 
+use App\Modules\Media\Domain\Collection\MediaAudioConversionCollection;
 use App\Modules\Media\Domain\Collection\MediaImageConversionCollection;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Collection\MediaVideoConversionCollection;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStatus;
@@ -31,8 +34,11 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
+use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\ValueObject\UserId;
+use App\Modules\Media\Repository\MediaAudioConversionRepository;
 use App\Modules\Media\Repository\MediaImageConversionRepository;
 use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use App\Modules\Media\Repository\MediaRepository;
@@ -65,22 +71,30 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $media = $this->createMedia();
         $imageConversion = $this->createImageConversion($media);
         $videoConversion = $this->createVideoConversion($media);
+        $audioConversion = $this->createAudioConversion($media);
         $multipartUpload = $this->createMultipartUpload($media);
 
         $this->entityManager()->persist($media);
         $this->entityManager()->persist($imageConversion);
         $this->entityManager()->persist($videoConversion);
+        $this->entityManager()->persist($audioConversion);
         $this->entityManager()->persist($multipartUpload);
         $this->entityManager()->run();
 
         $imageConversions = $this->imageConversionRepository()->findByMediaId($media->id);
         $videoConversions = $this->videoConversionRepository()->findByMediaId($media->id);
+        $audioConversions = $this->audioConversionRepository()->findByMediaId($media->id);
         $restoredMultipartUpload = $this->multipartUploadRepository()->findByMediaId($media->id);
 
         self::assertInstanceOf(MediaImageConversionCollection::class, $imageConversions);
         self::assertInstanceOf(MediaVideoConversionCollection::class, $videoConversions);
+        self::assertInstanceOf(MediaAudioConversionCollection::class, $audioConversions);
         self::assertCount(1, $imageConversions);
         self::assertCount(1, $videoConversions);
+        self::assertCount(1, $audioConversions);
+        self::assertInstanceOf(MediaAudioConversion::class, $audioConversions->first());
+        self::assertSame([0, 64, 128, 255], $audioConversions->first()->waveform->peaks());
+        self::assertSame(44_100, $audioConversions->first()->sampleRate->value());
         self::assertInstanceOf(MediaMultipartUpload::class, $restoredMultipartUpload);
         self::assertInstanceOf(MediaMultipartPartCollection::class, $restoredMultipartUpload->parts);
         self::assertSame(1, $restoredMultipartUpload->parts->first()->partNumber->value());
@@ -220,11 +234,13 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $media = $this->createMedia();
         $imageConversion = $this->createImageConversion($media);
         $videoConversion = $this->createVideoConversion($media);
+        $audioConversion = $this->createAudioConversion($media);
         $multipartUpload = $this->createMultipartUpload($media);
 
         $this->entityManager()->persist($media);
         $this->entityManager()->persist($imageConversion);
         $this->entityManager()->persist($videoConversion);
+        $this->entityManager()->persist($audioConversion);
         $this->entityManager()->persist($multipartUpload);
         $this->entityManager()->run();
 
@@ -233,6 +249,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
 
         self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
         self::assertCount(0, $this->videoConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->audioConversionRepository()->findByMediaId($media->id));
         self::assertNull($this->multipartUploadRepository()->findByMediaId($media->id));
     }
 
@@ -290,6 +307,25 @@ final class MediaRepositoryTest extends DatabaseTestCase
         );
     }
 
+    private function createAudioConversion(Media $media): MediaAudioConversion
+    {
+        $storageKey = MediaStorageKey::generate();
+
+        return MediaAudioConversion::create(
+            media: $media,
+            type: MediaAudioConversionType::NormalizedAacM4a,
+            status: MediaConversionStatus::Ready,
+            storage: MediaStorage::Public,
+            path: MediaPath::fromString(\sprintf('audios/%s/%s/normalizedAacM4a.m4a', $storageKey->shard(), $storageKey)),
+            mimeType: MediaMimeType::fromString('audio/mp4'),
+            size: MediaFileSize::fromInt(2048),
+            duration: MediaDuration::fromInt(1000),
+            bitrate: MediaBitrate::fromInt(128_000),
+            sampleRate: MediaSampleRate::fromInt(44_100),
+            waveform: MediaWaveform::fromPeaks([0, 64, 128, 255]),
+        );
+    }
+
     private function createMultipartUpload(Media $media): MediaMultipartUpload
     {
         $multipartUpload = MediaMultipartUpload::create(
@@ -327,6 +363,11 @@ final class MediaRepositoryTest extends DatabaseTestCase
     private function videoConversionRepository(): MediaVideoConversionRepository
     {
         return $this->getContainer()->get(MediaVideoConversionRepository::class);
+    }
+
+    private function audioConversionRepository(): MediaAudioConversionRepository
+    {
+        return $this->getContainer()->get(MediaAudioConversionRepository::class);
     }
 
     private function multipartUploadRepository(): MediaMultipartUploadRepository

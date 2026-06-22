@@ -7,11 +7,14 @@ namespace Tests\Feature\Modules\Media\Application;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadCommand;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
+use App\Modules\Media\Application\Dto\MediaConversionPlan;
 use App\Modules\Media\Application\Dto\MediaObjectHead;
+use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
 use App\Modules\Media\Domain\Enum\MediaStatus;
+use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
@@ -36,20 +39,30 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, size: MediaFileSize::fromInt(2048));
         $this->persist($media);
 
+        $captured = null;
         $outboxStore = $this->createMock(OutboxEventStoreContract::class);
-        $outboxStore->expects(self::once())->method('add')->willReturn(StoredOutboxEventId::fromString('outbox-1'));
+        $outboxStore->expects(self::once())->method('add')->willReturnCallback(
+            function (MediaUploaded $message) use (&$captured): StoredOutboxEventId {
+                $captured = $message;
+
+                return StoredOutboxEventId::fromString('outbox-1');
+            },
+        );
 
         $result = $this->handler($this->fileServiceWithHead(2048), $outboxStore)->handle(
             new CompleteMediaUploadCommand(
                 userId: $userId->value(),
                 mediaId: $media->id->value(),
-                conversions: [$this->conversionSpec()],
+                plan: $this->imagePlan($this->imageConversionSpec()),
                 parts: null,
             ),
         );
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
         self::assertSame(MediaStatus::Uploaded, $media->status);
+        self::assertInstanceOf(MediaUploaded::class, $captured);
+        self::assertInstanceOf(MediaConversionPlan::class, $captured->plan);
+        self::assertCount(1, $captured->plan->image);
     }
 
     public function testCompletesMultipartUpload(): void
@@ -66,11 +79,283 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $result = $this->handler($fileService, $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: $this->parts(),
         ));
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
+    }
+
+    public function testCompletesVideoUploadWithVideoPlan(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(
+            userId: $userId,
+            type: MediaType::Video,
+            size: MediaFileSize::fromInt(2048),
+            extension: 'mp4',
+            mimeType: 'video/mp4',
+        );
+        $this->persist($media);
+
+        $result = $this->handler($this->fileServiceWithHead(2048), $this->outboxStore())->handle(
+            new CompleteMediaUploadCommand(
+                userId: $userId->value(),
+                mediaId: $media->id->value(),
+                plan: $this->videoPlan($this->videoConversionSpec()),
+                parts: null,
+            ),
+        );
+
+        self::assertSame(MediaStatus::Uploaded, $result->status);
+    }
+
+    public function testCompletesAudioUploadWithAudioPlan(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(
+            userId: $userId,
+            type: MediaType::Audio,
+            size: MediaFileSize::fromInt(2048),
+            extension: 'mp3',
+            mimeType: 'audio/mpeg',
+        );
+        $this->persist($media);
+
+        $result = $this->handler($this->fileServiceWithHead(2048), $this->outboxStore())->handle(
+            new CompleteMediaUploadCommand(
+                userId: $userId->value(),
+                mediaId: $media->id->value(),
+                plan: $this->audioPlan($this->audioConversionSpec()),
+                parts: null,
+            ),
+        );
+
+        self::assertSame(MediaStatus::Uploaded, $result->status);
+    }
+
+    public function testRejectsCrossTypePlan(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId);
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsDuplicateImageConversionTypes(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId);
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->imagePlan($this->imageConversionSpec(), $this->imageConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsEmptyVideoPlanForVideoMedia(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->emptyPlan(),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsMultipleVideoProfiles(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec(), $this->videoConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsVideoBitrateOutOfRange(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec(videoBitrate: 0)),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsAudioSampleRateOutOfRange(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec(sampleRate: 1)),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsAudioWaveformPeaksOutOfRange(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec(waveformPeaks: 100_000)),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsForeignListForVideoMedia(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsVideoDimensionOutOfRange(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec(width: 0)),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsForeignListForAudioMedia(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsEmptyAudioPlanForAudioMedia(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->emptyPlan(),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsMultipleAudioProfiles(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec(), $this->audioConversionSpec()),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsAudioBitrateOutOfRange(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec(bitrate: 0)),
+            parts: null,
+        ));
+    }
+
+    public function testRejectsDocumentMedia(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+
+        $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->emptyPlan(),
+            parts: null,
+        ));
     }
 
     public function testRejectsMissingMedia(): void
@@ -80,7 +365,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(2048), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: UserId::generate()->value(),
             mediaId: UserId::generate()->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: null,
         ));
     }
@@ -95,7 +380,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: UserId::generate()->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: null,
         ));
     }
@@ -112,7 +397,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: null,
         ));
     }
@@ -129,7 +414,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [$this->conversionSpec(width: $width, height: $height)],
+            plan: $this->imagePlan($this->imageConversionSpec(width: $width, height: $height)),
             parts: null,
         ));
     }
@@ -139,7 +424,6 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
      */
     public static function outOfRangeConversionDimensionProvider(): array
     {
-        // Симметрия с MediaPixelDimension (MIN=1, MAX=100_000): ноль/негатив снизу, 200000 сверху.
         return [
             'нулевая ширина (нижняя граница)' => [0, 100],
             'нулевая высота (нижняя граница)' => [100, 0],
@@ -159,7 +443,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: $this->parts(),
         ));
     }
@@ -178,7 +462,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($fileService, $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: null,
         ));
     }
@@ -194,7 +478,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->handler($this->fileServiceWithHead(999), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
             parts: null,
         ));
     }

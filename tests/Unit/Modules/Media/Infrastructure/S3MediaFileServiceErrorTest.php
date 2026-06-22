@@ -186,6 +186,54 @@ final class S3MediaFileServiceErrorTest extends TestCase
         $fileService->putObject(MediaStorage::Upload, $this->path(), 'contents', $this->mime());
     }
 
+    public function testDownloadToFileWrapsAwsError(): void
+    {
+        $fileService = $this->serviceWith(new FakeS3Client([
+            'getObject' => static fn(): Result => throw self::s3Exception('AccessDenied'),
+        ]));
+
+        $this->expectException(MediaFileServiceFailedException::class);
+
+        $fileService->downloadToFile(MediaStorage::Upload, $this->path());
+    }
+
+    public function testDownloadToFileRemovesPartialFileWhenDownloadFails(): void
+    {
+        $partialFile = null;
+
+        $fileService = $this->serviceWith(new FakeS3Client([
+            // Имитируем частичную запись 'SaveAs' на диск до обрыва скачивания: S3-клиент успел
+            // создать файл, затем getObject упал. Без очистки файл остался бы во временном каталоге.
+            'getObject' => static function (array $args) use (&$partialFile): Result {
+                $partialFile = (string) $args['SaveAs'];
+                \file_put_contents($partialFile, 'partial');
+
+                throw self::s3Exception('RequestTimeout');
+            },
+        ]));
+
+        try {
+            $fileService->downloadToFile(MediaStorage::Upload, $this->path());
+            self::fail('Ожидалось MediaFileServiceFailedException.');
+        } catch (MediaFileServiceFailedException) {
+            // ожидаемо
+        }
+
+        self::assertIsString($partialFile);
+        self::assertFileDoesNotExist($partialFile);
+    }
+
+    public function testUploadFromFileWrapsAwsError(): void
+    {
+        $fileService = $this->serviceWith(new FakeS3Client([
+            'putObject' => static fn(): Result => throw self::s3Exception('AccessDenied'),
+        ]));
+
+        $this->expectException(MediaFileServiceFailedException::class);
+
+        $fileService->uploadFromFile(MediaStorage::Upload, $this->path(), '/tmp/nonexistent-source', $this->mime());
+    }
+
     public function testCopyObjectWrapsAwsError(): void
     {
         $fileService = $this->serviceWith(new FakeS3Client([

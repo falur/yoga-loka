@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Domain\Entity;
 
+use App\Modules\Media\Domain\Collection\MediaAudioConversionCollection;
 use App\Modules\Media\Domain\Collection\MediaImageConversionCollection;
 use App\Modules\Media\Domain\Collection\MediaVideoConversionCollection;
 use App\Modules\Media\Domain\Enum\MediaStatus;
@@ -97,6 +98,15 @@ final class Media
     )]
     public private(set) MediaVideoConversionCollection $videoConversions;
 
+    #[HasMany(
+        target: MediaAudioConversion::class,
+        innerKey: 'id',
+        outerKey: 'media_id',
+        orderBy: ['id' => 'ASC'],
+        collection: MediaAudioConversionCollection::class,
+    )]
+    public private(set) MediaAudioConversionCollection $audioConversions;
+
     public static function create(
         MediaStorageKey $storageKey,
         MediaType $type,
@@ -123,6 +133,7 @@ final class Media
         $media->processingError = MediaProcessingError::none();
         $media->imageConversions = new MediaImageConversionCollection();
         $media->videoConversions = new MediaVideoConversionCollection();
+        $media->audioConversions = new MediaAudioConversionCollection();
         $media->initializeTimestamps();
 
         return $media;
@@ -205,7 +216,7 @@ final class Media
     /**
      * Перевод в ready с переназначением целевого хранилища и пути (после перекладки оригинала
      * из staging). Идемпотентен: повторная доставка на ready — no-op. Допустим из uploaded,
-     * processing или processingFailed (ретрай обработки после транзиентной ошибки).
+     * processing или processingFailed (повтор обработки после временной ошибки).
      */
     public function markReadyMovedTo(MediaStorage $storage, MediaPath $path): void
     {

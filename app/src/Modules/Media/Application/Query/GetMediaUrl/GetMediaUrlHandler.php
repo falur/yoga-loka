@@ -6,15 +6,21 @@ namespace App\Modules\Media\Application\Query\GetMediaUrl;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Dto\MediaUrlResult;
+use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
+use App\Modules\Media\Domain\Entity\MediaVideoConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
+use App\Modules\Media\Repository\MediaAudioConversionRepository;
 use App\Modules\Media\Repository\MediaImageConversionRepository;
 use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Media\Repository\MediaVideoConversionRepository;
 use App\Shared\Domain\Exception\NotFoundException;
 
 final readonly class GetMediaUrlHandler
@@ -22,6 +28,8 @@ final readonly class GetMediaUrlHandler
     public function __construct(
         private MediaRepository $mediaRepository,
         private MediaImageConversionRepository $mediaImageConversionRepository,
+        private MediaVideoConversionRepository $mediaVideoConversionRepository,
+        private MediaAudioConversionRepository $mediaAudioConversionRepository,
         private MediaFileServiceContract $mediaFileService,
     ) {}
 
@@ -54,11 +62,20 @@ final readonly class GetMediaUrlHandler
         );
     }
 
-    private function findConversion(MediaId $mediaId, MediaImageConversionType $type): MediaImageConversion|null
-    {
-        return $this->mediaImageConversionRepository->findByMediaId($mediaId)->first(
-            static fn(MediaImageConversion $conversion): bool => $conversion->type === $type,
-        );
+    private function findConversion(
+        MediaId $mediaId,
+        MediaImageConversionType|MediaVideoConversionType|MediaAudioConversionType $type,
+    ): MediaImageConversion|MediaVideoConversion|MediaAudioConversion|null {
+        // У изображений несколько типов — выбираем нужный по type. У видео и аудио каталог типов
+        // содержит ровно один профиль и на медиа не больше одной такой конверсии, поэтому берём
+        // первую (фильтр по единственному типу был бы всегда истинным).
+        return match (true) {
+            $type instanceof MediaImageConversionType => $this->mediaImageConversionRepository->findByMediaId($mediaId)->first(
+                static fn(MediaImageConversion $conversion): bool => $conversion->type === $type,
+            ),
+            $type instanceof MediaVideoConversionType => $this->mediaVideoConversionRepository->findByMediaId($mediaId)->first(),
+            $type instanceof MediaAudioConversionType => $this->mediaAudioConversionRepository->findByMediaId($mediaId)->first(),
+        };
     }
 
     private function buildUrl(

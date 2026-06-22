@@ -8,6 +8,7 @@ use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\ValueObject\MediaId;
+use App\Modules\Media\Repository\MediaAudioConversionRepository;
 use App\Modules\Media\Repository\MediaImageConversionRepository;
 use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use App\Modules\Media\Repository\MediaRepository;
@@ -26,6 +27,7 @@ final readonly class DeleteMediaHandler
         private MediaMultipartUploadRepository $mediaMultipartUploadRepository,
         private MediaImageConversionRepository $mediaImageConversionRepository,
         private MediaVideoConversionRepository $mediaVideoConversionRepository,
+        private MediaAudioConversionRepository $mediaAudioConversionRepository,
         private MediaFileServiceContract $mediaFileService,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
@@ -69,6 +71,12 @@ final readonly class DeleteMediaHandler
 
         foreach ($this->mediaVideoConversionRepository->findByMediaId($media->id) as $videoConversion) {
             $this->mediaFileService->deleteObject(storage: $videoConversion->storage, path: $videoConversion->path);
+        }
+
+        // Постер видео — это MediaImageConversion (Poster), он уже попадёт в image-цикл выше;
+        // здесь чистим только аудио-конверсии, чтобы не задваивать постер.
+        foreach ($this->mediaAudioConversionRepository->findByMediaId($media->id) as $audioConversion) {
+            $this->mediaFileService->deleteObject(storage: $audioConversion->storage, path: $audioConversion->path);
         }
     }
 

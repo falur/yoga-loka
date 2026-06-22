@@ -9,9 +9,9 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Shared\Domain\Exception\ValidationException;
 
 /**
- * Резолвер MIME -> MediaType. Намеренно сужающий: поддержаны только image/* и video/*;
- * прочие типы (audio, документы и т.п.) вне scope пайплайна и отклоняются как ожидаемая
- * клиентская ошибка 422 (MediaPath допускает только префиксы uploads|images|videos).
+ * Резолвер MIME -> MediaType. Намеренно сужающий: поддержаны image/*, video/* и audio/*;
+ * прочие типы (документы и т.п.) вне области пайплайна и отклоняются как ожидаемая клиентская
+ * ошибка 422 (MediaPath допускает только префиксы uploads|images|videos|audios).
  */
 final readonly class MediaTypeResolver
 {
@@ -25,6 +25,10 @@ final readonly class MediaTypeResolver
 
         if (\str_starts_with(haystack: $value, needle: 'video/')) {
             return MediaType::Video;
+        }
+
+        if (\str_starts_with(haystack: $value, needle: 'audio/')) {
+            return MediaType::Audio;
         }
 
         throw new ValidationException(

@@ -9,6 +9,7 @@ use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureCommand;
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
+use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
@@ -20,13 +21,14 @@ use Spiral\Queue\JobHandler;
 /**
  * Инфраструктурный Job обработки медиа. Грузит MediaUploaded из outbox и запускает
  * ProcessMediaCommand. Ошибки обработки ловятся здесь (Job — граница системы, try-catch
- * разрешён): фиксируем безопасную ошибку на Media и классифицируем — транзиентную просим
+ * разрешён): фиксируем безопасную ошибку на Media и классифицируем — временную просим
  * повторить (RetryException, его читает OutboxQueueStatusInterceptor), постоянную пробрасываем
  * терминально (outbox -> failed). Статусы outbox Job сам не трогает.
  */
 final class ProcessMediaJob extends JobHandler
 {
     private const string STORAGE_FAILURE_MESSAGE = 'Ошибка хранилища при обработке медиа.';
+    private const string PROCESSING_RETRY_MESSAGE = 'Повторная обработка медиа запланирована.';
     private const string PROCESSING_FAILURE_MESSAGE = 'Не удалось обработать медиа.';
 
     public function invoke(
@@ -47,18 +49,20 @@ final class ProcessMediaJob extends JobHandler
             $commandBus->dispatch(
                 command: new ProcessMediaCommand(
                     mediaId: $mediaUploaded->mediaId,
-                    conversions: $mediaUploaded->conversions,
+                    plan: $mediaUploaded->plan,
                 ),
                 handler: $processMediaHandler->handle(...),
             );
         } catch (\Throwable $exception) {
-            // Транзиентность приходит контрактным сигналом MediaFileServiceFailedException::isTransient():
-            // классификацию AWS делает Infrastructure, Presentation не знает про реализацию хранилища.
-            $isTransient = $exception instanceof MediaFileServiceFailedException && $exception->isTransient();
+            // Временность приходит контрактным сигналом isTransient(): классификацию делает
+            // Infrastructure (AWS — файловый сервис, ffmpeg — процессоры), Presentation не знает про
+            // конкретные реализации хранилища и обработки.
+            $isTransient = ($exception instanceof MediaFileServiceFailedException && $exception->isTransient())
+                || ($exception instanceof MediaProcessorFailedException && $exception->isTransient());
 
             // Запись ошибки на Media — отдельный сбойный путь: медиа могли конкурентно удалить
             // (NotFoundException) или короткий сбой БД. Защищаем только этот вызов локальным guard,
-            // чтобы вторичный сбой записи не подменил исходную причину и решение retry/terminal:
+            // чтобы вторичный сбой записи не подменил исходную причину и решение повтор/терминальный исход:
             // логируем его как вторичный сбой (ERROR — реальная инфра/инвариант-проблема, rules.md:84)
             // и продолжаем классифицировать по исходному $exception.
             try {
@@ -88,13 +92,18 @@ final class ProcessMediaJob extends JobHandler
             ];
 
             if ($isTransient) {
-                // Транзиентный ретраябельный сбой инфраструктуры -> WARN (rules.md:84), повтор ожидаем.
+                // Временный повторяемый сбой инфраструктуры -> WARN (rules.md:84), повтор ожидаем.
                 $logger->warning(
-                    message: 'Транзиентная ошибка обработки медиа, запланирован повтор.',
+                    message: 'Временная ошибка обработки медиа, запланирован повтор.',
                     context: $logContext,
                 );
 
-                throw new RetryException(reason: self::STORAGE_FAILURE_MESSAGE);
+                // Причина повтора по типу сбоя: ошибка процессора != ошибка хранилища.
+                $retryReason = $exception instanceof MediaProcessorFailedException
+                    ? self::PROCESSING_RETRY_MESSAGE
+                    : self::STORAGE_FAILURE_MESSAGE;
+
+                throw new RetryException(reason: $retryReason);
             }
 
             // Постоянный сбой (битый файл/нарушение инварианта) -> ERROR, повтора не будет.

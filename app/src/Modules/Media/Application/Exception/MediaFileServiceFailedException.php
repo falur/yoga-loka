@@ -6,7 +6,7 @@ namespace App\Modules\Media\Application\Exception;
 
 /**
  * Сбой файлового сервиса как часть контракта MediaFileServiceContract. Несёт типизированный
- * признак транзиентности (`isTransient()`), чтобы потребитель контракта (ProcessMediaJob) выбирал
+ * признак временной ошибки (`isTransient()`), чтобы потребитель контракта (ProcessMediaJob) выбирал
  * стратегию повтора, не зная о конкретной реализации хранилища (S3/AWS, локальный драйвер).
  *
  * Слой исключения определяется контрактом, к которому оно относится (Application/Contract),
@@ -24,7 +24,7 @@ final class MediaFileServiceFailedException extends \DomainException
     }
 
     /**
-     * Транзиентный (ретраябельный) сбой хранилища: сетевые ошибки, 5xx, throttling.
+     * Временный (повторяемый) сбой хранилища: сетевые ошибки, 5xx, ограничение скорости.
      */
     public static function transient(string $message, \Throwable $previous): self
     {

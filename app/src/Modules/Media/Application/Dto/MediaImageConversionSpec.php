@@ -8,11 +8,11 @@ use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 
 /**
  * Профиль одной конверсии изображения. Примитив-дружественный Application-DTO с публичным
- * конструктором: переиспользуется в outbox-сообщении MediaUploaded, поэтому Valinor должен
- * штатно восстанавливать его из enum+int+int (без приватных фабрик доменных VO).
- * Handler сам строит из него MediaImageConversionType/MediaPixelDimension.
+ * конструктором: переиспользуется в outbox-сообщении MediaUploaded (через MediaConversionPlan),
+ * поэтому Valinor должен штатно восстанавливать его из enum+int+int (без приватных фабрик
+ * доменных VO). Handler сам строит из него MediaImageConversionType/MediaPixelDimension.
  */
-final readonly class MediaConversionSpec
+final readonly class MediaImageConversionSpec
 {
     public function __construct(
         public MediaImageConversionType $type,

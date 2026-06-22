@@ -34,6 +34,7 @@ RUN set -eux; \
         php8.5-intl \
         php8.5-gd \
         php8.5-imagick \
+        ffmpeg \
         postgresql-client \
     ; \
     curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
@@ -68,6 +69,8 @@ RUN set -eux; \
     php -m | grep -E '^imagick$'; \
     php -m | grep -E '^gd$'; \
     php -m | grep -E '^pcov$'; \
+    ffmpeg -version >/dev/null; \
+    ffprobe -version >/dev/null; \
     dpkg -l | grep php8.5-redis; \
     rr --version; \
     rr jobs --help >/dev/null; \

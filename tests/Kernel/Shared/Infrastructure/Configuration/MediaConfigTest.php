@@ -24,6 +24,10 @@ final class MediaConfigTest extends TestCase
         self::assertSame(16_777_216, $mediaConfig->multipartThresholdBytes);
         self::assertSame(8_388_608, $mediaConfig->multipartPartSizeBytes);
         self::assertSame('imagick', $mediaConfig->imageProcessingDriver);
+        self::assertSame('/usr/bin/ffmpeg', $mediaConfig->ffmpegBinaryPath);
+        self::assertSame('/usr/bin/ffprobe', $mediaConfig->ffprobeBinaryPath);
+        self::assertSame(1800, $mediaConfig->ffmpegTimeoutSeconds);
+        self::assertSame(0, $mediaConfig->ffmpegThreads);
     }
 
     public function testMapsMediaConfigSection(): void
@@ -33,6 +37,10 @@ final class MediaConfigTest extends TestCase
             'multipartThresholdBytes' => 20_971_520,
             'multipartPartSizeBytes' => 5_242_880,
             'imageProcessingDriver' => 'gd',
+            'ffmpegBinaryPath' => '/opt/ffmpeg',
+            'ffprobeBinaryPath' => '/opt/ffprobe',
+            'ffmpegTimeoutSeconds' => 600,
+            'ffmpegThreads' => 4,
         ])->map(section: MediaConfig::configName(), targetClass: MediaConfig::class);
 
         self::assertSame('media', MediaConfig::configName());
@@ -40,6 +48,10 @@ final class MediaConfigTest extends TestCase
         self::assertSame(20_971_520, $mediaConfig->multipartThresholdBytes);
         self::assertSame(5_242_880, $mediaConfig->multipartPartSizeBytes);
         self::assertSame('gd', $mediaConfig->imageProcessingDriver);
+        self::assertSame('/opt/ffmpeg', $mediaConfig->ffmpegBinaryPath);
+        self::assertSame('/opt/ffprobe', $mediaConfig->ffprobeBinaryPath);
+        self::assertSame(600, $mediaConfig->ffmpegTimeoutSeconds);
+        self::assertSame(4, $mediaConfig->ffmpegThreads);
     }
 
     public function testRejectsMultipartThresholdSmallerThanPartSize(): void
@@ -52,6 +64,10 @@ final class MediaConfigTest extends TestCase
             multipartThresholdBytes: 6_291_456,
             multipartPartSizeBytes: 8_388_608,
             imageProcessingDriver: 'imagick',
+            ffmpegBinaryPath: '/usr/bin/ffmpeg',
+            ffprobeBinaryPath: '/usr/bin/ffprobe',
+            ffmpegTimeoutSeconds: 1800,
+            ffmpegThreads: 0,
         );
     }
 

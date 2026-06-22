@@ -6,17 +6,27 @@ namespace Tests\Feature\Modules\Media\Application;
 
 use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaCommand;
 use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
+use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
+use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
+use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
 use App\Modules\Media\Application\Dto\MediaConversionResult;
+use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\ValueObject\MediaBitrate;
+use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
+use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
+use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
+use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
@@ -24,7 +34,7 @@ use Psr\Log\NullLogger;
 
 final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 {
-    public function testProcessesMediaWithConversions(): void
+    public function testProcessesImageMediaWithConversions(): void
     {
         $media = $this->uploadedMedia(MediaVisibility::Private);
         $this->persist($media);
@@ -36,7 +46,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         $this->handler($fileService)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            conversions: [$this->conversionSpec()],
+            plan: $this->imagePlan($this->imageConversionSpec()),
         ));
 
         self::assertTrue($media->isReady());
@@ -49,26 +59,16 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
     public function testStoresConversionDimensionsFromProcessorResult(): void
     {
-        // Контракт Handler'а: в MediaImageConversion ложатся width/height из результата процессора
-        // (размер реально записанного объекта), а не запрошенные spec.width/spec.height. Процессор
-        // здесь застаблен, чтобы вернуть размеры, отличные от spec, и проверить именно источник
-        // данных (результат, а не spec). С реальным cover() результат всегда равен spec, поэтому это
-        // расхождение — артефакт стаба, а не поведение продакшен-процессора; смысл теста — зафиксировать,
-        // что чтение идёт из результата и переживёт возможную смену режима ресайза на contain/scale.
         $media = $this->uploadedMedia(MediaVisibility::Private);
         $this->persist($media);
 
-        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('getObjectContents')->willReturn('original-bytes');
 
-        $handler = $this->handler(
-            fileService: $fileService,
-            resultWidth: 100,
-            resultHeight: 56,
-        );
+        $handler = $this->handler(fileService: $fileService, resultWidth: 100, resultHeight: 56);
         $handler->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            conversions: [$this->conversionSpec(width: 100, height: 100)],
+            plan: $this->imagePlan($this->imageConversionSpec(width: 100, height: 100)),
         ));
 
         $conversion = $this->imageConversionRepository()->findByMediaId($media->id)->first();
@@ -88,12 +88,145 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         $this->handler($fileService)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
         ));
 
         self::assertTrue($media->isReady());
         self::assertSame(MediaStorage::Public, $media->storage);
         self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+    }
+
+    public function testProcessesVideoMediaIntoNormalizedAndPoster(): void
+    {
+        $media = $this->uploadedVideoMedia();
+        $this->persist($media);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::never())->method('getObjectContents');
+        $fileService->expects(self::once())->method('copyObject');
+
+        $videoProcessor = $this->createStub(MediaVideoProcessorContract::class);
+        $videoProcessor->method('process')->willReturn(new MediaVideoProcessingResult(
+            normalizedMimeType: MediaMimeType::fromString('video/mp4'),
+            normalizedSize: MediaFileSize::fromInt(4096),
+            width: MediaPixelDimension::fromInt(1280),
+            height: MediaPixelDimension::fromInt(720),
+            duration: MediaDuration::fromInt(2000),
+            bitrate: MediaBitrate::fromInt(900_000),
+            posterMimeType: MediaMimeType::fromString('image/jpeg'),
+            posterSize: MediaFileSize::fromInt(512),
+        ));
+
+        $this->handler(fileService: $fileService, videoProcessor: $videoProcessor)->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec()),
+        ));
+
+        self::assertTrue($media->isReady());
+
+        $videoConversion = $this->videoConversionRepository()->findByMediaId($media->id)->first();
+        self::assertNotNull($videoConversion);
+        self::assertSame(1280, $videoConversion->width->value());
+        self::assertSame(2000, $videoConversion->duration->value());
+
+        $poster = $this->imageConversionRepository()->findByMediaId($media->id)->first();
+        self::assertNotNull($poster);
+        self::assertSame(MediaImageConversionType::Poster, $poster->type);
+        self::assertSame(1280, $poster->width->value());
+    }
+
+    public function testProcessesAudioMediaIntoNormalizedWithWaveform(): void
+    {
+        $media = $this->uploadedAudioMedia();
+        $this->persist($media);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::never())->method('getObjectContents');
+        $fileService->expects(self::once())->method('copyObject');
+
+        $audioProcessor = $this->createStub(MediaAudioProcessorContract::class);
+        $audioProcessor->method('process')->willReturn(new MediaAudioProcessingResult(
+            normalizedMimeType: MediaMimeType::fromString('audio/mp4'),
+            normalizedSize: MediaFileSize::fromInt(2048),
+            duration: MediaDuration::fromInt(3000),
+            bitrate: MediaBitrate::fromInt(128_000),
+            sampleRate: MediaSampleRate::fromInt(44_100),
+            waveform: MediaWaveform::fromPeaks([0, 64, 128, 255]),
+        ));
+
+        $this->handler(fileService: $fileService, audioProcessor: $audioProcessor)->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec()),
+        ));
+
+        self::assertTrue($media->isReady());
+
+        $audioConversion = $this->audioConversionRepository()->findByMediaId($media->id)->first();
+        self::assertNotNull($audioConversion);
+        self::assertSame(44_100, $audioConversion->sampleRate->value());
+        self::assertSame([0, 64, 128, 255], $audioConversion->waveform->peaks());
+    }
+
+    public function testRerunsVideoAfterProcessingFailed(): void
+    {
+        $media = $this->uploadedVideoMedia();
+        $media->recordTemporaryProcessingError(MediaProcessingError::fromString('Временная ошибка обработки.'));
+        $this->persist($media);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::once())->method('copyObject');
+
+        $videoProcessor = $this->createStub(MediaVideoProcessorContract::class);
+        $videoProcessor->method('process')->willReturn(new MediaVideoProcessingResult(
+            normalizedMimeType: MediaMimeType::fromString('video/mp4'),
+            normalizedSize: MediaFileSize::fromInt(4096),
+            width: MediaPixelDimension::fromInt(640),
+            height: MediaPixelDimension::fromInt(480),
+            duration: MediaDuration::fromInt(1000),
+            bitrate: MediaBitrate::fromInt(500_000),
+            posterMimeType: MediaMimeType::fromString('image/jpeg'),
+            posterSize: MediaFileSize::fromInt(256),
+        ));
+
+        $this->handler(fileService: $fileService, videoProcessor: $videoProcessor)->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->videoPlan($this->videoConversionSpec()),
+        ));
+
+        self::assertTrue($media->isReady());
+        self::assertCount(1, $this->videoConversionRepository()->findByMediaId($media->id));
+    }
+
+    public function testRerunsAudioAfterProcessingFailed(): void
+    {
+        $media = $this->uploadedAudioMedia();
+        $media->recordTemporaryProcessingError(MediaProcessingError::fromString('Временная ошибка обработки.'));
+        $this->persist($media);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::once())->method('copyObject');
+
+        $audioProcessor = $this->createStub(MediaAudioProcessorContract::class);
+        $audioProcessor->method('process')->willReturn(new MediaAudioProcessingResult(
+            normalizedMimeType: MediaMimeType::fromString('audio/mp4'),
+            normalizedSize: MediaFileSize::fromInt(2048),
+            duration: MediaDuration::fromInt(3000),
+            bitrate: MediaBitrate::fromInt(128_000),
+            sampleRate: MediaSampleRate::fromInt(44_100),
+            waveform: MediaWaveform::fromPeaks([0, 64, 128, 255]),
+        ));
+
+        $this->handler(fileService: $fileService, audioProcessor: $audioProcessor)->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->audioPlan($this->audioConversionSpec()),
+        ));
+
+        self::assertTrue($media->isReady());
+
+        $audioConversions = $this->audioConversionRepository()->findByMediaId($media->id);
+        self::assertCount(1, $audioConversions);
+        self::assertSame(44_100, $audioConversions->first()->sampleRate->value());
+        self::assertSame([0, 64, 128, 255], $audioConversions->first()->waveform->peaks());
     }
 
     public function testIsNoOpWhenMediaAlreadyReady(): void
@@ -111,10 +244,29 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         $this->handler($fileService)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            conversions: [$this->conversionSpec()],
+            plan: $this->imagePlan($this->imageConversionSpec()),
         ));
 
         self::assertTrue($media->isReady());
+    }
+
+    public function testRejectsDocumentType(): void
+    {
+        $media = $this->createMedia(
+            userId: UserId::generate(),
+            type: MediaType::Document,
+            extension: 'pdf',
+            mimeType: 'application/pdf',
+        );
+        $media->markUploaded();
+        $this->persist($media);
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->emptyPlan(),
+        ));
     }
 
     public function testRejectsMissingMedia(): void
@@ -123,13 +275,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new ProcessMediaCommand(
             mediaId: UserId::generate()->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
         ));
     }
 
     public function testRejectsMediaInWaitingUploadStatus(): void
     {
-        // Медиа в waitingUpload (загрузка не подтверждена) — markReadyMovedTo запрещает переход.
         $media = $this->createMedia(userId: UserId::generate());
         $this->persist($media);
 
@@ -137,7 +288,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            conversions: [],
+            plan: $this->emptyPlan(),
         ));
     }
 
@@ -145,9 +296,11 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         MediaFileServiceContract $fileService,
         int $resultWidth = 100,
         int $resultHeight = 100,
+        MediaVideoProcessorContract|null $videoProcessor = null,
+        MediaAudioProcessorContract|null $audioProcessor = null,
     ): ProcessMediaHandler {
-        $processor = $this->createStub(MediaImageProcessorContract::class);
-        $processor->method('resize')->willReturn(new MediaConversionResult(
+        $imageProcessor = $this->createStub(MediaImageProcessorContract::class);
+        $imageProcessor->method('resize')->willReturn(new MediaConversionResult(
             contents: 'conversion-bytes',
             mimeType: MediaMimeType::fromString('image/jpeg'),
             size: MediaFileSize::fromInt(128),
@@ -158,7 +311,9 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         return new ProcessMediaHandler(
             mediaRepository: $this->mediaRepository(),
             mediaFileService: $fileService,
-            mediaImageProcessor: $processor,
+            mediaImageProcessor: $imageProcessor,
+            mediaVideoProcessor: $videoProcessor ?? $this->createStub(MediaVideoProcessorContract::class),
+            mediaAudioProcessor: $audioProcessor ?? $this->createStub(MediaAudioProcessorContract::class),
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
@@ -167,6 +322,34 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
     private function uploadedMedia(MediaVisibility $visibility): Media
     {
         $media = $this->createMedia(userId: UserId::generate(), visibility: $visibility);
+        $media->markUploaded();
+
+        return $media;
+    }
+
+    private function uploadedVideoMedia(): Media
+    {
+        $media = $this->createMedia(
+            userId: UserId::generate(),
+            visibility: MediaVisibility::Public,
+            type: MediaType::Video,
+            extension: 'mp4',
+            mimeType: 'video/mp4',
+        );
+        $media->markUploaded();
+
+        return $media;
+    }
+
+    private function uploadedAudioMedia(): Media
+    {
+        $media = $this->createMedia(
+            userId: UserId::generate(),
+            visibility: MediaVisibility::Public,
+            type: MediaType::Audio,
+            extension: 'mp3',
+            mimeType: 'audio/mpeg',
+        );
         $media->markUploaded();
 
         return $media;

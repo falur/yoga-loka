@@ -55,6 +55,10 @@
         <env name="MEDIA_MULTIPART_THRESHOLD_BYTES" value="16777216" />
         <env name="MEDIA_MULTIPART_PART_SIZE_BYTES" value="8388608" />
         <env name="MEDIA_IMAGE_PROCESSING_DRIVER" value="imagick" />
+        <env name="MEDIA_FFMPEG_BINARY" value="/usr/bin/ffmpeg" />
+        <env name="MEDIA_FFPROBE_BINARY" value="/usr/bin/ffprobe" />
+        <env name="MEDIA_FFMPEG_TIMEOUT_SECONDS" value="1800" />
+        <env name="MEDIA_FFMPEG_THREADS" value="0" />
         <env name="MAILER_DSN" value="smtp://mailpit:1025" />
         <env name="TEMPORAL_ADDRESS" value="temporal:7233" />
         <env name="TEMPORAL_TASK_QUEUE" value="default" />

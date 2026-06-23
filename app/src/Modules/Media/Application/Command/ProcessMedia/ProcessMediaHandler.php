@@ -22,7 +22,6 @@ use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Exception\NotFoundException;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -87,7 +86,7 @@ final readonly class ProcessMediaHandler
                 plan: $command->plan,
                 targetStorage: $targetStorage,
             ),
-            MediaType::Document => throw new InvalidDomainValueException('Обработка документов не поддержана.'),
+            MediaType::Document => [],
         };
 
         $this->persistReady(

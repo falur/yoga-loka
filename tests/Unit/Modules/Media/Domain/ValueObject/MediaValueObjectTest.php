@@ -100,6 +100,10 @@ final class MediaValueObjectTest extends TestCase
             (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Audio, extension: 'm4a'),
         );
         self::assertSame(
+            'documents/ab/ab111111-1111-4111-8111-111111111111/source.pdf',
+            (string) MediaPath::originalReady(storageKey: $storageKey, type: MediaType::Document, extension: 'pdf'),
+        );
+        self::assertSame(
             'videos/ab/ab111111-1111-4111-8111-111111111111/normalizedMp4H264.mp4',
             (string) MediaPath::videoConversion(
                 storageKey: $storageKey,
@@ -129,15 +133,20 @@ final class MediaValueObjectTest extends TestCase
         self::assertSame('', MediaPath::fromString('uploads/ab/ab111111-1111-4111-8111-111111111111/source')->extension());
     }
 
-    public function testOriginalReadyRejectsUnsupportedMediaType(): void
+    public function testMediaPathAcceptsDocumentsPrefix(): void
+    {
+        self::assertSame(
+            'documents/ab/ab111111-1111-4111-8111-111111111111/source.pdf',
+            MediaPath::fromString('documents/ab/ab111111-1111-4111-8111-111111111111/source.pdf')->value(),
+        );
+    }
+
+    public function testMediaPathRejectsDocumentsPrefixWithWrongShard(): void
     {
         $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('Путь файла имеет неверный раздел.');
 
-        MediaPath::originalReady(
-            storageKey: MediaStorageKey::generate(),
-            type: MediaType::Document,
-            extension: 'pdf',
-        );
+        MediaPath::fromString('documents/cd/ab111111-1111-4111-8111-111111111111/source.pdf');
     }
 
     public function testWaveformValidatesPeaksAndSerializes(): void
@@ -182,6 +191,21 @@ final class MediaValueObjectTest extends TestCase
         $this->expectException(InvalidDomainValueException::class);
 
         MediaMimeType::fromString('');
+    }
+
+    public function testMimeTypeBaseValueNormalizesWithoutChangingRawValue(): void
+    {
+        self::assertSame('text/markdown', MediaMimeType::fromString('text/markdown;charset=utf-8')->baseValue());
+        self::assertSame('application/pdf', MediaMimeType::fromString('APPLICATION/PDF')->baseValue());
+        self::assertSame('image/jpeg', MediaMimeType::fromString('image/jpeg')->baseValue());
+        // Пробелы вокруг параметра тоже обрезаются: остаётся только базовый MIME.
+        self::assertSame('text/csv', MediaMimeType::fromString('text/csv ; charset=utf-8')->baseValue());
+
+        // value() отдаёт исходную строку с параметрами без изменений.
+        self::assertSame(
+            'text/markdown;charset=utf-8',
+            MediaMimeType::fromString('text/markdown;charset=utf-8')->value(),
+        );
     }
 
     /**

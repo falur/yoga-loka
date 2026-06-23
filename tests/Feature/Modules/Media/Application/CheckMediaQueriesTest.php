@@ -33,6 +33,18 @@ final class CheckMediaQueriesTest extends MediaApplicationTestCase
         self::assertFalse($handler->handle(new CheckMediaIsImageQuery(mediaId: $media->id->value())));
     }
 
+    public function testCheckMediaIsImageReturnsFalseForDocument(): void
+    {
+        // Документ не считается картинкой: проверка идёт по типу медиа, а не по MIME.
+        // Тест фиксирует, что документ нельзя подсунуть в сценарий только для картинок (например аватар).
+        $media = $this->createMedia(userId: UserId::generate(), type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
+        $this->persist($media);
+
+        $handler = new CheckMediaIsImageHandler(mediaRepository: $this->mediaRepository());
+
+        self::assertFalse($handler->handle(new CheckMediaIsImageQuery(mediaId: $media->id->value())));
+    }
+
     public function testCheckMediaIsImageReturnsFalseForMissingMedia(): void
     {
         $handler = new CheckMediaIsImageHandler(mediaRepository: $this->mediaRepository());

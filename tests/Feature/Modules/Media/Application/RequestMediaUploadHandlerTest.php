@@ -16,6 +16,7 @@ use App\Modules\Media\Application\Service\MediaTypeResolver;
 use App\Modules\Media\Domain\Collection\MediaMimeTypeCollection;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
+use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaId;
@@ -160,6 +161,57 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         ));
     }
 
+    public function testRequestsDocumentUpload(): void
+    {
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('presignPut')->willReturn('http://minio/put-url');
+
+        $result = $this->handler($fileService)->handle(new RequestMediaUploadCommand(
+            userId: UserId::generate()->value(),
+            spec: $this->spec(allowedMimeTypes: new MediaMimeTypeCollection([MediaMimeType::fromString('application/pdf')])),
+            fileMeta: $this->fileMeta(fileName: 'document.pdf', mimeType: 'application/pdf'),
+        ));
+
+        $media = $this->mediaRepository()->findById(MediaId::fromString($result->mediaId));
+        self::assertNotNull($media);
+        self::assertSame(MediaType::Document, $media->type);
+        self::assertSame(MediaStatus::WaitingUpload, $media->status);
+        // Документ кладётся во временное хранилище как и другие типы: путь начинается с uploads/.
+        self::assertStringStartsWith('uploads/', $media->path->value());
+    }
+
+    public function testRequestsDocumentUploadWithCharsetMime(): void
+    {
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('presignPut')->willReturn('http://minio/put-url');
+
+        // Спецификация задаёт базовый MIME без параметра, файл приходит с ;charset=utf-8 —
+        // нормализация в containsMimeType должна пропустить загрузку.
+        $result = $this->handler($fileService)->handle(new RequestMediaUploadCommand(
+            userId: UserId::generate()->value(),
+            spec: $this->spec(allowedMimeTypes: new MediaMimeTypeCollection([MediaMimeType::fromString('text/markdown')])),
+            fileMeta: $this->fileMeta(fileName: 'note.md', mimeType: 'text/markdown;charset=utf-8'),
+        ));
+
+        $media = $this->mediaRepository()->findById(MediaId::fromString($result->mediaId));
+        self::assertNotNull($media);
+        self::assertSame(MediaType::Document, $media->type);
+    }
+
+    public function testRejectsDocumentMimeOutsideSpec(): void
+    {
+        // Резолвер поддерживает text/csv как документ, но спецификация его не разрешает —
+        // потребитель сужает набор, а не расширяет.
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('app.media.mime_not_allowed');
+
+        $this->handler()->handle(new RequestMediaUploadCommand(
+            userId: UserId::generate()->value(),
+            spec: $this->spec(allowedMimeTypes: new MediaMimeTypeCollection([MediaMimeType::fromString('application/pdf')])),
+            fileMeta: $this->fileMeta(fileName: 'sheet.csv', mimeType: 'text/csv'),
+        ));
+    }
+
     private function handler(
         MediaFileServiceContract|null $fileService = null,
         int $threshold = 16_777_216,
@@ -184,10 +236,13 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         );
     }
 
-    private function spec(int $maxSize = 1_048_576, int $presignedTtl = 300): MediaUploadSpec
-    {
+    private function spec(
+        int $maxSize = 1_048_576,
+        int $presignedTtl = 300,
+        MediaMimeTypeCollection|null $allowedMimeTypes = null,
+    ): MediaUploadSpec {
         return new MediaUploadSpec(
-            allowedMimeTypes: new MediaMimeTypeCollection([MediaMimeType::fromString('image/jpeg')]),
+            allowedMimeTypes: $allowedMimeTypes ?? new MediaMimeTypeCollection([MediaMimeType::fromString('image/jpeg')]),
             maxSize: MediaFileSize::fromInt($maxSize),
             visibility: MediaVisibility::Private,
             presignedTtl: MediaPresignedTtl::fromInt($presignedTtl),

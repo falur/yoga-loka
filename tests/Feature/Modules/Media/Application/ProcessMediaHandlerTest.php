@@ -250,10 +250,11 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         self::assertTrue($media->isReady());
     }
 
-    public function testRejectsDocumentType(): void
+    public function testProcessesDocumentByMovingOriginalWithoutConversions(): void
     {
         $media = $this->createMedia(
             userId: UserId::generate(),
+            visibility: MediaVisibility::Public,
             type: MediaType::Document,
             extension: 'pdf',
             mimeType: 'application/pdf',
@@ -261,12 +262,23 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $this->expectException(InvalidDomainValueException::class);
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::never())->method('getObjectContents');
+        $fileService->expects(self::never())->method('putObject');
+        $fileService->expects(self::once())->method('copyObject');
 
-        $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new ProcessMediaCommand(
+        $this->handler($fileService)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
             plan: $this->emptyPlan(),
         ));
+
+        self::assertTrue($media->isReady());
+        self::assertSame(MediaStorage::Public, $media->storage);
+        // Кейс с подменённым сервисом проверяет ветку без конверсий: смену пути на documents/
+        // и хранилище по видимости. Реальную перекладку оригинала в постоянное хранилище держит
+        // сквозной MediaProcessingFlowTest::testCompleteThenRelayProcessesDocumentToReady.
+        self::assertStringStartsWith('documents/', $media->path->value());
+        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
     }
 
     public function testRejectsMissingMedia(): void

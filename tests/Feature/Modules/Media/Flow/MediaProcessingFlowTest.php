@@ -203,6 +203,36 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertNotNull($this->fileService()->headObject(MediaStorage::Public, $normalizedPath));
     }
 
+    public function testCompleteThenRelayProcessesDocumentToReady(): void
+    {
+        $media = $this->uploadedOriginal(
+            $this->documentBytes(),
+            MediaVisibility::Public,
+            MediaType::Document,
+            'pdf',
+            'application/pdf',
+        );
+
+        $this->completeUpload($media, $this->emptyPlan());
+        self::assertSame(1, $this->relay());
+
+        $processedMedia = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($processedMedia);
+        self::assertSame(MediaStatus::Ready, $processedMedia->status);
+        self::assertSame(MediaStorage::Public, $processedMedia->storage);
+
+        // У документа конверсий нет.
+        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+
+        $readyPath = MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Document, extension: 'pdf');
+        self::assertStringStartsWith('documents/', $readyPath->value());
+        $this->track(MediaStorage::Public, $readyPath);
+
+        // Реальный оригинал переложен по пути готового оригинала documents/<shard>/<key>/source.pdf без конверсий.
+        self::assertSame($readyPath->value(), $processedMedia->path->value());
+        self::assertNotNull($this->fileService()->headObject(MediaStorage::Public, $readyPath));
+    }
+
     public function testProcessingFailureRecordsErrorAndFailsOutbox(): void
     {
         $corruptBytes = \random_bytes(2048);
@@ -298,6 +328,11 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         \imagejpeg($image);
 
         return (string) \ob_get_clean();
+    }
+
+    private function documentBytes(): string
+    {
+        return "%PDF-1.4\nТестовое содержимое документа для сквозного теста.\n%%EOF";
     }
 
     private function videoBytes(): string

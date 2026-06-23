@@ -80,9 +80,7 @@ final readonly class MediaPath implements \Stringable, \JsonSerializable
             MediaType::Image => 'images',
             MediaType::Video => 'videos',
             MediaType::Audio => 'audios',
-            MediaType::Document => throw new InvalidDomainValueException(
-                'Перекладка готового оригинала для документов не поддержана.',
-            ),
+            MediaType::Document => 'documents',
         };
 
         return self::fromString(
@@ -152,7 +150,7 @@ final readonly class MediaPath implements \Stringable, \JsonSerializable
 
         $matches = [];
         if (\preg_match(
-            pattern: '/^(uploads|images|videos|audios)\/([0-9a-f]{2})\/([0-9a-f-]{36})\/([^\/]+)$/',
+            pattern: '/^(uploads|images|videos|audios|documents)\/([0-9a-f]{2})\/([0-9a-f-]{36})\/([^\/]+)$/',
             subject: $value,
             matches: $matches,
         ) !== 1) {

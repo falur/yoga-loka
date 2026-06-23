@@ -199,6 +199,37 @@ final class GetMediaUrlHandlerTest extends MediaApplicationTestCase
         self::assertSame($conversion->path->value(), $capturedPath);
     }
 
+    public function testReturnsUrlForReadyDocument(): void
+    {
+        // GetMediaUrl не ветвится по типу: документ отдаётся как любое готовое медиа —
+        // public прямым URL, private через presignGet.
+        $publicDocument = $this->readyDocumentMedia(MediaVisibility::Public);
+        $this->persist($publicDocument);
+
+        $publicFileService = $this->createStub(MediaFileServiceContract::class);
+        $publicFileService->method('publicUrl')->willReturn('http://minio/media-public/document.pdf');
+
+        $publicResult = $this->handler($publicFileService)->handle(new GetMediaUrlQuery(
+            mediaId: $publicDocument->id->value(),
+            presignedTtlSeconds: 300,
+        ));
+        self::assertSame('http://minio/media-public/document.pdf', $publicResult->url);
+        self::assertNull($publicResult->expiresAt);
+
+        $privateDocument = $this->readyDocumentMedia(MediaVisibility::Private);
+        $this->persist($privateDocument);
+
+        $privateFileService = $this->createStub(MediaFileServiceContract::class);
+        $privateFileService->method('presignGet')->willReturn('http://minio/signed-document');
+
+        $privateResult = $this->handler($privateFileService)->handle(new GetMediaUrlQuery(
+            mediaId: $privateDocument->id->value(),
+            presignedTtlSeconds: 300,
+        ));
+        self::assertSame('http://minio/signed-document', $privateResult->url);
+        self::assertNotNull($privateResult->expiresAt);
+    }
+
     public function testRejectsMissingConversion(): void
     {
         $media = $this->readyMedia(MediaVisibility::Private);
@@ -251,6 +282,25 @@ final class GetMediaUrlHandlerTest extends MediaApplicationTestCase
         $media->markReadyMovedTo(
             $targetStorage,
             MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Image, extension: 'jpg'),
+        );
+
+        return $media;
+    }
+
+    private function readyDocumentMedia(MediaVisibility $visibility): Media
+    {
+        $media = $this->createMedia(
+            userId: UserId::generate(),
+            visibility: $visibility,
+            type: MediaType::Document,
+            extension: 'pdf',
+            mimeType: 'application/pdf',
+        );
+        $media->markUploaded();
+        $targetStorage = $visibility === MediaVisibility::Public ? MediaStorage::Public : MediaStorage::Private;
+        $media->markReadyMovedTo(
+            $targetStorage,
+            MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Document, extension: 'pdf'),
         );
 
         return $media;

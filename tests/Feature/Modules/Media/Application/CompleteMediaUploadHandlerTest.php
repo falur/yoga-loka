@@ -7,14 +7,20 @@ namespace Tests\Feature\Modules\Media\Application;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadCommand;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
+use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
 use App\Modules\Media\Application\Dto\MediaConversionPlan;
+use App\Modules\Media\Application\Dto\MediaImageConversionSpec;
 use App\Modules\Media\Application\Dto\MediaObjectHead;
+use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
@@ -342,20 +348,85 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         ));
     }
 
-    public function testRejectsDocumentMedia(): void
+    public function testCompletesDocumentUploadWithEmptyPlan(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId, type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
+        $this->persist($media);
+
+        $captured = null;
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
+        $outboxStore->expects(self::once())->method('add')->willReturnCallback(
+            function (MediaUploaded $message) use (&$captured): StoredOutboxEventId {
+                $captured = $message;
+
+                return StoredOutboxEventId::fromString('outbox-1');
+            },
+        );
+
+        $result = $this->handler($this->fileServiceWithHead(1024), $outboxStore)->handle(new CompleteMediaUploadCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+            plan: $this->emptyPlan(),
+            parts: null,
+        ));
+
+        self::assertSame(MediaStatus::Uploaded, $result->status);
+        self::assertSame(MediaStatus::Uploaded, $media->status);
+        self::assertInstanceOf(MediaUploaded::class, $captured);
+    }
+
+    #[DataProvider('nonEmptyDocumentPlanProvider')]
+    public function testRejectsNonEmptyPlanForDocument(MediaConversionPlan $plan): void
     {
         $userId = UserId::generate();
         $media = $this->createMedia(userId: $userId, type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
         $this->persist($media);
 
         $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('app.media.conversion_plan_type_mismatch');
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
-            plan: $this->emptyPlan(),
+            plan: $plan,
             parts: null,
         ));
+    }
+
+    /**
+     * @return array<string, array{MediaConversionPlan}>
+     */
+    public static function nonEmptyDocumentPlanProvider(): array
+    {
+        return [
+            'непустой список image' => [new MediaConversionPlan(
+                image: [new MediaImageConversionSpec(type: MediaImageConversionType::Thumbnail, width: 100, height: 100)],
+                video: [],
+                audio: [],
+            )],
+            'непустой список video' => [new MediaConversionPlan(
+                image: [],
+                video: [new MediaVideoConversionSpec(
+                    type: MediaVideoConversionType::NormalizedMp4H264,
+                    width: 1280,
+                    height: 720,
+                    videoBitrate: 1_000_000,
+                    audioBitrate: 128_000,
+                )],
+                audio: [],
+            )],
+            'непустой список audio' => [new MediaConversionPlan(
+                image: [],
+                video: [],
+                audio: [new MediaAudioConversionSpec(
+                    type: MediaAudioConversionType::NormalizedAacM4a,
+                    bitrate: 128_000,
+                    sampleRate: 44_100,
+                    waveformPeaks: 64,
+                )],
+            )],
+        ];
     }
 
     public function testRejectsMissingMedia(): void

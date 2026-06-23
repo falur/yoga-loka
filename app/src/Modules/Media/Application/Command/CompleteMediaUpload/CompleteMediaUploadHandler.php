@@ -120,11 +120,15 @@ final readonly class CompleteMediaUploadHandler
             MediaType::Image => $this->assertImagePlan($plan),
             MediaType::Video => $this->assertVideoPlan($plan),
             MediaType::Audio => $this->assertAudioPlan($plan),
-            MediaType::Document => throw new ValidationException(
-                translationKey: 'app.media.unsupported_file_type',
-                translationParameters: ['type' => $type->value],
-            ),
+            MediaType::Document => $this->assertDocumentPlan($plan),
         };
+    }
+
+    private function assertDocumentPlan(MediaConversionPlan $plan): void
+    {
+        if ($plan->image !== [] || $plan->video !== [] || $plan->audio !== []) {
+            throw new ValidationException('app.media.conversion_plan_type_mismatch');
+        }
     }
 
     private function assertImagePlan(MediaConversionPlan $plan): void

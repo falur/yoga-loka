@@ -6,12 +6,13 @@ namespace App\Modules\Posts\Application\Query\GetPostComments;
 
 use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
 use App\Modules\Posts\Application\View\CommentViewAssembler;
-use App\Modules\Posts\Domain\Collection\CommentCollection;
+use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Repository\CommentRepository;
 use App\Modules\Posts\Repository\PostRepository;
 use App\Shared\Domain\Exception\NotFoundException;
+use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
@@ -41,24 +42,19 @@ final readonly class GetPostCommentsHandler
 
         $cursor = $query->cursor !== null ? CommentId::fromString($query->cursor) : null;
 
-        $page = $this->commentRepository->findTopLevelByPostId(
-            postId: $post->id,
-            cursor: $cursor,
-            limit: $query->limit + 1,
-        )->all();
-
-        if (\count($page) <= $query->limit) {
-            return new GetPostCommentsResult(
-                comments: $this->commentViewAssembler->fromComments(comments: new CommentCollection($page), viewer: $viewer),
-                nextCursor: null,
-            );
-        }
-
-        $visible = \array_slice(array: $page, offset: 0, length: $query->limit);
+        $slice = CursorSlice::fromOverfetched(
+            overfetched: $this->commentRepository->findTopLevelByPostId(
+                postId: $post->id,
+                cursor: $cursor,
+                limit: $query->limit + 1,
+            ),
+            limit: $query->limit,
+            cursorOf: static fn(Comment $comment): string => $comment->id->value(),
+        );
 
         return new GetPostCommentsResult(
-            comments: $this->commentViewAssembler->fromComments(comments: new CommentCollection($visible), viewer: $viewer),
-            nextCursor: $visible[\count($visible) - 1]->id->value(),
+            comments: $this->commentViewAssembler->fromComments(comments: $slice->items, viewer: $viewer),
+            nextCursor: $slice->nextCursor,
         );
     }
 }

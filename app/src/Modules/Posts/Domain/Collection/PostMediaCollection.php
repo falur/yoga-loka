@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Domain\Collection;
 
 use App\Modules\Posts\Domain\Entity\PostMedia;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, PostMedia>
+ * @extends TypedCollection<int, PostMedia>
  */
-final class PostMediaCollection extends Collection {}
+final class PostMediaCollection extends TypedCollection {}

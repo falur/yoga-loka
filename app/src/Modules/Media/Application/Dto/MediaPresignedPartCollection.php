@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Dto;
 
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, MediaPresignedPart>
+ * @extends TypedCollection<int, MediaPresignedPart>
  */
-final class MediaPresignedPartCollection extends Collection {}
+final class MediaPresignedPartCollection extends TypedCollection {}

@@ -239,9 +239,8 @@ final readonly class CommentController
             handler: $getPostCommentsHandler->handle(...),
         );
 
-        $resources = \array_map(
+        $resources = $result->comments->mapToList(
             static fn(CommentView $comment): CommentResource => CommentResource::fromView($comment),
-            $result->comments,
         );
 
         return new PaginationResponse(
@@ -283,9 +282,8 @@ final readonly class CommentController
             handler: $getCommentRepliesHandler->handle(...),
         );
 
-        $resources = \array_map(
+        $resources = $result->replies->mapToList(
             static fn(CommentView $comment): CommentResource => CommentResource::fromView($comment),
-            $result->replies,
         );
 
         return new PaginationResponse(

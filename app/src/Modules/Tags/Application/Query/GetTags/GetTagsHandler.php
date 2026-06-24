@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tags\Application\Query\GetTags;
 
 use App\Modules\Tags\Application\Dto\TagTextCollection;
+use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Repository\TagRepository;
 use App\Shared\Domain\ValueObject\TagId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -27,12 +28,11 @@ final readonly class GetTagsHandler
             $query->tagIds,
         );
 
-        $map = [];
-
-        foreach ($this->tagRepository->findByIds(...$tagIds) as $tag) {
-            $map[$tag->id->value()] = $tag->text->value();
-        }
-
-        return new TagTextCollection($map);
+        return new TagTextCollection(
+            $this->tagRepository->findByIds(...$tagIds)
+                ->toBase()
+                ->keyBy(static fn(Tag $tag): string => $tag->id->value())
+                ->map(static fn(Tag $tag): string => $tag->text->value()),
+        );
     }
 }

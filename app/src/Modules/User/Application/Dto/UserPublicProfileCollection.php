@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Application\Dto;
 
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, UserPublicProfileView>
+ * @extends TypedCollection<int, UserPublicProfileView>
  */
-final class UserPublicProfileCollection extends Collection {}
+final class UserPublicProfileCollection extends TypedCollection {}

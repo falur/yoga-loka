@@ -31,4 +31,25 @@ class WhenSelect extends Select
 
         return $this;
     }
+
+    /**
+     * Cursor-пагинация по UUID v7 id (rules.md «Cursor-пагинация по UUID v7 `id`»): сортировка
+     * id DESC, при заданном курсоре берём строки строго старше него (id меньше курсора), затем
+     * ограничиваем страницу. Курсор — value() id последней строки предыдущей страницы; null —
+     * первая страница. Применяется последним звеном цепочки, после where-фильтров запроса.
+     *
+     * @return static
+     */
+    public function cursorById(string|null $cursor, int $limit): static
+    {
+        return $this
+            ->when(
+                condition: $cursor !== null,
+                callback: static function (self $query) use ($cursor): void {
+                    $query->where('id', '<', $cursor);
+                },
+            )
+            ->orderBy(expression: 'id', direction: 'DESC')
+            ->limit($limit);
+    }
 }

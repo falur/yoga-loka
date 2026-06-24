@@ -89,11 +89,8 @@ final readonly class SendPushNotificationHandler
      */
     private function tokenValues(NotificationDeviceTokenCollection $deviceTokens): array
     {
-        // array_map поверх ->all(): map() типизированной коллекции сохраняет исходный generic-тип
-        // элемента (NotificationDeviceToken), поэтому ->map(...)->all() к list<string> не сводится на PHPStan.
-        return \array_values(\array_map(
-            callback: static fn(NotificationDeviceToken $deviceToken): string => $deviceToken->token->value(),
-            array: $deviceTokens->all(),
-        ));
+        return $deviceTokens->mapToList(
+            static fn(NotificationDeviceToken $deviceToken): string => $deviceToken->token->value(),
+        );
     }
 }

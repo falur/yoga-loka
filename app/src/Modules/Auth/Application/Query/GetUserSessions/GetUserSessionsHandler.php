@@ -32,14 +32,14 @@ final readonly class GetUserSessionsHandler
             now: new \DateTimeImmutable(),
         );
 
-        $sessions = (new Collection($tokens->all()))
-            ->groupBy(static fn(AuthToken $token): string => $token->sessionId->value())
-            ->map(static fn(Collection $sessionTokens): AuthSession
-                => AuthSession::fromTokens(new AuthTokenCollection($sessionTokens->all())))
-            ->values()
-            ->all();
-
-        $userSessions = new AuthSessionCollection($sessions);
+        $userSessions = new AuthSessionCollection(
+            $tokens
+                ->toBase()
+                ->groupBy(static fn(AuthToken $token): string => $token->sessionId->value())
+                ->map(static fn(Collection $sessionTokens): AuthSession
+                    => AuthSession::fromTokens(new AuthTokenCollection($sessionTokens)))
+                ->values(),
+        );
 
         $this->logger->debug(message: 'Список сессий пользователя получен.', context: [
             'userId' => $query->userId,

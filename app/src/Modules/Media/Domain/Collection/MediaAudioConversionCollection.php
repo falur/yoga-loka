@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\Collection;
 
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, MediaAudioConversion>
+ * @extends TypedCollection<int, MediaAudioConversion>
  */
-final class MediaAudioConversionCollection extends Collection {}
+final class MediaAudioConversionCollection extends TypedCollection {}

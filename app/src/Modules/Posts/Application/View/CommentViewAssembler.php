@@ -38,31 +38,22 @@ final readonly class CommentViewAssembler
         );
     }
 
-    /**
-     * @return list<CommentView>
-     */
-    public function fromComments(CommentCollection $comments, UserId $viewer): array
+    public function fromComments(CommentCollection $comments, UserId $viewer): CommentViewCollection
     {
-        $entities = $comments->all();
-
-        if ($entities === []) {
-            return [];
+        if ($comments->isEmpty()) {
+            return new CommentViewCollection();
         }
 
-        $authors = $this->authorViews($entities);
-        $likedCommentIds = $this->likedCommentIds(comments: $entities, viewer: $viewer);
+        $authors = $this->authorViews($comments);
+        $likedCommentIds = $this->likedCommentIds(comments: $comments, viewer: $viewer);
 
-        $views = [];
-
-        foreach ($entities as $comment) {
-            $views[] = $this->build(
+        return new CommentViewCollection(
+            $comments->toBase()->map(fn(Comment $comment): CommentView => $this->build(
                 comment: $comment,
                 author: $this->requireAuthor(authors: $authors, userId: $comment->userId->value()),
                 likedByMe: isset($likedCommentIds[$comment->id->value()]),
-            );
-        }
-
-        return $views;
+            )),
+        );
     }
 
     private function build(Comment $comment, AuthorView $author, bool $likedByMe): CommentView
@@ -91,16 +82,15 @@ final readonly class CommentViewAssembler
     }
 
     /**
-     * @param array<int, Comment> $comments
-     *
      * @return array<string, AuthorView>
      */
-    private function authorViews(array $comments): array
+    private function authorViews(CommentCollection $comments): array
     {
-        $userIds = \array_values(\array_unique(\array_map(
-            static fn(Comment $comment): string => $comment->userId->value(),
-            $comments,
-        )));
+        $userIds = \array_values($comments
+            ->toBase()
+            ->map(static fn(Comment $comment): string => $comment->userId->value())
+            ->unique()
+            ->all());
 
         $profiles = $this->queryBus->dispatch(
             query: new GetUserPublicProfilesQuery($userIds),
@@ -133,13 +123,11 @@ final readonly class CommentViewAssembler
     }
 
     /**
-     * @param array<int, Comment> $comments
-     *
      * @return array<string, true>
      */
-    private function likedCommentIds(array $comments, UserId $viewer): array
+    private function likedCommentIds(CommentCollection $comments, UserId $viewer): array
     {
-        $commentIds = \array_map(static fn(Comment $comment): CommentId => $comment->id, $comments);
+        $commentIds = $comments->mapToList(static fn(Comment $comment): CommentId => $comment->id);
         $liked = [];
 
         foreach ($this->commentLikeRepository->findByUserAndCommentIds($viewer, ...$commentIds) as $like) {

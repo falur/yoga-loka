@@ -25,9 +25,16 @@ final class GetTagsHandlerTest extends TagsApplicationTestCase
             tagIds: [$yoga->id->value(), $meditation->id->value()],
         ));
 
-        self::assertSame('yoga', $tags->get($yoga->id->value()));
-        self::assertSame('meditation', $tags->get($meditation->id->value()));
-        self::assertCount(2, $tags);
+        // Сравниваем карту id->text с учётом ключей, но без зависимости от порядка строк БД:
+        // findByIds() не задаёт ORDER BY, поэтому сортируем обе карты по ключу и сравниваем точно.
+        $expected = [
+            $yoga->id->value() => 'yoga',
+            $meditation->id->value() => 'meditation',
+        ];
+        $actual = $tags->all();
+        \ksort($expected);
+        \ksort($actual);
+        self::assertSame($expected, $actual);
     }
 
     public function testExcludesMissingIds(): void

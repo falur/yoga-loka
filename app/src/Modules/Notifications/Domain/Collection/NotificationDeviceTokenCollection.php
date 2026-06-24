@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Domain\Collection;
 
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, NotificationDeviceToken>
+ * @extends TypedCollection<int, NotificationDeviceToken>
  */
-final class NotificationDeviceTokenCollection extends Collection {}
+final class NotificationDeviceTokenCollection extends TypedCollection {}

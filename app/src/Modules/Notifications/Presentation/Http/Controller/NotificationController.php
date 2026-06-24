@@ -45,10 +45,9 @@ final class NotificationController
             handler: $listNotificationsHandler->handle(...),
         );
 
-        $resources = \array_values(\array_map(
-            callback: static fn(Notification $notification): NotificationResource => NotificationResource::fromEntity($notification),
-            array: $result->notifications->all(),
-        ));
+        $resources = $result->notifications->mapToList(
+            static fn(Notification $notification): NotificationResource => NotificationResource::fromEntity($notification),
+        );
 
         return new PaginationResponse(
             data: $resources,

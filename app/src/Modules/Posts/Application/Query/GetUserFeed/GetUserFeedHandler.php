@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Application\Query\GetUserFeed;
 
 use App\Modules\Posts\Application\View\PostViewAssembler;
-use App\Modules\Posts\Domain\Collection\PostCollection;
+use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Repository\PostRepository;
+use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
@@ -34,26 +35,21 @@ final readonly class GetUserFeedHandler
         $excludeStatus = $isOwner ? PostStatus::Blocked : null;
         $cursor = $query->cursor !== null ? PostId::fromString($query->cursor) : null;
 
-        $page = $this->postRepository->findVisibleByUserId(
-            userId: $owner,
-            status: $status,
-            excludeStatus: $excludeStatus,
-            cursor: $cursor,
-            limit: $query->limit + 1,
-        )->all();
-
-        if (\count($page) <= $query->limit) {
-            return new GetUserFeedResult(
-                posts: $this->postViewAssembler->fromPosts(posts: new PostCollection($page), viewer: $viewer),
-                nextCursor: null,
-            );
-        }
-
-        $visible = \array_slice(array: $page, offset: 0, length: $query->limit);
+        $slice = CursorSlice::fromOverfetched(
+            overfetched: $this->postRepository->findVisibleByUserId(
+                userId: $owner,
+                status: $status,
+                excludeStatus: $excludeStatus,
+                cursor: $cursor,
+                limit: $query->limit + 1,
+            ),
+            limit: $query->limit,
+            cursorOf: static fn(Post $post): string => $post->id->value(),
+        );
 
         return new GetUserFeedResult(
-            posts: $this->postViewAssembler->fromPosts(posts: new PostCollection($visible), viewer: $viewer),
-            nextCursor: $visible[\count($visible) - 1]->id->value(),
+            posts: $this->postViewAssembler->fromPosts(posts: $slice->items, viewer: $viewer),
+            nextCursor: $slice->nextCursor,
         );
     }
 }

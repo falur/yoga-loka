@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Application\Query\GetUserSessions;
 
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, AuthSession>
+ * @extends TypedCollection<int, AuthSession>
  */
-final class AuthSessionCollection extends Collection {}
+final class AuthSessionCollection extends TypedCollection {}

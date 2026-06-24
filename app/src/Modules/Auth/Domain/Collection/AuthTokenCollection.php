@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Domain\Collection;
 
 use App\Modules\Auth\Domain\Entity\AuthToken;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, AuthToken>
+ * @extends TypedCollection<int, AuthToken>
  */
-final class AuthTokenCollection extends Collection {}
+final class AuthTokenCollection extends TypedCollection {}

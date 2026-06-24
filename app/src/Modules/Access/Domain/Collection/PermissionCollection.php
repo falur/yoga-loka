@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Access\Domain\Collection;
 
 use App\Modules\Access\Domain\Entity\Permission;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, Permission>
+ * @extends TypedCollection<int, Permission>
  */
-final class PermissionCollection extends Collection {}
+final class PermissionCollection extends TypedCollection {}

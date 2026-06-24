@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\Collection;
 
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, MediaVideoConversion>
+ * @extends TypedCollection<int, MediaVideoConversion>
  */
-final class MediaVideoConversionCollection extends Collection {}
+final class MediaVideoConversionCollection extends TypedCollection {}

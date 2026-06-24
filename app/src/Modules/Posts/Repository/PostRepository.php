@@ -54,7 +54,6 @@ final class PostRepository extends AbstractRepository
         int $limit,
     ): PostCollection {
         $statusValue = $status?->value;
-        $cursorId = $cursor?->value();
 
         return new PostCollection(
             $this->select()
@@ -65,14 +64,7 @@ final class PostRepository extends AbstractRepository
                         $query->where('status', $statusValue);
                     },
                 )
-                ->when(
-                    condition: $cursorId !== null,
-                    callback: static function (WhenSelect $query) use ($cursorId): void {
-                        $query->where('id', '<', $cursorId);
-                    },
-                )
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->limit($limit)
+                ->cursorById(cursor: $cursor?->value(), limit: $limit)
                 ->fetchAll(),
         );
     }
@@ -92,7 +84,6 @@ final class PostRepository extends AbstractRepository
     ): PostCollection {
         $statusValue = $status?->value;
         $excludeStatusValue = $excludeStatus?->value;
-        $cursorId = $cursor?->value();
 
         return new PostCollection(
             $this->select()
@@ -110,14 +101,7 @@ final class PostRepository extends AbstractRepository
                         $query->where('status', '!=', $excludeStatusValue);
                     },
                 )
-                ->when(
-                    condition: $cursorId !== null,
-                    callback: static function (WhenSelect $query) use ($cursorId): void {
-                        $query->where('id', '<', $cursorId);
-                    },
-                )
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->limit($limit)
+                ->cursorById(cursor: $cursor?->value(), limit: $limit)
                 ->fetchAll(),
         );
     }

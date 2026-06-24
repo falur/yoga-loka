@@ -10,7 +10,6 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Cycle\AbstractRepository;
-use App\Shared\Infrastructure\Cycle\WhenSelect;
 
 /**
  * @extends AbstractRepository<Notification>
@@ -33,19 +32,10 @@ final class NotificationRepository extends AbstractRepository
      */
     public function findPageForRecipient(UserId $userId, NotificationId|null $cursor, int $limit): NotificationCollection
     {
-        $cursorId = $cursor?->value();
-
         return new NotificationCollection(
             $this->select()
                 ->where('user_id', $userId->value())
-                ->when(
-                    condition: $cursorId !== null,
-                    callback: static function (WhenSelect $query) use ($cursorId): void {
-                        $query->where('id', '<', $cursorId);
-                    },
-                )
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->limit($limit)
+                ->cursorById(cursor: $cursor?->value(), limit: $limit)
                 ->fetchAll(),
         );
     }

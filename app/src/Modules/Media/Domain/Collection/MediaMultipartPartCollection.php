@@ -6,12 +6,12 @@ namespace App\Modules\Media\Domain\Collection;
 
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, MediaMultipartPart>
+ * @extends TypedCollection<int, MediaMultipartPart>
  */
-final class MediaMultipartPartCollection extends Collection
+final class MediaMultipartPartCollection extends TypedCollection
 {
     /**
      * @param iterable<array-key, MediaMultipartPart> $parts

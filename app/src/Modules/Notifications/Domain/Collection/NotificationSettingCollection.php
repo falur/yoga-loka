@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Domain\Collection;
 
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, NotificationSetting>
+ * @extends TypedCollection<int, NotificationSetting>
  */
-final class NotificationSettingCollection extends Collection {}
+final class NotificationSettingCollection extends TypedCollection {}

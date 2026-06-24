@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Outbox\Domain\Collection;
 
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, StoredOutboxEvent>
+ * @extends TypedCollection<int, StoredOutboxEvent>
  */
-final class OutboxEventCollection extends Collection {}
+final class OutboxEventCollection extends TypedCollection {}

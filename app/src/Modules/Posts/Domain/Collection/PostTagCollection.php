@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Domain\Collection;
 
 use App\Modules\Posts\Domain\Entity\PostTag;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, PostTag>
+ * @extends TypedCollection<int, PostTag>
  */
-final class PostTagCollection extends Collection {}
+final class PostTagCollection extends TypedCollection {}

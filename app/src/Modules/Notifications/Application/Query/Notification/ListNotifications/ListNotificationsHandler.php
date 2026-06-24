@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Query\Notification\ListNotifications;
 
-use App\Modules\Notifications\Domain\Collection\NotificationCollection;
+use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Repository\NotificationRepository;
+use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**
@@ -22,24 +23,19 @@ final readonly class ListNotificationsHandler
     public function handle(ListNotificationsQuery $query): ListNotificationsResult
     {
         $cursor = $query->cursor !== null ? NotificationId::fromString($query->cursor) : null;
-        $page = $this->notificationRepository->findPageForRecipient(
-            userId: UserId::fromString($query->userId),
-            cursor: $cursor,
-            limit: $query->limit + 1,
-        )->all();
-
-        if (\count($page) <= $query->limit) {
-            return new ListNotificationsResult(
-                notifications: new NotificationCollection($page),
-                nextCursor: null,
-            );
-        }
-
-        $visible = \array_slice(array: $page, offset: 0, length: $query->limit);
+        $slice = CursorSlice::fromOverfetched(
+            overfetched: $this->notificationRepository->findPageForRecipient(
+                userId: UserId::fromString($query->userId),
+                cursor: $cursor,
+                limit: $query->limit + 1,
+            ),
+            limit: $query->limit,
+            cursorOf: static fn(Notification $notification): string => $notification->id->value(),
+        );
 
         return new ListNotificationsResult(
-            notifications: new NotificationCollection($visible),
-            nextCursor: $visible[\count($visible) - 1]->id->value(),
+            notifications: $slice->items,
+            nextCursor: $slice->nextCursor,
         );
     }
 }

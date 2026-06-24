@@ -55,8 +55,8 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
         self::assertSame($actorId->value(), $capturedPush->actor->id);
         self::assertSame('Иван', $capturedPush->actor->name);
         self::assertSame('https://cdn/a.jpg', $capturedPush->actor->avatarUrl);
-        self::assertContains('valid-token', $capturedTokens);
-        self::assertContains('invalid-token', $capturedTokens);
+        // Порядок задаётся репозиторием: ORDER BY id DESC по UUID v7; invalid-token создан позже, поэтому идёт первым.
+        self::assertSame(['invalid-token', 'valid-token'], $capturedTokens);
 
         $remaining = $this->deviceTokenRepository()->findAllForUser($userId);
         self::assertCount(1, $remaining);

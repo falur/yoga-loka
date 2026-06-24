@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Access\Domain\Collection;
 
 use App\Modules\Access\Domain\Entity\UserRole;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, UserRole>
+ * @extends TypedCollection<int, UserRole>
  */
-final class UserRoleCollection extends Collection {}
+final class UserRoleCollection extends TypedCollection {}

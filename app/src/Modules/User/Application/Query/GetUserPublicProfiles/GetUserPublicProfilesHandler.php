@@ -7,7 +7,6 @@ namespace App\Modules\User\Application\Query\GetUserPublicProfiles;
 use App\Modules\User\Application\Dto\UserPublicProfileCollection;
 use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
-use App\Modules\User\Domain\Collection\UserCollection;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\ValueObject\UserId;
@@ -33,14 +32,10 @@ final readonly class GetUserPublicProfilesHandler
             $query->userIds,
         );
 
-        /** @var UserCollection $users */
-        $users = $this->userRepository->findByIds(...$userIds);
-
-        /** @var array<int, UserPublicProfileView> $profiles */
-        $profiles = $users
-            ->map(fn(User $user): UserPublicProfileView => $this->assembler->fromUser($user))
-            ->all();
-
-        return new UserPublicProfileCollection($profiles);
+        return new UserPublicProfileCollection(
+            $this->userRepository->findByIds(...$userIds)
+                ->toBase()
+                ->map(fn(User $user): UserPublicProfileView => $this->assembler->fromUser($user)),
+        );
     }
 }

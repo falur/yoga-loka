@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\Collection;
 
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, MediaMimeType>
+ * @extends TypedCollection<int, MediaMimeType>
  */
-final class MediaMimeTypeCollection extends Collection
+final class MediaMimeTypeCollection extends TypedCollection
 {
     /**
      * Сравнение по базовому MIME без параметров (`baseValue()`) — нормализация умышленно общая для

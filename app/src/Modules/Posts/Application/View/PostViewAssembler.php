@@ -72,41 +72,35 @@ final readonly class PostViewAssembler
         );
     }
 
-    /**
-     * @return list<PostView>
-     */
-    public function fromPosts(PostCollection $posts, UserId $viewer): array
+    public function fromPosts(PostCollection $posts, UserId $viewer): PostViewCollection
     {
-        $entities = $posts->all();
-
-        if ($entities === []) {
-            return [];
+        if ($posts->isEmpty()) {
+            return new PostViewCollection();
         }
 
-        $postIds = $this->postIds($entities);
-        $authors = $this->authorViews($entities);
-        $likedPostIds = $this->likedPostIds(posts: $entities, viewer: $viewer);
+        $postIds = $this->postIds($posts);
+        $authors = $this->authorViews($posts);
+        $likedPostIds = $this->likedPostIds(posts: $posts, viewer: $viewer);
         $mediaByPost = $this->mediaCollectionsByPost($postIds);
         $tagsByPost = $this->tagCollectionsByPost($postIds);
         $tagTexts = $this->tagTexts(...\array_values($tagsByPost));
-        $originals = $this->originalViewsByPost(posts: $entities, viewer: $viewer);
+        $originals = $this->originalViewsByPost(posts: $posts, viewer: $viewer);
 
-        $views = [];
+        return new PostViewCollection(
+            $posts->toBase()->map(function (Post $post) use ($authors, $likedPostIds, $mediaByPost, $tagsByPost, $tagTexts, $originals): PostView {
+                $postId = $post->id->value();
+                $originalId = $post->original->value();
 
-        foreach ($entities as $post) {
-            $postId = $post->id->value();
-            $originalId = $post->original->value();
-            $views[] = $this->build(
-                post: $post,
-                author: $this->requireAuthor(authors: $authors, userId: $post->userId->value()),
-                likedByMe: isset($likedPostIds[$postId]),
-                media: $this->mediaItems($mediaByPost[$postId] ?? new PostMediaCollection()),
-                tags: $this->tagViews(tags: $tagsByPost[$postId] ?? new PostTagCollection(), texts: $tagTexts),
-                original: $originalId !== null ? ($originals[$originalId] ?? null) : null,
-            );
-        }
-
-        return $views;
+                return $this->build(
+                    post: $post,
+                    author: $this->requireAuthor(authors: $authors, userId: $post->userId->value()),
+                    likedByMe: isset($likedPostIds[$postId]),
+                    media: $this->mediaItems($mediaByPost[$postId] ?? new PostMediaCollection()),
+                    tags: $this->tagViews(tags: $tagsByPost[$postId] ?? new PostTagCollection(), texts: $tagTexts),
+                    original: $originalId !== null ? ($originals[$originalId] ?? null) : null,
+                );
+            }),
+        );
     }
 
     /**
@@ -159,16 +153,15 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @param array<int, Post> $posts
-     *
      * @return array<string, AuthorView>
      */
-    private function authorViews(array $posts): array
+    private function authorViews(PostCollection $posts): array
     {
-        $userIds = \array_values(\array_unique(\array_map(
-            static fn(Post $post): string => $post->userId->value(),
-            $posts,
-        )));
+        $userIds = \array_values($posts
+            ->toBase()
+            ->map(static fn(Post $post): string => $post->userId->value())
+            ->unique()
+            ->all());
 
         $profiles = $this->queryBus->dispatch(
             query: new GetUserPublicProfilesQuery($userIds),
@@ -201,13 +194,11 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @param array<int, Post> $posts
-     *
      * @return array<string, true>
      */
-    private function likedPostIds(array $posts, UserId $viewer): array
+    private function likedPostIds(PostCollection $posts, UserId $viewer): array
     {
-        $postIds = \array_map(static fn(Post $post): PostId => $post->id, $posts);
+        $postIds = $posts->mapToList(static fn(Post $post): PostId => $post->id);
         $liked = [];
 
         foreach ($this->postLikeRepository->findByUserAndPostIds($viewer, ...$postIds) as $like) {
@@ -361,13 +352,11 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @param array<int, Post> $posts
-     *
      * @return list<PostId>
      */
-    private function postIds(array $posts): array
+    private function postIds(PostCollection $posts): array
     {
-        return \array_values(\array_map(static fn(Post $post): PostId => $post->id, $posts));
+        return $posts->mapToList(static fn(Post $post): PostId => $post->id);
     }
 
     private function originalView(Post $post, UserId $viewer): PostView|null
@@ -402,11 +391,9 @@ final readonly class PostViewAssembler
      * бы свой оригинал по отдельности (N+1 на уровень глубже). Невидимый зрителю оригинал в карту не
      * попадает — у репоста original будет null.
      *
-     * @param array<int, Post> $posts
-     *
      * @return array<string, PostView>
      */
-    private function originalViewsByPost(array $posts, UserId $viewer): array
+    private function originalViewsByPost(PostCollection $posts, UserId $viewer): array
     {
         $originalIds = [];
 
@@ -430,28 +417,27 @@ final readonly class PostViewAssembler
             return [];
         }
 
-        $entities = $originals->all();
-        $originalPostIds = $this->postIds($entities);
-        $authors = $this->authorViews($entities);
-        $likedPostIds = $this->likedPostIds(posts: $entities, viewer: $viewer);
+        $originalPostIds = $this->postIds($originals);
+        $authors = $this->authorViews($originals);
+        $likedPostIds = $this->likedPostIds(posts: $originals, viewer: $viewer);
         $mediaByPost = $this->mediaCollectionsByPost($originalPostIds);
         $tagsByPost = $this->tagCollectionsByPost($originalPostIds);
         $tagTexts = $this->tagTexts(...\array_values($tagsByPost));
 
-        $views = [];
+        return $originals->toBase()
+            ->map(function (Post $original) use ($authors, $likedPostIds, $mediaByPost, $tagsByPost, $tagTexts): PostView {
+                $originalId = $original->id->value();
 
-        foreach ($entities as $original) {
-            $originalId = $original->id->value();
-            $views[$originalId] = $this->build(
-                post: $original,
-                author: $this->requireAuthor(authors: $authors, userId: $original->userId->value()),
-                likedByMe: isset($likedPostIds[$originalId]),
-                media: $this->mediaItems($mediaByPost[$originalId] ?? new PostMediaCollection()),
-                tags: $this->tagViews(tags: $tagsByPost[$originalId] ?? new PostTagCollection(), texts: $tagTexts),
-                original: null,
-            );
-        }
-
-        return $views;
+                return $this->build(
+                    post: $original,
+                    author: $this->requireAuthor(authors: $authors, userId: $original->userId->value()),
+                    likedByMe: isset($likedPostIds[$originalId]),
+                    media: $this->mediaItems($mediaByPost[$originalId] ?? new PostMediaCollection()),
+                    tags: $this->tagViews(tags: $tagsByPost[$originalId] ?? new PostTagCollection(), texts: $tagTexts),
+                    original: null,
+                );
+            })
+            ->keyBy(static fn(PostView $view): string => $view->id)
+            ->all();
     }
 }

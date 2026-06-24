@@ -37,7 +37,6 @@ use GianTiaga\SpiralCqrs\QueryBusInterface;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
-use Illuminate\Support\Collection;
 use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Core\Container\Autowire;
 use Spiral\Router\Annotation\Route;
@@ -231,13 +230,11 @@ final readonly class AuthController
             handler: $getUserSessionsHandler->handle(...),
         );
 
-        $sessionResources = \array_values(
-            (new Collection($userSessions->all()))
-                ->map(static fn(AuthSession $session): SessionResource => SessionResource::fromSession(
-                    session: $session,
-                    currentSessionId: $listSessionsFilter->authSessionId,
-                ))
-                ->all(),
+        $sessionResources = $userSessions->mapToList(
+            static fn(AuthSession $session): SessionResource => SessionResource::fromSession(
+                session: $session,
+                currentSessionId: $listSessionsFilter->authSessionId,
+            ),
         );
 
         return new CollectionResponse($sessionResources);

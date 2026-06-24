@@ -208,6 +208,12 @@ final class MediaValueObjectTest extends TestCase
         );
     }
 
+    public function testMimeTypeEqualsComparesByRawValue(): void
+    {
+        self::assertTrue(MediaMimeType::fromString('image/jpeg')->equals(MediaMimeType::fromString('image/jpeg')));
+        self::assertFalse(MediaMimeType::fromString('image/jpeg')->equals(MediaMimeType::fromString('image/png')));
+    }
+
     /**
      * @param class-string $valueObjectClass
      */

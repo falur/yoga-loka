@@ -79,9 +79,8 @@ final class NotificationSettingController
      */
     private function resources(NotificationSettingViewCollection $views): array
     {
-        return \array_values(\array_map(
-            callback: static fn(NotificationSettingView $view): NotificationSettingResource => NotificationSettingResource::fromView($view),
-            array: $views->all(),
-        ));
+        return $views->mapToList(
+            static fn(NotificationSettingView $view): NotificationSettingResource => NotificationSettingResource::fromView($view),
+        );
     }
 }

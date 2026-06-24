@@ -313,9 +313,8 @@ final readonly class PostController
             handler: $getUserFeedHandler->handle(...),
         );
 
-        $resources = \array_map(
+        $resources = $result->posts->mapToList(
             static fn(PostView $post): PostResource => PostResource::fromView($post),
-            $result->posts,
         );
 
         return new PaginationResponse(

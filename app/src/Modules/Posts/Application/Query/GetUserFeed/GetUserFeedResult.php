@@ -4,18 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Query\GetUserFeed;
 
-use App\Modules\Posts\Application\View\PostView;
+use App\Modules\Posts\Application\View\PostViewCollection;
 
-/**
- * @param list<PostView> $posts
- */
 final readonly class GetUserFeedResult
 {
-    /**
-     * @param list<PostView> $posts
-     */
     public function __construct(
-        public array $posts,
+        public PostViewCollection $posts,
         public string|null $nextCursor,
     ) {}
 }

@@ -154,11 +154,8 @@ final readonly class PostContentComposer
      */
     public function notifyPostMentions(Post $post, string $actorUserId): void
     {
-        /** @var list<string> $recipientIds */
         $recipientIds = $this->postMentionRepository->findByPostId($post->id)
-            ->map(static fn(PostMention $postMention): string => $postMention->userId->value())
-            ->values()
-            ->all();
+            ->mapToList(static fn(PostMention $postMention): string => $postMention->userId->value());
 
         if ($recipientIds === []) {
             return;

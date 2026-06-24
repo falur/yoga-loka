@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Domain\Collection;
 
 use App\Modules\Posts\Domain\Entity\PostBlock;
-use Illuminate\Support\Collection;
+use App\Shared\Domain\Collection\TypedCollection;
 
 /**
- * @extends Collection<int, PostBlock>
+ * @extends TypedCollection<int, PostBlock>
  */
-final class PostBlockCollection extends Collection {}
+final class PostBlockCollection extends TypedCollection {}

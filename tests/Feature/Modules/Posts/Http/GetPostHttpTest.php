@@ -8,6 +8,7 @@ use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Repository\MediaRepository;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Shared\Domain\ValueObject\UserId;
 
 final class GetPostHttpTest extends PostsHttpTestCase
@@ -39,6 +40,65 @@ final class GetPostHttpTest extends PostsHttpTestCase
         self::assertSame(1, $data['likesCount']);
     }
 
+    public function testReturnsMediaWithAllConversionsSoClientChoosesWhatToShow(): void
+    {
+        $user = $this->createUser();
+        $media = $this->createReadyMedia($user->id, MediaVisibility::Public);
+        $this->attachThumbnailConversion($media);
+
+        $postId = $this->json($this->authedJson('POST', '/api/v1/posts', $user->id, [
+            'text' => 'Запись с превью',
+            'mediaIds' => [$media->id->value()],
+        ]))['data']['id'];
+        $this->cleanOrmHeap();
+
+        $data = $this->json($this->authedGet(\sprintf('/api/v1/posts/%s', $postId), $user->id))['data'];
+
+        // Вложение отдаётся полным набором: оригинал + все конверсии, чтобы фронт сам выбрал показ.
+        self::assertCount(1, $data['media']);
+        // Медиа с преобразованиями — одним объектом MediaResource: id, позиция, оригинал + конверсии.
+        $mediaData = $data['media'][0];
+        self::assertSame($media->id->value(), $mediaData['id']);
+        self::assertSame(0, $mediaData['position']);
+        self::assertSame('https://media.test/object.jpg', $mediaData['original']['url']);
+        self::assertNull($mediaData['original']['expiresAt']);
+        self::assertCount(1, $mediaData['conversions']);
+        self::assertSame('image', $mediaData['conversions'][0]['kind']);
+        self::assertSame('thumbnail', $mediaData['conversions'][0]['type']);
+        self::assertSame('https://media.test/object.jpg', $mediaData['conversions'][0]['url']);
+
+        // Автор без аватара: avatar = null (сервер не выдумывает заглушку, дефолт ставит клиент).
+        self::assertNull($data['author']['avatar']);
+    }
+
+    public function testAuthorAvatarReturnedWithAllConversions(): void
+    {
+        $author = $this->createUser();
+        $avatarMedia = $this->createReadyMedia($author->id, MediaVisibility::Public);
+        $this->attachThumbnailConversion($avatarMedia);
+        $author->setAvatar(UserAvatar::pointingTo($avatarMedia->id->value()));
+        $this->persist($author);
+
+        $postId = $this->json($this->authedJson('POST', '/api/v1/posts', $author->id, [
+            'text' => 'Запись автора с аватаром',
+        ]))['data']['id'];
+        $this->cleanOrmHeap();
+
+        $authorData = $this->json($this->authedGet(\sprintf('/api/v1/posts/%s', $postId), $author->id))['data']['author'];
+
+        // Аватар автора отдаётся тем же объектом MediaResource: оригинал + полный набор конверсий;
+        // позиция вне набора вложений неприменима — null.
+        self::assertSame($author->id->value(), $authorData['userId']);
+        $avatarData = $authorData['avatar'];
+        self::assertSame($avatarMedia->id->value(), $avatarData['id']);
+        self::assertNull($avatarData['position']);
+        self::assertSame('https://media.test/object.jpg', $avatarData['original']['url']);
+        self::assertCount(1, $avatarData['conversions']);
+        self::assertSame('image', $avatarData['conversions'][0]['kind']);
+        self::assertSame('thumbnail', $avatarData['conversions'][0]['type']);
+        self::assertSame('https://media.test/object.jpg', $avatarData['conversions'][0]['url']);
+    }
+
     public function testUnavailableAttachedMediaIsExcludedWithoutError(): void
     {
         $user = $this->createUser();
@@ -60,6 +120,33 @@ final class GetPostHttpTest extends PostsHttpTestCase
         self::assertSame([], $data['media']);
         // Контракт: после деградации media пуст — attachmentType не остаётся "media", а становится "none".
         self::assertSame('none', $data['attachmentType']);
+    }
+
+    public function testKeepsAttachmentByConversionsWhenOriginalRemoved(): void
+    {
+        $user = $this->createUser();
+        $media = $this->createReadyMedia($user->id, MediaVisibility::Public);
+        $this->attachThumbnailConversion($media);
+
+        $postId = $this->json($this->authedJson('POST', '/api/v1/posts', $user->id, [
+            'text' => 'Запись с превью',
+            'mediaIds' => [$media->id->value()],
+        ]))['data']['id'];
+
+        // Оригинал удалён (readyOriginalRemoved), но миниатюра остаётся пригодной — вложение не должно
+        // исчезнуть: фронт покажет конверсию. url тогда null, а конверсии на месте.
+        $this->makeMediaUnavailable($media->id);
+
+        $data = $this->json($this->authedGet(\sprintf('/api/v1/posts/%s', $postId), $user->id))['data'];
+
+        self::assertCount(1, $data['media']);
+        $mediaData = $data['media'][0];
+        // Оригинал удалён -> original = null, а конверсии на месте (вложение показывается по ним).
+        self::assertNull($mediaData['original']);
+        self::assertCount(1, $mediaData['conversions']);
+        self::assertSame('thumbnail', $mediaData['conversions'][0]['type']);
+        // Показывать есть что (конверсия), поэтому attachmentType не деградирует в none.
+        self::assertSame('media', $data['attachmentType']);
     }
 
     private function makeMediaUnavailable(MediaId $mediaId): void

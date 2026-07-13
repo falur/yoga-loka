@@ -198,13 +198,34 @@ final class OpenApiGeneratorTest extends TestCase
             [['$ref' => '#/components/schemas/HealthResource'], ['type' => 'null']],
             $health->value(key: 'oneOf'),
         );
+        // Union enum-ов: свойство выражается через oneOf со ссылками на схему каждого enum-а,
+        // а не схлопывается до первого типа. Обе enum-схемы попадают в компоненты.
+        $primaryStatus = $properties->child(key: 'primaryStatus');
+        self::assertFalse($primaryStatus->has(key: 'type'));
+        self::assertFalse($primaryStatus->has(key: '$ref'));
+        self::assertSame(
+            [['$ref' => '#/components/schemas/HealthStatus'], ['$ref' => '#/components/schemas/AccountStatus']],
+            $primaryStatus->value(key: 'oneOf'),
+        );
+        self::assertTrue($schemas->has(key: 'HealthStatus'));
+        self::assertTrue($schemas->has(key: 'AccountStatus'));
+        // Дата: DateTimeImmutable выражается как string/date-time, nullable — через тип-объединение 3.1.
+        $createdAt = $properties->child(key: 'createdAt');
+        self::assertSame('string', $createdAt->value(key: 'type'));
+        self::assertSame('date-time', $createdAt->value(key: 'format'));
+        $deletedAt = $properties->child(key: 'deletedAt');
+        self::assertSame(['string', 'null'], $deletedAt->value(key: 'type'));
+        self::assertSame('date-time', $deletedAt->value(key: 'format'));
         $required = $userResource->value(key: 'required');
         self::assertIsArray($required);
         self::assertContains('id', $required);
         self::assertContains('email', $required);
+        self::assertContains('primaryStatus', $required);
+        self::assertContains('createdAt', $required);
         self::assertNotContains('nickname', $required);
         self::assertNotContains('health', $required);
         self::assertNotContains('tags', $required);
+        self::assertNotContains('deletedAt', $required);
     }
     private function assertUserResourceNullableSchemaForOpenApi30(OpenApiSpecNode $schemas): void
     {
@@ -225,6 +246,14 @@ final class OpenApiGeneratorTest extends TestCase
         self::assertFalse($health->has(key: 'oneOf'));
         self::assertSame([['$ref' => '#/components/schemas/HealthResource']], $health->value(key: 'allOf'));
         self::assertTrue($health->value(key: 'nullable'));
+        // Дата: string/date-time, обнуляемость 3.0 — ключом nullable: true.
+        $createdAt = $properties->child(key: 'createdAt');
+        self::assertSame('string', $createdAt->value(key: 'type'));
+        self::assertSame('date-time', $createdAt->value(key: 'format'));
+        $deletedAt = $properties->child(key: 'deletedAt');
+        self::assertSame('string', $deletedAt->value(key: 'type'));
+        self::assertSame('date-time', $deletedAt->value(key: 'format'));
+        self::assertTrue($deletedAt->value(key: 'nullable'));
         $required = $userResource->value(key: 'required');
         self::assertIsArray($required);
         self::assertContains('id', $required);

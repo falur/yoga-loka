@@ -24,6 +24,7 @@ use App\Modules\Notifications\Application\Query\Notification\ListNotifications\L
 use App\Modules\Notifications\Application\Query\Notification\ListNotifications\ListNotificationsResult;
 use App\Modules\Notifications\Application\Query\Setting\GetNotificationSettings\GetNotificationSettingsHandler;
 use App\Modules\Notifications\Application\Query\Setting\GetNotificationSettings\GetNotificationSettingsQuery;
+use App\Modules\Notifications\Application\View\NotificationView;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
@@ -68,8 +69,8 @@ final class NotificationUseCaseTest extends DatabaseTestCase
             handler: $this->getContainer()->get(MarkNotificationReadHandler::class)->handle(...),
         );
 
-        self::assertInstanceOf(Notification::class, $marked);
-        self::assertTrue($marked->isRead());
+        self::assertInstanceOf(NotificationView::class, $marked);
+        self::assertTrue($marked->read);
         self::assertSame(0, $this->notificationRepository()->countUnreadForRecipient($userId));
     }
 
@@ -197,11 +198,11 @@ final class NotificationUseCaseTest extends DatabaseTestCase
         $expectedDesc = $this->idsDesc($created);
 
         $firstPage = $this->listNotifications($userId, cursor: null, limit: 2);
-        self::assertSame(\array_slice($expectedDesc, 0, 2), $this->idsOf($firstPage->notifications->all()));
+        self::assertSame(\array_slice($expectedDesc, 0, 2), $this->viewIdsOf($firstPage->notifications->all()));
         self::assertNotNull($firstPage->nextCursor);
 
         $secondPage = $this->listNotifications($userId, cursor: $firstPage->nextCursor, limit: 2);
-        self::assertSame(\array_slice($expectedDesc, 2), $this->idsOf($secondPage->notifications->all()));
+        self::assertSame(\array_slice($expectedDesc, 2), $this->viewIdsOf($secondPage->notifications->all()));
         self::assertNull($secondPage->nextCursor);
     }
 
@@ -331,6 +332,16 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     private function idsOf(array $notifications): array
     {
         return \array_map(static fn(Notification $notification): string => $notification->id->value(), $notifications);
+    }
+
+    /**
+     * @param list<NotificationView> $views
+     *
+     * @return list<string>
+     */
+    private function viewIdsOf(array $views): array
+    {
+        return \array_map(static fn(NotificationView $view): string => $view->id, $views);
     }
 
     private function commandBus(): CommandBusInterface

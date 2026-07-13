@@ -197,7 +197,7 @@ final readonly class PhpAstParser
             foreach ($property->props as $propertyProperty) {
                 $type = $property->type instanceof Node ? $this->typeName($property->type) : 'string';
                 $attributeGroups = \array_values(array: $property->attrGroups);
-                $properties[] = new PropertyMetadata(name: $this->inputName(attributeGroups: $attributeGroups, fallback: $propertyProperty->name->toString()), type: $this->baseTypeName($type), nullable: $this->isNullableType($property->type), hasDefault: $propertyProperty->default !== null, source: $this->inputSource(attributeGroups: $attributeGroups), listItemType: $this->listItemType($property->getDocComment()?->getText()));
+                $properties[] = new PropertyMetadata(name: $this->inputName(attributeGroups: $attributeGroups, fallback: $propertyProperty->name->toString()), type: $this->baseTypeName($type), nullable: $this->isNullableType($property->type), hasDefault: $propertyProperty->default !== null, source: $this->inputSource(attributeGroups: $attributeGroups), listItemType: $this->listItemType($property->getDocComment()?->getText()), unionTypes: $this->unionClassTypes($property->type));
             }
         }
         foreach ($class->getMethods() as $method) {
@@ -211,7 +211,7 @@ final readonly class PhpAstParser
                 }
                 $type = $parameter->type instanceof Node ? $this->typeName($parameter->type) : 'string';
                 $parameterName = $parameter->var instanceof Expr\Variable && \is_string($parameter->var->name) ? $parameter->var->name : 'value';
-                $properties[] = new PropertyMetadata(name: $parameterName, type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type), hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE, listItemType: $this->paramListItemType(docComment: $constructorDocComment, parameterName: $parameterName));
+                $properties[] = new PropertyMetadata(name: $parameterName, type: $this->baseTypeName($type), nullable: $this->isNullableType($parameter->type), hasDefault: $parameter->default !== null, source: PropertyMetadata::SOURCE_NONE, listItemType: $this->paramListItemType(docComment: $constructorDocComment, parameterName: $parameterName), unionTypes: $this->unionClassTypes($parameter->type));
             }
         }
         return $properties;
@@ -430,6 +430,34 @@ final readonly class PhpAstParser
             }
         }
         return \ltrim(string: $parts[0], characters: '\\');
+    }
+    /**
+     * Классы-члены объединения (union) для представления через oneOf. Пусто, если тип не union, если
+     * среди членов есть скаляр (тогда достаточно baseTypeName) или если не-null класс всего один.
+     *
+     * @return list<string>
+     */
+    private function unionClassTypes(Node|null $type): array
+    {
+        if (!$type instanceof Node\UnionType) {
+            return [];
+        }
+        $classTypes = [];
+        foreach ($type->types as $unionType) {
+            $normalizedType = \ltrim(string: $this->typeName($unionType), characters: '\\');
+            if ($normalizedType === '' || \strtolower($normalizedType) === 'null') {
+                continue;
+            }
+            if ($this->isScalarType($normalizedType)) {
+                return [];
+            }
+            $classTypes[] = $normalizedType;
+        }
+        return \count($classTypes) >= 2 ? $classTypes : [];
+    }
+    private function isScalarType(string $type): bool
+    {
+        return \in_array(needle: \strtolower($type), haystack: ['string', 'int', 'integer', 'float', 'double', 'bool', 'boolean', 'array', 'mixed', 'object', 'iterable', 'callable', 'self', 'static'], strict: true);
     }
     private function resolvedName(Node $node): string
     {

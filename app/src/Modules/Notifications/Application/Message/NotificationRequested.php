@@ -11,7 +11,7 @@ use App\Modules\Outbox\Application\Message\OutboxMessage;
 /**
  * Лёгкий триггер уведомления на получателя, который NotificationSender стейджит в транзакции
  * источника. Payload — только примитивы (createdAt — строка ISO-8601, action — вложенный
- * nullable DTO, actor — снимок автора {id, name, avatarUrl} либо null), чтобы
+ * nullable DTO, actor — снимок автора {id, name, avatarMediaId} либо null), чтобы
  * ValinorOutboxMessageSerializer восстановил сообщение без кастомных фабрик. После commit-а
  * источника relay запускает DispatchNotificationJob.
  */

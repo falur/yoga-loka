@@ -237,6 +237,19 @@ final class MediaValueObjectTest extends TestCase
         self::assertSame(1, MediaProcessingAttempts::zero()->increment()->value());
     }
 
+    public function testPresignedTtlRequiresPositiveWithoutUpperBound(): void
+    {
+        // Домен требует лишь положительности: доменного верхнего предела у TTL нет (его держит
+        // инфраструктура), поэтому значение выше прежней границы 604800 принимается.
+        self::assertSame(1, MediaPresignedTtl::fromInt(1)->value());
+        self::assertSame(604_801, MediaPresignedTtl::fromInt(604_801)->value());
+
+        $this->expectException(InvalidDomainValueException::class);
+        $this->expectExceptionMessage('TTL presigned-ссылки должно быть положительным.');
+
+        MediaPresignedTtl::fromInt(0);
+    }
+
     public function testExpirationRepresentsPermanentAndTemporaryStates(): void
     {
         $expiresAt = new \DateTimeImmutable('2026-05-21 18:41:00');
@@ -401,7 +414,6 @@ final class MediaValueObjectTest extends TestCase
         yield MediaMultipartPartsCount::class => [MediaMultipartPartsCount::class, 10_000, 10_001];
         yield MediaMultipartPartSize::class => [MediaMultipartPartSize::class, 5_242_880, 5_242_879];
         yield MediaMultipartPartNumber::class => [MediaMultipartPartNumber::class, 10_000, 10_001];
-        yield MediaPresignedTtl::class => [MediaPresignedTtl::class, 604_800, 604_801];
         yield MediaSampleRate::class => [MediaSampleRate::class, 192_000, 192_001];
         yield MediaWaveformPeakCount::class => [MediaWaveformPeakCount::class, 4096, 4097];
     }

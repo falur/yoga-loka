@@ -12,7 +12,7 @@ use App\Modules\User\Repository\ReservedNicknameRepository;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\Exception\ValidationException;
-use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
+use App\Shared\Domain\Locale\LocaleResolver;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -25,7 +25,7 @@ final readonly class CreateUserHandler
         private ReservedNicknameRepository $reservedNicknameRepository,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
-        private LocaleConfig $localeConfig,
+        private LocaleResolver $localeResolver,
     ) {}
 
     #[Transactional]
@@ -66,15 +66,11 @@ final readonly class CreateUserHandler
     }
 
     /**
-     * Нормализует локаль запроса: неподдерживаемое значение заменяется на LocaleConfig.default,
-     * чтобы вход вне HTTP-потока (консоль, очередь) не приводил к 500 из-за Locale::from().
+     * Нормализует локаль запроса: неподдерживаемое значение сводится к значению по умолчанию через
+     * LocaleResolver, чтобы вход вне HTTP-потока (консоль, очередь) не приводил к 500 из-за Locale::from().
      */
     private function resolveLocale(string $locale): Locale
     {
-        $supported = \in_array(needle: $locale, haystack: $this->localeConfig->supported, strict: true)
-            ? $locale
-            : $this->localeConfig->default;
-
-        return Locale::from($supported);
+        return Locale::from($this->localeResolver->resolve($locale));
     }
 }

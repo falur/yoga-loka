@@ -54,7 +54,7 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
             reservedNicknameRepository: $this->reservedNicknameRepository(),
             entityManager: $this->entityManager(),
             logger: new \Psr\Log\NullLogger(),
-            localeConfig: $this->getContainer()->get(\App\Shared\Infrastructure\Configuration\Locale\LocaleConfig::class),
+            localeResolver: $this->getContainer()->get(\App\Shared\Domain\Locale\LocaleResolver::class),
         );
     }
 

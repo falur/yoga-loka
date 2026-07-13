@@ -363,6 +363,7 @@ final class FfmpegMediaProcessorTest extends TestCase
             ffprobeBinaryPath: '/usr/bin/ffprobe',
             ffmpegTimeoutSeconds: 1800,
             ffmpegThreads: $ffmpegThreads,
+            presignedTtlSeconds: 3600,
         );
     }
 }

@@ -310,7 +310,7 @@ final class PostRepositoryTest extends PostsRepositoryTestCase
 
         $this->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($media->id->value()),
+            mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->persist(PostLike::create(postId: $post->id, userId: $user->id));

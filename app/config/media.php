@@ -5,14 +5,20 @@ declare(strict_types=1);
 /**
  * Инфраструктурные дефолты модуля Media.
  *
- * Только технические параметры пайплайна загрузки: staging-TTL для MediaExpiration при
- * создании, порог и размер части multipart, драйвер обработки изображений. Бизнес-ограничения
- * загрузки и срок presigned-ссылок сюда не зашиваются — их задаёт потребитель (срок presigned —
- * через MediaUploadSpec для загрузки и GetMediaUrlQuery для скачивания).
+ * Технические параметры пайплайна загрузки (staging-TTL для MediaExpiration при создании, порог и
+ * размер части multipart, драйвер обработки изображений) и срок presigned-ссылки скачивания по
+ * умолчанию. Срок presigned-ссылок загрузки задаёт потребитель через MediaUploadSpec; срок скачивания
+ * по умолчанию берётся отсюда, но вызывающий может переопределить его в FindMediaUrlQuery или
+ * FindMediaOriginalUrlQuery (оба принимают presignedTtlSeconds).
  */
 return [
     // Срок жизни оригинала в staging-бакете до подтверждения (MediaExpiration при create), секунды.
     'stagingTtlSeconds' => \max(1, (int) \env('MEDIA_STAGING_TTL_SECONDS', 86_400)),
+
+    // Срок presigned-ссылки скачивания по умолчанию, секунды. Нижнюю границу (>=1) держит
+    // MediaPresignedTtl; верхнюю (<=604800, лимит подписи S3 SigV4) проверяет MediaConfig при старте,
+    // чтобы неверная настройка падала на запуске, а не на первом построении ссылки для приватного медиа.
+    'presignedTtlSeconds' => \max(1, (int) \env('MEDIA_PRESIGNED_TTL_SECONDS', 3600)),
 
     // Порог: файл размером >= порога загружается через multipart, иначе одиночным PUT.
     'multipartThresholdBytes' => \max(5_242_880, (int) \env('MEDIA_MULTIPART_THRESHOLD_BYTES', 16_777_216)),

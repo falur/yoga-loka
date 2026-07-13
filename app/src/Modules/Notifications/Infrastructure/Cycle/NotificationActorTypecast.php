@@ -10,8 +10,9 @@ use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
 
 /**
  * Гидрация nullable json-колонки actor в null-object NotificationActor: NULL -> none(),
- * JSON-объект {id, name, avatarUrl} -> of(UserId, name, avatarUrl). Снимок автора хранится целиком,
- * чтобы клиент показал аватар без запроса к профилю. Образец — MediaMultipartPartCollectionTypecast.
+ * JSON-объект {id, name, avatarMediaId} -> of(UserId, name, avatarMediaId). avatarMediaId в JSON может
+ * быть null (у автора нет аватара). Снимок автора хранит id медиа-аватара, а не готовую ссылку: полный
+ * MediaView собирается на чтении через модуль Media. Образец — MediaMultipartPartCollectionTypecast.
  */
 final class NotificationActorTypecast implements ColumnValueTypecast
 {
@@ -34,13 +35,14 @@ final class NotificationActorTypecast implements ColumnValueTypecast
 
         $id = $payload['id'] ?? null;
         $name = $payload['name'] ?? null;
-        $avatarUrl = $payload['avatarUrl'] ?? null;
+        $avatarMediaId = $payload['avatarMediaId'] ?? null;
 
-        if (!\is_string($id) || !\is_string($name) || !\is_string($avatarUrl)) {
+        // avatarMediaId опционален: допускаем null (у автора нет аватара), но не другой тип.
+        if (!\is_string($id) || !\is_string($name) || ($avatarMediaId !== null && !\is_string($avatarMediaId))) {
             throw new \InvalidArgumentException('Снимок автора уведомления имеет неверный формат.');
         }
 
-        return NotificationActor::of(userId: UserId::fromString($id), name: $name, avatarUrl: $avatarUrl);
+        return NotificationActor::of(userId: UserId::fromString($id), name: $name, avatarMediaId: $avatarMediaId);
     }
 
     public static function uncastValue(

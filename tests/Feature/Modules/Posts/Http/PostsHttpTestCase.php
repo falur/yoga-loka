@@ -6,6 +6,9 @@ namespace Tests\Feature\Modules\Posts\Http;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Entity\MediaImageConversion;
+use App\Modules\Media\Domain\Enum\MediaConversionStatus;
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
@@ -13,6 +16,7 @@ use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
+use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Notifications\Application\Message\NotificationRequested;
 use App\Modules\Posts\Domain\Entity\Comment;
@@ -105,6 +109,28 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
         $this->persist($media);
 
         return $media;
+    }
+
+    protected function attachThumbnailConversion(Media $media): MediaImageConversion
+    {
+        $conversion = MediaImageConversion::create(
+            media: $media,
+            type: MediaImageConversionType::Thumbnail,
+            status: MediaConversionStatus::Ready,
+            storage: $media->storage,
+            path: MediaPath::imageConversion(
+                storageKey: $media->storageKey,
+                type: MediaImageConversionType::Thumbnail,
+                extension: 'jpg',
+            ),
+            mimeType: MediaMimeType::fromString('image/jpeg'),
+            size: MediaFileSize::fromInt(256),
+            width: MediaPixelDimension::fromInt(100),
+            height: MediaPixelDimension::fromInt(100),
+        );
+        $this->persist($conversion);
+
+        return $conversion;
     }
 
     /**

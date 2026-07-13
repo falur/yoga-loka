@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Outbox\Domain\ValueObject;
 
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Domain\ValueObject\AbstractIntegerValue;
+use App\Shared\Domain\ValueObject\AbstractRangedIntegerValue;
 
-final readonly class OutboxAttempts extends AbstractIntegerValue
+final readonly class OutboxAttempts extends AbstractRangedIntegerValue
 {
     protected const int MIN = 0;
     protected const int MAX = \PHP_INT_MAX;

@@ -13,6 +13,7 @@ use App\Modules\Media\Application\Dto\MediaPresignedPartCollection;
 use App\Modules\Media\Application\Dto\MediaUploadMode;
 use App\Modules\Media\Application\Dto\MediaUploadSpec;
 use App\Modules\Media\Application\Service\MediaTypeResolver;
+use App\Modules\Media\Infrastructure\FileService\MediaUploadPlanner;
 use App\Modules\Media\Domain\Collection\MediaMimeTypeCollection;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
@@ -26,8 +27,8 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
 use App\Shared\Domain\Exception\ValidationException;
-use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Tests\Feature\Modules\Media\Flow\Fixture\RecordingMediaLogger;
@@ -74,6 +75,29 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->mediaRepository()->findById(MediaId::fromString($result->mediaId));
         self::assertNotNull($media);
         self::assertSame(MediaStatus::WaitingUpload, $media->status);
+    }
+
+    public function testPersistsStagingExpirationFromPlanner(): void
+    {
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('presignPut')->willReturn('http://minio/put-url');
+
+        $result = $this->handler($fileService)->handle(new RequestMediaUploadCommand(
+            userId: UserId::generate()->value(),
+            spec: $this->spec(),
+            fileMeta: $this->fileMeta(size: 1024),
+        ));
+
+        $media = $this->mediaRepository()->findById(MediaId::fromString($result->mediaId));
+        self::assertNotNull($media);
+        // Staging-срок медиа берётся у планировщика: now + stagingTtlSeconds конфига (86_400) — это
+        // доказывает сквозную проводку stagingExpiration() через Handler.
+        self::assertTrue($media->expiration->isTemporary());
+        self::assertEqualsWithDelta(
+            new \DateTimeImmutable('+86400 seconds')->getTimestamp(),
+            $media->expiration->value()?->getTimestamp(),
+            5,
+        );
     }
 
     public function testRequestsMultipartUploadWhenSizeReachesThreshold(): void
@@ -221,18 +245,24 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         return new RequestMediaUploadHandler(
             mediaFileService: $fileService ?? $this->createStub(MediaFileServiceContract::class),
             mediaTypeResolver: new MediaTypeResolver(),
-            mediaConfig: new MediaConfig(
-                stagingTtlSeconds: 86_400,
-                multipartThresholdBytes: $threshold,
-                multipartPartSizeBytes: $partSize,
-                imageProcessingDriver: 'imagick',
-                ffmpegBinaryPath: '/usr/bin/ffmpeg',
-                ffprobeBinaryPath: '/usr/bin/ffprobe',
-                ffmpegTimeoutSeconds: 1800,
-                ffmpegThreads: 0,
-            ),
+            uploadPlanner: new MediaUploadPlanner($this->mediaConfig(threshold: $threshold, partSize: $partSize)),
             entityManager: $this->entityManager(),
             logger: $logger ?? new NullLogger(),
+        );
+    }
+
+    private function mediaConfig(int $threshold, int $partSize): MediaConfig
+    {
+        return new MediaConfig(
+            stagingTtlSeconds: 86_400,
+            multipartThresholdBytes: $threshold,
+            multipartPartSizeBytes: $partSize,
+            imageProcessingDriver: 'imagick',
+            ffmpegBinaryPath: '/usr/bin/ffmpeg',
+            ffprobeBinaryPath: '/usr/bin/ffprobe',
+            ffmpegTimeoutSeconds: 1800,
+            ffmpegThreads: 0,
+            presignedTtlSeconds: 3600,
         );
     }
 

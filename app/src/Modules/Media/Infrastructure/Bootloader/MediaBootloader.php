@@ -7,12 +7,16 @@ namespace App\Modules\Media\Infrastructure\Bootloader;
 use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
+use App\Modules\Media\Application\Contract\MediaUploadPlannerContract;
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
+use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Infrastructure\FileService\ConfiguredS3ClientProvider;
 use App\Modules\Media\Infrastructure\FileService\FfmpegMediaAudioProcessor;
 use App\Modules\Media\Infrastructure\FileService\FfmpegMediaVideoProcessor;
 use App\Modules\Media\Infrastructure\FileService\ImagickMediaImageProcessor;
+use App\Modules\Media\Infrastructure\FileService\MediaUploadPlanner;
+use App\Modules\Media\Infrastructure\FileService\MediaUrlService;
 use App\Modules\Media\Infrastructure\FileService\S3ClientProvider;
 use App\Modules\Media\Infrastructure\FileService\S3MediaFileService;
 use App\Modules\Media\Presentation\Job\ProcessMediaJob;
@@ -23,6 +27,8 @@ final class MediaBootloader extends Bootloader
 {
     protected const BINDINGS = [
         MediaFileServiceContract::class => S3MediaFileService::class,
+        MediaUrlServiceContract::class => MediaUrlService::class,
+        MediaUploadPlannerContract::class => MediaUploadPlanner::class,
         MediaImageProcessorContract::class => ImagickMediaImageProcessor::class,
         MediaVideoProcessorContract::class => FfmpegMediaVideoProcessor::class,
         MediaAudioProcessorContract::class => FfmpegMediaAudioProcessor::class,

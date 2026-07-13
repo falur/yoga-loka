@@ -13,7 +13,8 @@ use App\Shared\Domain\Exception\NotFoundException;
 
 /**
  * Возвращает волну амплитуд нормализованной аудио-конверсии (числа для прогресса воспроизведения).
- * Волна не отдаётся через URL — это отдельный запрос. Медиа не ready / не аудио / без конверсии — 404.
+ * Волна не отдаётся через URL — это отдельный запрос. Медиа не финализировано (не ready и не
+ * readyOriginalRemoved) / не аудио / без конверсии — 404.
  */
 final readonly class GetAudioWaveformHandler
 {
@@ -27,7 +28,8 @@ final readonly class GetAudioWaveformHandler
         $media = $this->mediaRepository->findById(MediaId::fromString($query->mediaId))
             ?? throw new NotFoundException('app.media.not_found');
 
-        if (!$media->isReady()) {
+        // Волна — это конверсия, поэтому переживает удаление оригинала (ready и readyOriginalRemoved).
+        if (!$media->isFinalized()) {
             throw new NotFoundException('app.media.not_ready');
         }
 

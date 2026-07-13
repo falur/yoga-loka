@@ -52,6 +52,7 @@
         <env name="MEDIA_PRIVATE_STORAGE_PREFIX" value="test" />
         <env name="MEDIA_PUBLIC_STORAGE_PREFIX" value="test" />
         <env name="MEDIA_STAGING_TTL_SECONDS" value="86400" />
+        <env name="MEDIA_PRESIGNED_TTL_SECONDS" value="3600" />
         <env name="MEDIA_MULTIPART_THRESHOLD_BYTES" value="16777216" />
         <env name="MEDIA_MULTIPART_PART_SIZE_BYTES" value="8388608" />
         <env name="MEDIA_IMAGE_PROCESSING_DRIVER" value="imagick" />

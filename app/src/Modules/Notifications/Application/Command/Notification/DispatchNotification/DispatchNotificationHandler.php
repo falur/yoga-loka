@@ -175,7 +175,7 @@ final readonly class DispatchNotificationHandler
         return NotificationActor::of(
             userId: UserId::fromString($payload->id),
             name: $payload->name,
-            avatarUrl: $payload->avatarUrl,
+            avatarMediaId: $payload->avatarMediaId,
         );
     }
 }

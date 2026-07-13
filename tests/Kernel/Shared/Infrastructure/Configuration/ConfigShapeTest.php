@@ -34,7 +34,6 @@ final class ConfigShapeTest extends TestCase
                 'session',
                 'storage',
                 'translator',
-                'user',
             ],
             $this->configFileSections(),
         );

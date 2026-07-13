@@ -57,7 +57,11 @@ final readonly class KreaitFcmPushSender implements FcmPushSenderContract
             // FCM data — плоская строковая карта, поэтому снимок автора раскладываем по полям.
             $data['actorId'] = $push->actor->id;
             $data['actorName'] = $push->actor->name;
-            $data['actorAvatarUrl'] = $push->actor->avatarUrl;
+
+            // Аватар опционален: нет ссылки -> ключ не кладём (в строковую карту null не поместить).
+            if ($push->actor->avatarUrl !== null) {
+                $data['actorAvatarUrl'] = $push->actor->avatarUrl;
+            }
         }
 
         return $data;

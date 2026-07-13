@@ -80,7 +80,7 @@ final readonly class NotificationSender implements NotificationSenderContract
         return new NotificationActorPayload(
             id: $actor->presentId(),
             name: $actor->presentName(),
-            avatarUrl: $actor->presentAvatarUrl(),
+            avatarMediaId: $actor->presentAvatarMediaId(),
         );
     }
 }

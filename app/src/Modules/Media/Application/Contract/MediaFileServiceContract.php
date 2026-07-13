@@ -17,8 +17,10 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
  * Контракт серверных файловых операций модуля Media поверх S3-совместимого хранилища.
  *
  * Реальное имя бакета и prefix реализация резолвит из StorageConfig по алиасу MediaStorage,
- * а не из значения enum напрямую. Срок действия presigned-ссылок задаёт потребитель — через
- * MediaUploadSpec (загрузка) и GetMediaUrlQuery (скачивание), поэтому presign-методы принимают expiresAt.
+ * а не из значения enum напрямую. Срок presigned-ссылок этот контракт не выбирает — presign-методы
+ * принимают готовый expiresAt: для загрузки его задаёт потребитель через MediaUploadSpec, для
+ * скачивания — MediaUrlService (значение по умолчанию реализация читает из MediaConfig, вызывающий
+ * может переопределить).
  */
 interface MediaFileServiceContract
 {

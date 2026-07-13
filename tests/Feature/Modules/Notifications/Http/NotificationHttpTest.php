@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Notifications\Http;
 
+use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
@@ -21,10 +22,13 @@ use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Spiral\Testing\Http\TestResponse;
 use Tests\DatabaseTestCase;
+use Tests\Support\Media\PersistsMedia;
 use Tests\Support\Notifications\FixtureNotificationTypeDefinition;
 
 final class NotificationHttpTest extends DatabaseTestCase
 {
+    use PersistsMedia;
+
     private const string TYPE = 'chat.message_received';
 
     #[\Override]
@@ -34,6 +38,12 @@ final class NotificationHttpTest extends DatabaseTestCase
 
         $this->getContainer()->get(NotificationTypeRegistryContract::class)
             ->register(FixtureNotificationTypeDefinition::allChannels(self::TYPE));
+
+        // URL медиа-аватара автора собирается на чтении: подменяем файловый сервис, чтобы public URL был
+        // предсказуем (STUBBED_MEDIA_URL) и без обращения к S3.
+        $fileService = $this->createStub(MediaFileServiceContract::class);
+        $fileService->method('publicUrl')->willReturn(self::STUBBED_MEDIA_URL);
+        $this->getContainer()->bindSingleton(MediaFileServiceContract::class, $fileService);
     }
 
     public function testListNotificationsReturnsPaginatedResources(): void
@@ -69,13 +79,14 @@ final class NotificationHttpTest extends DatabaseTestCase
         self::assertSame('42', $action['actionId']);
     }
 
-    public function testListNotificationsExposesActorSnapshot(): void
+    public function testListNotificationsExposesActorSnapshotWithAvatarMediaView(): void
     {
         $userId = UserId::generate();
         $actorId = UserId::generate();
+        $media = $this->persistReadyPublicMedia();
         $this->persistNotification(
             $userId,
-            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $media->id->value()),
         );
 
         $response = $this->fakeHttp()->getWithAttributes(
@@ -87,7 +98,30 @@ final class NotificationHttpTest extends DatabaseTestCase
         $actor = $this->json($response)['data'][0]['actor'];
         self::assertSame($actorId->value(), $actor['id']);
         self::assertSame('Иван', $actor['name']);
-        self::assertSame('https://cdn/a.jpg', $actor['avatarUrl']);
+        // Аватар автора — полный MediaView (id + оригинал + конверсии), а не строка-ссылка.
+        self::assertSame($media->id->value(), $actor['avatar']['id']);
+        self::assertSame(self::STUBBED_MEDIA_URL, $actor['avatar']['original']['url']);
+    }
+
+    public function testListNotificationsReturnsNullAvatarWhenActorHasNoAvatarMedia(): void
+    {
+        $userId = UserId::generate();
+        $actorId = UserId::generate();
+        $this->persistNotification(
+            $userId,
+            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: null),
+        );
+
+        $response = $this->fakeHttp()->getWithAttributes(
+            '/api/v1/notifications',
+            ['authUserId' => $userId->value()],
+        );
+
+        $response->assertOk();
+        $actor = $this->json($response)['data'][0]['actor'];
+        self::assertSame($actorId->value(), $actor['id']);
+        // Автор есть, а аватара нет: сервер не выдумывает заглушку, дефолт ставит клиент.
+        self::assertNull($actor['avatar']);
     }
 
     public function testListNotificationsReturnsNullActorWhenNoActor(): void

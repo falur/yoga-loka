@@ -21,7 +21,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
     public function testAllowsReadyMediaOwnedByUser(): void
     {
         $owner = UserId::generate();
-        $media = $this->readyMedia($owner);
+        $media = $this->readyMediaOwnedBy($owner);
         $this->persist($media);
 
         $result = $this->handler()->handle(new CheckMediaAttachableQuery(
@@ -44,7 +44,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsForeignMedia(): void
     {
-        $media = $this->readyMedia(UserId::generate());
+        $media = $this->readyMediaOwnedBy(UserId::generate());
         $this->persist($media);
 
         $this->expectException(ForbiddenException::class);
@@ -69,12 +69,30 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         ));
     }
 
+    public function testRejectsReadyOriginalRemovedMedia(): void
+    {
+        // attach-семантика осознанно остаётся строгой (только ready): после удаления оригинала
+        // вложить медиа нельзя — 422.
+        $owner = UserId::generate();
+        $media = $this->readyMediaOwnedBy($owner);
+        $media->markReadyOriginalRemoved();
+        $this->persist($media);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('app.media.not_ready');
+
+        $this->handler()->handle(new CheckMediaAttachableQuery(
+            mediaId: $media->id->value(),
+            ownerUserId: $owner->value(),
+        ));
+    }
+
     private function handler(): CheckMediaAttachableHandler
     {
         return new CheckMediaAttachableHandler(mediaRepository: $this->mediaRepository());
     }
 
-    private function readyMedia(UserId $owner): Media
+    private function readyMediaOwnedBy(UserId $owner): Media
     {
         $media = $this->createMedia(userId: $owner, visibility: MediaVisibility::Public);
         $media->markUploaded();

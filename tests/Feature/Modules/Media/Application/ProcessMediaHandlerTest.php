@@ -15,6 +15,7 @@ use App\Modules\Media\Application\Dto\MediaConversionResult;
 use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
+use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
@@ -248,6 +249,34 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         ));
 
         self::assertTrue($media->isReady());
+    }
+
+    public function testIsNoOpWhenMediaAlreadyOriginalRemoved(): void
+    {
+        // Защита финализированного состояния: дубль/повтор ProcessMedia после удаления оригинала —
+        // ранний no-op (не читает S3, не меняет статус, не пишет ошибку через запись сбоя).
+        $media = $this->uploadedMedia(MediaVisibility::Private);
+        $media->markReadyMovedTo(
+            MediaStorage::Private,
+            MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Image, extension: 'jpg'),
+        );
+        $media->markReadyOriginalRemoved();
+        $this->persist($media);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $fileService->expects(self::never())->method('getObjectContents');
+        $fileService->expects(self::never())->method('copyObject');
+
+        $this->handler($fileService)->handle(new ProcessMediaCommand(
+            mediaId: $media->id->value(),
+            plan: $this->imagePlan($this->imageConversionSpec()),
+        ));
+
+        // Ради этого расширен guard до isFinalized: поздняя запись ошибки на readyOriginalRemoved
+        // не должна сработать — статус, число попыток и текст ошибки остаются нетронутыми.
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        self::assertSame(0, $media->processingAttempts->value());
+        self::assertNull($media->processingError->value());
     }
 
     public function testProcessesDocumentByMovingOriginalWithoutConversions(): void

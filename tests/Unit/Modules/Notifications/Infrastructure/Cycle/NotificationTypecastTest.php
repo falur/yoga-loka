@@ -41,8 +41,9 @@ final class NotificationTypecastTest extends TestCase
     public function testActorTypecastHandlesNullableJsonSnapshot(): void
     {
         $userId = UserId::generate();
+        $avatarMediaId = UserId::generate()->value();
         $snapshot = \json_encode(
-            ['id' => $userId->value(), 'name' => 'Иван', 'avatarUrl' => 'https://cdn/a.jpg'],
+            ['id' => $userId->value(), 'name' => 'Иван', 'avatarMediaId' => $avatarMediaId],
             \JSON_THROW_ON_ERROR,
         );
 
@@ -52,19 +53,48 @@ final class NotificationTypecastTest extends TestCase
         self::assertTrue($restored->isPresent());
         self::assertSame($userId->value(), $restored->presentId());
         self::assertSame('Иван', $restored->presentName());
-        self::assertSame('https://cdn/a.jpg', $restored->presentAvatarUrl());
+        self::assertSame($avatarMediaId, $restored->presentAvatarMediaId());
 
         $uncast = NotificationActorTypecast::uncastValue(
-            NotificationActor::of(userId: $userId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+            NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: $avatarMediaId),
         );
         self::assertIsString($uncast);
         self::assertSame(
-            ['id' => $userId->value(), 'name' => 'Иван', 'avatarUrl' => 'https://cdn/a.jpg'],
+            ['id' => $userId->value(), 'name' => 'Иван', 'avatarMediaId' => $avatarMediaId],
             \json_decode($uncast, associative: true, flags: \JSON_THROW_ON_ERROR),
         );
 
         self::assertNull(NotificationActorTypecast::uncastValue(NotificationActor::none()));
         self::assertNull(NotificationActorTypecast::uncastValue(null));
+    }
+
+    public function testActorTypecastHandlesSnapshotWithoutAvatar(): void
+    {
+        $userId = UserId::generate();
+
+        // avatarMediaId = null в JSON: автор есть, но без аватара.
+        $restored = NotificationActorTypecast::castDatabaseValue(\json_encode(
+            ['id' => $userId->value(), 'name' => 'Иван', 'avatarMediaId' => null],
+            \JSON_THROW_ON_ERROR,
+        ));
+        self::assertTrue($restored->isPresent());
+        self::assertNull($restored->presentAvatarMediaId());
+
+        // Ключа avatarMediaId нет вовсе — трактуем так же: аватара нет.
+        $withoutKey = NotificationActorTypecast::castDatabaseValue(\json_encode(
+            ['id' => $userId->value(), 'name' => 'Иван'],
+            \JSON_THROW_ON_ERROR,
+        ));
+        self::assertNull($withoutKey->presentAvatarMediaId());
+
+        $uncast = NotificationActorTypecast::uncastValue(
+            NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: null),
+        );
+        self::assertIsString($uncast);
+        self::assertSame(
+            ['id' => $userId->value(), 'name' => 'Иван', 'avatarMediaId' => null],
+            \json_decode($uncast, associative: true, flags: \JSON_THROW_ON_ERROR),
+        );
     }
 
     public function testActorTypecastRejectsNonObjectJson(): void
@@ -78,8 +108,19 @@ final class NotificationTypecastTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
+        // id отсутствует — обязательные поля снимка (id, name) должны быть строками.
         NotificationActorTypecast::castDatabaseValue(
-            \json_encode(['id' => 'x', 'name' => 'Иван'], \JSON_THROW_ON_ERROR),
+            \json_encode(['name' => 'Иван'], \JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function testActorTypecastRejectsNonStringAvatarMediaId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        // avatarMediaId опционален (null допустим), но не другой тип: число — битый снимок.
+        NotificationActorTypecast::castDatabaseValue(
+            \json_encode(['id' => 'x', 'name' => 'Иван', 'avatarMediaId' => 123], \JSON_THROW_ON_ERROR),
         );
     }
 

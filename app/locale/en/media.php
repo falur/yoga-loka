@@ -8,6 +8,8 @@ return [
     'app.media.not_ready' => 'Media is not ready yet.',
     'app.media.conversion_not_found' => 'The requested conversion is missing.',
     'app.media.cannot_make_permanent' => 'Only uploaded or ready media can be made permanent.',
+    'app.media.original_not_removable' => 'The original can only be removed from ready media.',
+    'app.media.no_conversions_to_keep' => 'Cannot remove the original: the media has no conversions.',
     'app.media.upload_not_pending' => 'Media upload is not awaiting confirmation.',
     'app.media.multipart_upload_not_found' => 'No multipart upload was found for the media.',
     'app.media.uploaded_object_mismatch' => 'The uploaded object is missing or its size does not match the declared one.',

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Domain\ValueObject;
 
-use App\Shared\Domain\ValueObject\AbstractIntegerValue;
+use App\Shared\Domain\ValueObject\AbstractRangedIntegerValue;
 
-final readonly class OutboxRelaySleepSeconds extends AbstractIntegerValue
+final readonly class OutboxRelaySleepSeconds extends AbstractRangedIntegerValue
 {
     // Нижняя граница 1 секунда осознанно запрещает busy-spin: при --loop --sleep=0
     // цикл relay на пустой очереди крутился бы без паузы. Минимум гарантирует паузу.

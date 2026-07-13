@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\View;
 
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
+use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
 use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Collection\PostCollection;
 use App\Modules\Posts\Domain\Collection\PostMediaCollection;
@@ -25,6 +24,7 @@ use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfile
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
+use App\Shared\Application\View\MediaView;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
@@ -36,21 +36,18 @@ use GianTiaga\SpiralCqrs\QueryBusInterface;
  * оригинала), если она видна зрителю.
  *
  * В листингах пакетно собираются выборки из БД: авторы, флаги likedByMe, медиа и теги берутся одним
- * запросом на страницу (без N+1 на уровне БД). Разрешение URL каждого вложения остаётся поэлементным
- * (mediaItem -> FindMediaUrl): пакетного контракта разрешения URL в Media сейчас нет, поэтому число
- * вызовов растёт линейно с числом вложений на странице. Это сознательный компромисс, а не «без N+1»
- * на уровне URL медиа.
+ * запросом на страницу (без N+1 на уровне БД). Вложения и их сущности Media (вместе с конверсиями)
+ * грузятся пакетно в PostMediaRepository (eager media.*), поэтому набор URL (оригинал + конверсии)
+ * строится в памяти из уже загруженной сущности через MediaUrlService::getUrls — отдельного запроса в
+ * базу на вложение нет.
  */
 final readonly class PostViewAssembler
 {
-    // TTL ссылки на медиа записи для показа (для приватного медиа — срок presigned-ссылки).
-    private const int POST_MEDIA_URL_TTL_SECONDS = 3600;
-
     public function __construct(
         private QueryBusInterface $queryBus,
         private GetUserPublicProfileHandler $getUserPublicProfileHandler,
         private GetUserPublicProfilesHandler $getUserPublicProfilesHandler,
-        private FindMediaUrlHandler $findMediaUrlHandler,
+        private MediaUrlServiceContract $mediaUrlService,
         private GetTagsHandler $getTagsHandler,
         private PostRepository $postRepository,
         private PostMediaRepository $postMediaRepository,
@@ -104,7 +101,7 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @param list<PostMediaItemView> $media
+     * @param list<MediaView> $media
      * @param list<TagView> $tags
      */
     private function build(Post $post, AuthorView $author, bool $likedByMe, array $media, array $tags, PostView|null $original): PostView
@@ -112,13 +109,13 @@ final readonly class PostViewAssembler
         return new PostView(
             id: $post->id->value(),
             text: $post->text->value(),
-            status: $post->status->value,
-            attachmentType: $this->attachmentType(post: $post, media: $media)->value,
+            status: $post->status,
+            attachmentType: $this->attachmentType(post: $post, media: $media),
             likesCount: $post->likesCount->value(),
             repostsCount: $post->repostsCount->value(),
             commentsCount: $post->commentsCount->value(),
             likedByMe: $likedByMe,
-            createdAt: $post->createdAt->format(\DateTimeInterface::ATOM),
+            createdAt: $post->createdAt,
             author: $author,
             media: $media,
             tags: $tags,
@@ -131,7 +128,7 @@ final readonly class PostViewAssembler
      * недоступного вложения видимых медиа не осталось, отдаём none — иначе клиент получил бы
      * attachmentType "media" с пустым media и рассогласованный контракт.
      *
-     * @param list<PostMediaItemView> $media
+     * @param list<MediaView> $media
      */
     private function attachmentType(Post $post, array $media): AttachmentType
     {
@@ -149,7 +146,7 @@ final readonly class PostViewAssembler
             handler: $this->getUserPublicProfileHandler->handle(...),
         );
 
-        return new AuthorView(userId: $profile->userId, name: $profile->name, avatarUrl: $profile->avatarUrl);
+        return AuthorView::fromProfile($profile);
     }
 
     /**
@@ -171,11 +168,7 @@ final readonly class PostViewAssembler
         $authors = [];
 
         foreach ($profiles as $profile) {
-            $authors[$profile->userId] = new AuthorView(
-                userId: $profile->userId,
-                name: $profile->name,
-                avatarUrl: $profile->avatarUrl,
-            );
+            $authors[$profile->userId] = AuthorView::fromProfile($profile);
         }
 
         return $authors;
@@ -248,7 +241,7 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @return list<PostMediaItemView>
+     * @return list<MediaView>
      */
     private function mediaItems(PostMediaCollection $media): array
     {
@@ -268,32 +261,28 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * Разрешает ссылку на медиа записи без бросающего GetMediaUrl: если медиа удалено или ещё не
-     * готово, недоступное вложение исключается из ответа, а не роняет чтение записи/ленты в 500.
+     * Разрешает набор ссылок на медиа записи из УЖЕ загруженной сущности Media (relation
+     * post_media.media грузится eager в PostMediaRepository вместе с конверсиями — без N+1 на вложение).
+     * Построение URL делегируется MediaUrlService без обращения в БД. Из набора отдаётся оригинал
+     * (url + срок) и все готовые конверсии — фронт сам выбирает, что показать.
      *
-     * FindMediaUrl вызывается напрямую (минуя QueryBus), как и в UserPublicProfileAssembler: это
-     * единственный сценарий Media с nullable-результатом, а обёртка шины теряет null из вывода типов.
-     * Прямой вызов сохраняет контракт «медиа недоступно -> null -> вложение пропущено» без try-catch
-     * и без подавления статанализа.
+     * Оригинал мог быть удалён (readyOriginalRemoved) — тогда original = null, но конверсии остаются
+     * пригодны к показу, поэтому вложение сохраняется по ним. Исключаем вложение, только когда
+     * показывать вообще нечего: медиа не готово (getUrls -> null) или нет ни оригинала, ни конверсий.
+     * Это не роняет чтение ленты в 500, а деградирует мягко.
      */
-    private function mediaItem(PostMedia $postMedia): PostMediaItemView|null
+    private function mediaItem(PostMedia $postMedia): MediaView|null
     {
-        $mediaUrl = $this->findMediaUrlHandler->handle(
-            new FindMediaUrlQuery(
-                mediaId: $postMedia->media->value(),
-                presignedTtlSeconds: self::POST_MEDIA_URL_TTL_SECONDS,
-            ),
-        );
+        $urls = $this->mediaUrlService->getUrls(media: $postMedia->media);
 
-        if ($mediaUrl === null) {
+        // Показывать нечего: медиа не готово (getUrls -> null) или нет ни оригинала, ни конверсий ->
+        // вложение исключается (мягкая деградация, без 500). Оригинал мог быть удалён
+        // (readyOriginalRemoved) — тогда original = null, но по оставшимся конверсиям вложение показывается.
+        if ($urls === null || ($urls->original === null && $urls->conversions->isEmpty())) {
             return null;
         }
 
-        return new PostMediaItemView(
-            mediaId: $postMedia->media->value(),
-            url: $mediaUrl->url,
-            position: $postMedia->position->value(),
-        );
+        return $urls->toView(id: $postMedia->mediaId->value(), position: $postMedia->position->value());
     }
 
     /**

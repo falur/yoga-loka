@@ -6,7 +6,8 @@ namespace App\Modules\Notifications\Application\Dto;
 
 /**
  * Готовое push-сообщение для FCM: заголовок, текст, переход (deep-link) и снимок автора в
- * data-payload. actor — {id, name, avatarUrl} инициатора либо null (системное уведомление).
+ * data-payload. actor — {id, name, avatarUrl} инициатора либо null (системное уведомление); аватар —
+ * одна ссылка (FCM data плоская), уже разрешённая из id медиа к моменту отправки.
  */
 final readonly class NotificationPush
 {
@@ -14,6 +15,6 @@ final readonly class NotificationPush
         public string $title,
         public string $body,
         public NotificationActionPayload|null $action,
-        public NotificationActorPayload|null $actor,
+        public NotificationPushActorPayload|null $actor,
     ) {}
 }

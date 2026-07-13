@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Domain\ValueObject;
 
-use App\Shared\Domain\ValueObject\AbstractIntegerValue;
+use App\Shared\Domain\ValueObject\AbstractRangedIntegerValue;
 
-final readonly class OutboxMaxAttempts extends AbstractIntegerValue
+final readonly class OutboxMaxAttempts extends AbstractRangedIntegerValue
 {
     protected const int MIN = 1;
     protected const int MAX = \PHP_INT_MAX;

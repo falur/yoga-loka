@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Domain\Entity;
 
+use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Posts\Domain\ValueObject\MediaPosition;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostMediaId;
@@ -33,7 +34,7 @@ final class PostMedia
     public private(set) PostId $postId;
 
     #[Column(type: 'uuid', name: 'media_id', typecast: PostMediaReference::class)]
-    public private(set) PostMediaReference $media;
+    public private(set) PostMediaReference $mediaId;
 
     #[Column(type: 'integer', typecast: MediaPosition::class)]
     public private(set) MediaPosition $position;
@@ -41,13 +42,44 @@ final class PostMedia
     #[BelongsTo(target: Post::class, innerKey: 'post_id', outerKey: 'id', fkOnDelete: 'CASCADE')]
     public private(set) Post $post;
 
-    public static function create(Post $post, PostMediaReference $media, MediaPosition $position): self
+    /**
+     * Ссылка на медиа модуля Media. Media — универсальный (foundational) модуль, на сущности которого
+     * другим модулям разрешено держать relation на чтение (см. docs/arch.md). cascade: false — Posts
+     * не сохраняет и не меняет Media; fkCreate/indexCreate: false — FK media_id уже создан миграцией
+     * post_media, повторно его не заводим. Запись идёт по колонке mediaId, связь — для eager-load при
+     * сборке URL: лента строит оригинал через MediaUrlService::getUrls (берёт original из набора), тот
+     * же метод отдаёт и полный набор оригинал + конверсии (например для FindMediaUrl). Доступ без
+     * eager-load вызовет ленивую подгрузку.
+     *
+     * create() эту связь НЕ инициализирует (в отличие от $post): вложение записывается по колонке mediaId,
+     * а сама сущность Media в сценарии создания недоступна (вызывающий держит только идентификатор). Поэтому
+     * $media безопасен лишь после ORM-гидрации — чтение через PostMediaRepository с eager-load media.*;
+     * обращение к ->media на только что созданном через create() экземпляре до гидрации бросит Error
+     * (свойство non-nullable без значения по умолчанию).
+     *
+     * Устойчивость ленты к отсутствующей строке медиа держится на инварианте схемы, а не на коде: FK
+     * media_id стоит с ON DELETE RESTRICT (миграция post_media), поэтому используемое медиа нельзя удалить
+     * и связь у гидрированной строки всегда разрешается. Ослабление инварианта (снятие RESTRICT, жёсткое
+     * удаление в обход Media-сценария, ручная чистка данных) оставит осиротевший media_id, и обращение к
+     * ->media уронит чтение ленты — защита здесь на схеме БД, а не на проверке в коде.
+     */
+    #[BelongsTo(
+        target: Media::class,
+        innerKey: 'media_id',
+        outerKey: 'id',
+        cascade: false,
+        fkCreate: false,
+        indexCreate: false,
+    )]
+    public private(set) Media $media;
+
+    public static function create(Post $post, PostMediaReference $mediaId, MediaPosition $position): self
     {
         $postMedia = new self();
         $postMedia->id = PostMediaId::generate();
         $postMedia->post = $post;
         $postMedia->postId = $post->id;
-        $postMedia->media = $media;
+        $postMedia->mediaId = $mediaId;
         $postMedia->position = $position;
         $postMedia->initializeTimestamps();
 

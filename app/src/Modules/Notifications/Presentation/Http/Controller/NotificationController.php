@@ -12,7 +12,7 @@ use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetU
 use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetUnreadCountQuery;
 use App\Modules\Notifications\Application\Query\Notification\ListNotifications\ListNotificationsHandler;
 use App\Modules\Notifications\Application\Query\Notification\ListNotifications\ListNotificationsQuery;
-use App\Modules\Notifications\Domain\Entity\Notification;
+use App\Modules\Notifications\Application\View\NotificationView;
 use App\Modules\Notifications\Presentation\Http\Filter\Notification\ListNotificationsFilter;
 use App\Modules\Notifications\Presentation\Http\Filter\Notification\MarkNotificationReadFilter;
 use App\Modules\Notifications\Presentation\Http\Filter\NotificationRecipientFilter;
@@ -46,7 +46,7 @@ final class NotificationController
         );
 
         $resources = $result->notifications->mapToList(
-            static fn(Notification $notification): NotificationResource => NotificationResource::fromEntity($notification),
+            static fn(NotificationView $notification): NotificationResource => NotificationResource::fromView($notification),
         );
 
         return new PaginationResponse(
@@ -90,7 +90,7 @@ final class NotificationController
             handler: $markNotificationReadHandler->handle(...),
         );
 
-        return new DataResponse(NotificationResource::fromEntity($notification));
+        return new DataResponse(NotificationResource::fromView($notification));
     }
 
     /**

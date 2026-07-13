@@ -18,7 +18,7 @@ final readonly class CommentView
         public int $likesCount,
         public int $repliesCount,
         public bool $likedByMe,
-        public string $createdAt,
+        public \DateTimeImmutable $createdAt,
         public AuthorView $author,
     ) {}
 }

@@ -11,6 +11,11 @@ use App\Shared\Infrastructure\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**
+ * Доступ к вложениям записей. Медиа и его конверсии грузятся eager (media.*Conversions), как
+ * предписывает docs/arch.md для ленты Posts. Лента строит полный набор URL вложения
+ * (PostViewAssembler -> MediaUrlService::getUrls: оригинал + все конверсии), поэтому eager-load
+ * обязателен — без него доступ к конверсиям обернулся бы ленивой подгрузкой N+1.
+ *
  * @extends AbstractRepository<PostMedia>
  */
 final class PostMediaRepository extends AbstractRepository
@@ -20,6 +25,9 @@ final class PostMediaRepository extends AbstractRepository
         return new PostMediaCollection(
             $this->select()
                 ->where('post_id', $postId->value())
+                ->load('media.imageConversions')
+                ->load('media.videoConversions')
+                ->load('media.audioConversions')
                 ->orderBy(expression: 'position', direction: 'ASC')
                 ->fetchAll(),
         );
@@ -41,6 +49,9 @@ final class PostMediaRepository extends AbstractRepository
                     static fn(PostId $postId): string => $postId->value(),
                     $postIds,
                 )))
+                ->load('media.imageConversions')
+                ->load('media.videoConversions')
+                ->load('media.audioConversions')
                 ->orderBy(expression: 'post_id', direction: 'ASC')
                 ->orderBy(expression: 'position', direction: 'ASC')
                 ->fetchAll(),

@@ -66,6 +66,7 @@ final class FfmpegWaveformTest extends TestCase
             ffprobeBinaryPath: '/usr/bin/ffprobe',
             ffmpegTimeoutSeconds: 1800,
             ffmpegThreads: 0,
+            presignedTtlSeconds: 3600,
         );
     }
 }

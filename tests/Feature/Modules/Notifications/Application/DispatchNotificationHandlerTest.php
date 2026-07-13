@@ -54,6 +54,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
     {
         $userId = UserId::generate();
         $actorId = UserId::generate();
+        $avatarMediaId = UserId::generate()->value();
         $outboxId = NotificationOutboxId::generate();
         $store = new RecordingOutboxEventStore();
 
@@ -61,7 +62,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
             $this->command($outboxId, $userId, actor: new NotificationActorPayload(
                 id: $actorId->value(),
                 name: 'Иван',
-                avatarUrl: 'https://cdn/a.jpg',
+                avatarMediaId: $avatarMediaId,
             )),
         );
 
@@ -69,19 +70,20 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         self::assertInstanceOf(Notification::class, $inbox);
         self::assertSame($actorId->value(), $inbox->actor->presentId());
         self::assertSame('Иван', $inbox->actor->presentName());
-        self::assertSame('https://cdn/a.jpg', $inbox->actor->presentAvatarUrl());
+        self::assertSame($avatarMediaId, $inbox->actor->presentAvatarMediaId());
 
         $push = $this->messageOf($store, NotificationPushRequested::class);
         self::assertInstanceOf(NotificationPushRequested::class, $push);
         self::assertNotNull($push->actor);
         self::assertSame($actorId->value(), $push->actor->id);
         self::assertSame('Иван', $push->actor->name);
-        self::assertSame('https://cdn/a.jpg', $push->actor->avatarUrl);
+        self::assertSame($avatarMediaId, $push->actor->avatarMediaId);
 
         $realtime = $this->messageOf($store, NotificationRealtimeRequested::class);
         self::assertInstanceOf(NotificationRealtimeRequested::class, $realtime);
         self::assertNotNull($realtime->actor);
         self::assertSame($actorId->value(), $realtime->actor->id);
+        self::assertSame($avatarMediaId, $realtime->actor->avatarMediaId);
     }
 
     public function testSettingDisablesPushChannel(): void

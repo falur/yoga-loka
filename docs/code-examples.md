@@ -390,7 +390,7 @@ final readonly class UserResource extends AbstractResource
         public string $email,
         public string $username,
         public string $name,
-        public string $createdAt,
+        public \DateTimeImmutable $createdAt,
     ) {}
 
     public static function fromEntity(User $user): self
@@ -400,7 +400,7 @@ final readonly class UserResource extends AbstractResource
             email: (string) $user->email,
             username: (string) $user->username,
             name: (string) $user->name,
-            createdAt: $user->createdAt->format('c'),
+            createdAt: $user->createdAt,
         );
     }
 }

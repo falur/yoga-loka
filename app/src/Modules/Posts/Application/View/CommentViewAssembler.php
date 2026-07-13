@@ -66,7 +66,7 @@ final readonly class CommentViewAssembler
             likesCount: $comment->likesCount->value(),
             repliesCount: $comment->repliesCount->value(),
             likedByMe: $likedByMe,
-            createdAt: $comment->createdAt->format(\DateTimeInterface::ATOM),
+            createdAt: $comment->createdAt,
             author: $author,
         );
     }
@@ -78,7 +78,7 @@ final readonly class CommentViewAssembler
             handler: $this->getUserPublicProfileHandler->handle(...),
         );
 
-        return new AuthorView(userId: $profile->userId, name: $profile->name, avatarUrl: $profile->avatarUrl);
+        return AuthorView::fromProfile($profile);
     }
 
     /**
@@ -100,11 +100,7 @@ final readonly class CommentViewAssembler
         $authors = [];
 
         foreach ($profiles as $profile) {
-            $authors[$profile->userId] = new AuthorView(
-                userId: $profile->userId,
-                name: $profile->name,
-                avatarUrl: $profile->avatarUrl,
-            );
+            $authors[$profile->userId] = AuthorView::fromProfile($profile);
         }
 
         return $authors;

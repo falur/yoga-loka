@@ -9,6 +9,7 @@ return new Config()
     ->setRiskyAllowed(true)
     ->setRules([
         '@PER-CS' => true,
+        'single_quote' => true,
         'nullable_type_declaration' => ['syntax' => 'union'],
         'native_function_invocation' => [
             'include' => ['@all'],

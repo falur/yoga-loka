@@ -25,7 +25,7 @@ final class NotificationMessageSerializerTest extends TestCase
             actor: new NotificationActorPayload(
                 id: '0190f3b1-0000-7000-8000-000000000001',
                 name: 'Иван',
-                avatarUrl: 'https://cdn/a.jpg',
+                avatarMediaId: '0190f3b1-0000-7000-8000-000000000002',
             ),
             createdAt: '2026-06-13T10:00:00+00:00',
         ));
@@ -42,7 +42,7 @@ final class NotificationMessageSerializerTest extends TestCase
         self::assertNotNull($restored->actor);
         self::assertSame('0190f3b1-0000-7000-8000-000000000001', $restored->actor->id);
         self::assertSame('Иван', $restored->actor->name);
-        self::assertSame('https://cdn/a.jpg', $restored->actor->avatarUrl);
+        self::assertSame('0190f3b1-0000-7000-8000-000000000002', $restored->actor->avatarMediaId);
         self::assertSame('2026-06-13T10:00:00+00:00', $restored->createdAt);
     }
 

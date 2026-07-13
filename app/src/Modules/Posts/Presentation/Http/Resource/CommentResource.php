@@ -17,7 +17,7 @@ final readonly class CommentResource extends AbstractResource
         public int $likesCount,
         public int $repliesCount,
         public bool $likedByMe,
-        public string $createdAt,
+        public \DateTimeImmutable $createdAt,
         public AuthorResource $author,
     ) {}
 

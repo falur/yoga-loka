@@ -8,26 +8,27 @@ use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
 use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
 use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Domain\Entity\User;
-use App\Shared\Infrastructure\Configuration\User\UserConfig;
+use App\Shared\Application\View\MediaView;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
- * Собирает публичный профиль из доменной сущности User, разрешая ссылку на аватар через модуль
- * Media. Аватар всегда непустой: если у пользователя нет аватара или его медиа недоступно
- * (удалено/не готово) — подставляется значение по умолчанию из UserConfig.
+ * Собирает публичный профиль из доменной сущности User, разрешая аватар через модуль Media. Аватара
+ * может не быть: если у пользователя не задан аватар или его медиа недоступно (удалено/не готово) —
+ * avatar = null. Сервер не выдумывает ссылку-заглушку, дефолтный аватар подставляет клиент.
  *
- * FindMediaUrl вызывается напрямую (а не через QueryBus), потому что это единственный сценарий,
- * возвращающий nullable, и обёртка шины теряет null из вывода типов — прямой вызов сохраняет
- * контракт «медиа недоступно -> null -> дефолт» без try-catch и без подавления статанализа.
+ * Аватар отдаётся одним значением MediaView (оригинал + все готовые конверсии), чтобы клиент сам
+ * выбрал профиль показа, а потребители одной ссылки (уведомления, пуш) брали avatar?->original?->url.
+ * Ссылки разрешает FindMediaUrl, проекцию в MediaView делает MediaUrlsResult::toView().
+ *
+ * Межмодульный Query идёт через QueryBus: шина возвращает ровно тип Handler::handle()
+ * (MediaUrlsResult|null), поэтому контракт «медиа недоступно -> null -> аватара нет» сохраняется без
+ * try-catch, а middleware обработчика (в том числе #[LogOperation]) работает.
  */
 final readonly class UserPublicProfileAssembler
 {
-    // Аватары публичны (прямой URL без срока), поэтому TTL фактически не используется; значение
-    // нужно только для приватной ветки FindMediaUrl и берётся техническим дефолтом рядом с местом.
-    private const int AVATAR_URL_TTL_SECONDS = 3600;
-
     public function __construct(
+        private QueryBusInterface $queryBus,
         private FindMediaUrlHandler $findMediaUrlHandler,
-        private UserConfig $userConfig,
     ) {}
 
     public function fromUser(User $user): UserPublicProfileView
@@ -35,27 +36,30 @@ final readonly class UserPublicProfileAssembler
         return new UserPublicProfileView(
             userId: $user->id->value(),
             name: $user->name->value(),
-            avatarUrl: $this->resolveAvatarUrl($user),
-            locale: $user->locale->value,
+            avatar: $this->avatar($user),
+            locale: $user->locale,
         );
     }
 
-    private function resolveAvatarUrl(User $user): string
+    private function avatar(User $user): MediaView|null
     {
         $mediaId = $user->avatar->value();
 
         if ($mediaId === null) {
-            return $this->userConfig->defaultAvatarUrl;
+            return null;
         }
 
-        $mediaUrl = $this->findMediaUrlHandler->handle(
-            new FindMediaUrlQuery(mediaId: $mediaId, presignedTtlSeconds: self::AVATAR_URL_TTL_SECONDS),
+        $mediaUrls = $this->queryBus->dispatch(
+            query: new FindMediaUrlQuery(mediaId: $mediaId),
+            handler: $this->findMediaUrlHandler->handle(...),
         );
 
-        if ($mediaUrl === null) {
-            return $this->userConfig->defaultAvatarUrl;
+        // Аватара нет, если медиа недоступно или оригинал удалён (readyOriginalRemoved): отдаём null
+        // «всё или ничего», без конверсий удалённого оригинала. Заглушку рисует клиент.
+        if ($mediaUrls === null || $mediaUrls->original === null) {
+            return null;
         }
 
-        return $mediaUrl->url;
+        return $mediaUrls->toView(id: $mediaId, position: null);
     }
 }

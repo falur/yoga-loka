@@ -9,7 +9,7 @@ use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
 
 /**
  * Команда фоновой рассылки уведомления. Внешняя граница принимает примитивы: outboxId/createdAt —
- * строки, action — nullable payload-DTO, actor — снимок автора {id, name, avatarUrl} либо null.
+ * строки, action — nullable payload-DTO, actor — снимок автора {id, name, avatarMediaId} либо null.
  * Handler сам строит доменные VO.
  */
 final readonly class DispatchNotificationCommand

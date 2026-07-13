@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Notification\MarkNotificationRead;
 
-use App\Modules\Notifications\Domain\Entity\Notification;
+use App\Modules\Notifications\Application\View\NotificationView;
+use App\Modules\Notifications\Application\View\NotificationViewAssembler;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Repository\NotificationRepository;
 use App\Shared\Domain\Exception\NotFoundException;
@@ -18,13 +19,14 @@ final readonly class MarkNotificationReadHandler
 {
     public function __construct(
         private NotificationRepository $notificationRepository,
+        private NotificationViewAssembler $notificationViewAssembler,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(MarkNotificationReadCommand $command): Notification
+    public function handle(MarkNotificationReadCommand $command): NotificationView
     {
         $notification = $this->notificationRepository->findByIdForRecipient(
             id: NotificationId::fromString($command->notificationId),
@@ -40,6 +42,8 @@ final readonly class MarkNotificationReadHandler
             'userId' => $command->userId,
         ]);
 
-        return $notification;
+        // Отдаём обогащённый read-model (аватар автора собирается MediaView на чтении), а не доменную
+        // сущность: форма ответа совпадает со списком инбокса.
+        return $this->notificationViewAssembler->fromNotification($notification);
     }
 }

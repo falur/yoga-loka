@@ -35,12 +35,12 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         // Намеренно вставляем во втором/первом порядке, чтобы проверить orderBy position ASC.
         $this->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($secondMedia->id->value()),
+            mediaId: PostMediaReference::fromString($secondMedia->id->value()),
             position: MediaPosition::fromInt(1),
         ));
         $this->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($firstMedia->id->value()),
+            mediaId: PostMediaReference::fromString($firstMedia->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->cleanOrmHeap();
@@ -50,7 +50,7 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         self::assertInstanceOf(PostMediaCollection::class, $attachments);
         self::assertCount(2, $attachments);
         self::assertSame(0, $attachments->first()?->position->value());
-        self::assertSame($firstMedia->id->value(), $attachments->first()?->media->value());
+        self::assertSame($firstMedia->id->value(), $attachments->first()?->mediaId->value());
 
         $restoredPost = $this->postRepository()->findById($post->id);
         self::assertInstanceOf(Post::class, $restoredPost);
@@ -74,12 +74,12 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
 
         $this->persist(PostMedia::create(
             post: $firstPost,
-            media: PostMediaReference::fromString($firstMedia->id->value()),
+            mediaId: PostMediaReference::fromString($firstMedia->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->persist(PostMedia::create(
             post: $secondPost,
-            media: PostMediaReference::fromString($secondMedia->id->value()),
+            mediaId: PostMediaReference::fromString($secondMedia->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->cleanOrmHeap();
@@ -111,7 +111,7 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         $this->persist($post);
         $this->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($media->id->value()),
+            mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->cleanOrmHeap();
@@ -134,12 +134,12 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
 
         $this->entityManager()->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($media->id->value()),
+            mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(0),
         ));
         $this->entityManager()->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($media->id->value()),
+            mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(1),
         ));
 
@@ -158,7 +158,7 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         $this->persist($post);
         $this->persist(PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($media->id->value()),
+            mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(0),
         ));
 

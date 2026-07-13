@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Auth\Application;
 
-use App\Modules\Auth\Application\Query\GetUserSessions\AuthSession;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsHandler;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsQuery;
+use App\Modules\Auth\Application\View\SessionView;
+use App\Modules\Auth\Application\View\SessionViewAssembler;
 use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
@@ -28,26 +29,32 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
         $this->tokenStorage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
         $this->cleanOrmHeap();
 
-        $sessions = $this->handler()->handle(new GetUserSessionsQuery(userId: $userId->value()));
+        $sessions = $this->handler()->handle(new GetUserSessionsQuery(
+            userId: $userId->value(),
+            currentSessionId: SessionId::generate()->value(),
+        ));
 
         self::assertCount(2, $sessions);
 
         $ips = (new Collection($sessions->all()))
-            ->map(static fn(AuthSession $session): string|null => $session->ip->toNullableString())
+            ->map(static fn(SessionView $session): string|null => $session->ip)
             ->all();
         self::assertEqualsCanonicalizing(['203.0.113.1', '203.0.113.2'], $ips);
 
         $thirtyDaysAhead = new \DateTimeImmutable('+30 days');
         foreach ($sessions as $session) {
             // expiresAt берётся от refresh-токена (~60 дней), а не от access (1 час).
-            self::assertGreaterThan($session->createdAt, $session->expiresAt->value());
-            self::assertGreaterThan($thirtyDaysAhead, $session->expiresAt->value());
+            self::assertGreaterThan($session->createdAt, $session->expiresAt);
+            self::assertGreaterThan($thirtyDaysAhead, $session->expiresAt);
         }
     }
 
     public function testReturnsEmptyCollectionForUserWithoutSessions(): void
     {
-        $sessions = $this->handler()->handle(new GetUserSessionsQuery(userId: UserId::generate()->value()));
+        $sessions = $this->handler()->handle(new GetUserSessionsQuery(
+            userId: UserId::generate()->value(),
+            currentSessionId: SessionId::generate()->value(),
+        ));
 
         self::assertTrue($sessions->isEmpty());
     }
@@ -84,19 +91,24 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
-        $sessions = $this->handler()->handle(new GetUserSessionsQuery(userId: $userId->value()));
+        $sessions = $this->handler()->handle(new GetUserSessionsQuery(
+            userId: $userId->value(),
+            currentSessionId: $sessionId->value(),
+        ));
 
         self::assertCount(1, $sessions);
         $session = $sessions->first();
-        self::assertInstanceOf(AuthSession::class, $session);
-        self::assertTrue($session->sessionId->equals($sessionId));
-        self::assertSame('203.0.113.5', $session->ip->toNullableString());
+        self::assertInstanceOf(SessionView::class, $session);
+        self::assertSame($sessionId->value(), $session->id);
+        self::assertSame('203.0.113.5', $session->ip);
+        self::assertTrue($session->current);
     }
 
     private function handler(): GetUserSessionsHandler
     {
         return new GetUserSessionsHandler(
             authTokenRepository: $this->authTokenRepository(),
+            sessionViewAssembler: new SessionViewAssembler(),
             logger: new NullLogger(),
         );
     }

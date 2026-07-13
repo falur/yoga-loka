@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Centrifugo;
 
 use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Application\Dto\RealtimeActorPayload;
+use App\Modules\Notifications\Application\Dto\RealtimeMediaOriginalPayload;
+use App\Modules\Notifications\Application\Dto\RealtimeMediaPayload;
 use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Infrastructure\Centrifugo\CentrifugoClient;
@@ -41,7 +43,16 @@ final class CentrifugoClientTest extends TestCase
                 title: 'Новое сообщение',
                 body: 'Вам пришло сообщение',
                 action: new NotificationActionPayload(actionType: 'chat', actionId: '42'),
-                actor: new NotificationActorPayload(id: 'actor-1', name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+                actor: new RealtimeActorPayload(
+                    id: 'actor-1',
+                    name: 'Иван',
+                    avatar: new RealtimeMediaPayload(
+                        id: 'media-1',
+                        position: null,
+                        original: new RealtimeMediaOriginalPayload(url: 'https://cdn/a.jpg', expiresAt: null),
+                        conversions: [],
+                    ),
+                ),
                 createdAt: '2026-06-13T10:00:00+00:00',
             ),
         );
@@ -58,7 +69,11 @@ final class CentrifugoClientTest extends TestCase
         self::assertSame('42', $body['data']['action']['actionId']);
         self::assertSame('actor-1', $body['data']['actor']['id']);
         self::assertSame('Иван', $body['data']['actor']['name']);
-        self::assertSame('https://cdn/a.jpg', $body['data']['actor']['avatarUrl']);
+        // Аватар автора едет полным MediaView (та же форма, что в HTTP-ответе инбокса), а не одной ссылкой.
+        self::assertSame('media-1', $body['data']['actor']['avatar']['id']);
+        self::assertSame('https://cdn/a.jpg', $body['data']['actor']['avatar']['original']['url']);
+        self::assertNull($body['data']['actor']['avatar']['original']['expiresAt']);
+        self::assertSame([], $body['data']['actor']['avatar']['conversions']);
     }
 
     public function testTransportFailureIsTransient(): void

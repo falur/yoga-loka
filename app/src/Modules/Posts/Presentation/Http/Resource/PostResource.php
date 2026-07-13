@@ -4,27 +4,30 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Presentation\Http\Resource;
 
-use App\Modules\Posts\Application\View\PostMediaItemView;
 use App\Modules\Posts\Application\View\PostView;
 use App\Modules\Posts\Application\View\TagView;
+use App\Modules\Posts\Domain\Enum\AttachmentType;
+use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Shared\Application\View\MediaView;
 use App\Shared\Presentation\Http\Resource\AbstractResource;
+use App\Shared\Presentation\Http\Resource\MediaResource;
 
 final readonly class PostResource extends AbstractResource
 {
     /**
-     * @param list<PostMediaItemResource> $media
+     * @param list<MediaResource> $media
      * @param list<TagResource> $tags
      */
     public function __construct(
         public string $id,
         public string|null $text,
-        public string $status,
-        public string $attachmentType,
+        public PostStatus $status,
+        public AttachmentType $attachmentType,
         public int $likesCount,
         public int $repostsCount,
         public int $commentsCount,
         public bool $likedByMe,
-        public string $createdAt,
+        public \DateTimeImmutable $createdAt,
         public AuthorResource $author,
         public array $media,
         public array $tags,
@@ -45,7 +48,7 @@ final readonly class PostResource extends AbstractResource
             createdAt: $post->createdAt,
             author: AuthorResource::fromView($post->author),
             media: \array_map(
-                static fn(PostMediaItemView $media): PostMediaItemResource => PostMediaItemResource::fromView($media),
+                static fn(MediaView $media): MediaResource => MediaResource::fromView($media),
                 $post->media,
             ),
             tags: \array_map(

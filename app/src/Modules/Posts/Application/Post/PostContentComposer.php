@@ -8,6 +8,8 @@ use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentC
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
 use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
 use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableQuery;
+use App\Modules\Posts\Application\Notification\PostNotificationAction;
+use App\Modules\Posts\Application\Notification\PostNotificationActionTarget;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
 use App\Modules\Posts\Application\Notification\PostNotifier;
 use App\Modules\Posts\Domain\Entity\Post;
@@ -87,7 +89,7 @@ final readonly class PostContentComposer
             );
             $this->entityManager->persist(PostMedia::create(
                 post: $post,
-                media: PostMediaReference::fromString($mediaId),
+                mediaId: PostMediaReference::fromString($mediaId),
                 position: MediaPosition::fromInt($position),
             ));
             $position++;
@@ -179,8 +181,7 @@ final readonly class PostContentComposer
                 type: PostNotificationType::PostMention,
                 actor: $actor,
                 recipient: $recipient,
-                actionType: 'post',
-                actionId: $post->id->value(),
+                action: new PostNotificationAction(target: PostNotificationActionTarget::Post, id: $post->id->value()),
             );
         }
     }
@@ -203,8 +204,7 @@ final readonly class PostContentComposer
             type: $type,
             actor: $this->mentionRecipientResolver->profile($actorUserId),
             recipient: $this->mentionRecipientResolver->profile($postAuthor->value()),
-            actionType: 'post',
-            actionId: $postId,
+            action: new PostNotificationAction(target: PostNotificationActionTarget::Post, id: $postId),
         );
     }
 }

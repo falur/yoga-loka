@@ -151,6 +151,37 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertCount(0, $this->audioConversionRepository()->findByMediaId($media->id));
     }
 
+    public function testDeletesReadyOriginalRemovedMediaConversionsAndIdempotentOriginal(): void
+    {
+        // Регрессия: DeleteMedia корректно работает на медиа с удалённым оригиналом — чистит
+        // конверсии и повторно (идемпотентно, 404 → no-op) удаляет уже отсутствующий оригинал.
+        $userId = UserId::generate();
+        $media = $this->readyMediaWithImageConversion($userId, MediaStorage::Public);
+        $media->markReadyOriginalRemoved();
+        $this->persist($media);
+        $conversionPath = $this->imageConversionRepository()->findByMediaId($media->id)->first()?->path;
+        self::assertNotNull($conversionPath);
+
+        $fileService = $this->createMock(MediaFileServiceContract::class);
+        $deletedPaths = [];
+        $fileService->expects(self::exactly(2))->method('deleteObject')->willReturnCallback(
+            function (MediaStorage $storage, MediaPath $path) use (&$deletedPaths): void {
+                $deletedPaths[] = $path->value();
+            },
+        );
+
+        $this->handler($fileService)->handle(new DeleteMediaCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+        ));
+
+        // Среди удалённых — путь конверсии и исторический путь оригинала (повторное идемпотентное удаление).
+        self::assertContains($conversionPath->value(), $deletedPaths);
+        self::assertContains($media->path->value(), $deletedPaths);
+        self::assertNull($this->mediaRepository()->findById($media->id));
+        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+    }
+
     public function testDeletesWaitingUploadWithoutMultipartRecord(): void
     {
         $userId = UserId::generate();

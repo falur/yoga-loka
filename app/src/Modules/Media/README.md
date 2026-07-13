@@ -22,8 +22,9 @@
 | `RecordMediaProcessingFailure(mediaId, error, isTransient)` | Command | `void` |
 | `DeleteMedia(userId, mediaId)` | Command | `void` |
 | `MakeMediaPermanent(userId, mediaId)` | Command | `MediaResult` |
-| `GetMediaUrl(mediaId, presignedTtlSeconds, conversionType?)` | Query | `MediaUrlResult` (`conversionType` — union image/video/audio-enum или null; для public-медиа `presignedTtlSeconds` игнорируется и не валидируется — прямой URL без срока; срок применяется только для private) |
-| `GetAudioWaveform(mediaId)` | Query | `MediaWaveform` (числа амплитуд аудио-конверсии; не через URL; не ready/не аудио/нет конверсии → 404) |
+| `RemoveMediaOriginal(userId, mediaId)` | Command | `MediaResult` (удаляет оригинал из целевого бакета, статус → `readyOriginalRemoved`; конверсии сохраняются; требует ≥1 конверсии, иначе 422; идемпотентна на уже удалённом оригинале) |
+| `FindMediaUrl(mediaId, presignedTtlSeconds?)` | Query | `MediaUrlsResult` или `null` (полный набор: `original` — оригинал, `null` если он удалён в `readyOriginalRemoved`; `conversions` — все конверсии, каждая со своим типом; вызывающий выбирает нужное по типу, не зная заранее, какие конверсии есть. Медиа нет или не финализировано → `null` (для best-effort показа), но невалидный переданный срок (например, явный `0`) бросает `InvalidDomainValueException`, а не возвращает `null`. Для public — прямые URL без срока (`presignedTtlSeconds` игнорируется и не валидируется), для private — presigned со сроком: по умолчанию из конфига, вызывающий может переопределить `presignedTtlSeconds` (`< 1` → ошибка; верхнюю границу `≤ 604800` на override код не проверяет — её держит только значение по умолчанию из конфига, а слишком большой срок хранилище отклонит при запросе). Потребитель, которому нужен только оригинал (аватар профиля), берёт `original` из набора; лента `Posts` строит оригинал напрямую из уже загруженной сущности через `MediaUrlService::getUrls`) |
+| `GetAudioWaveform(mediaId)` | Query | `MediaWaveform` (числа амплитуд аудио-конверсии; не через URL; обслуживается при `ready` и `readyOriginalRemoved`; не финализировано/не аудио/нет конверсии → 404) |
 | `CheckMediaIsImage(mediaId)` | Query | `bool` |
 | `CheckMediaExists(mediaId)` | Query | `bool` |
 
@@ -50,8 +51,13 @@
   пустым (кросс-тип → 422). Для video и audio нужен ровно один профиль; дубли типов в списке image → 422.
 - `RequestMediaUploadResult` — `single`: `putUrl`; `multipart`: `uploadId` + коллекция
   presigned-ссылок частей; всегда `mediaId`, `uploadMode`, `expiresAt`.
-- `MediaResult{ mediaId, status, visibility }`, `MediaUrlResult{ url, expiresAt? }` — наружу не
-  отдаётся доменная Entity.
+- `MediaResult{ mediaId, status, visibility }`, `MediaUrlResult{ url, expiresAt? }` (одна ссылка),
+  `MediaConversionUrl{ kind, type, url, expiresAt? }` (ссылка конверсии: `kind` — вид
+  image/video/audio для рендера на клиенте, `type` — конкретный профиль; постер видео имеет
+  `kind = image`), `MediaUrlsResult{ original: MediaUrlResult?, conversions: MediaConversionUrlCollection }`
+  (полный набор ссылок медиа) — наружу не отдаётся доменная Entity. URL строит `MediaUrlService`
+  за контрактом `MediaUrlServiceContract` (реализация в `Infrastructure/FileService` читает
+  `MediaConfig` напрямую; public — прямой URL, private — presigned), один резолвер на запрос.
 
 ## Поток загрузки
 
@@ -65,17 +71,34 @@
    media.type: image -> ресайз (Imagick); video -> транскод mp4/H.264+AAC + кадр-постер (ffmpeg);
    audio -> транскод m4a/AAC + волна амплитуд (ffmpeg). Затем перекладка оригинала в целевой бакет
    по visibility и один атомарный persist+run() -> media = ready
-6. GetMediaUrl: public -> прямой URL (media-public, anonymous read); private -> presignGet
-   (TTL из presignedTtlSeconds запроса). Волна аудио — отдельным GetAudioWaveform (числа, не URL)
+6. FindMediaUrl: отдаёт полный набор ссылок (оригинал + все конверсии). public -> прямые URL
+   (media-public, anonymous read); private -> presignGet (TTL по умолчанию из конфига,
+   переопределяется presignedTtlSeconds запроса). Волна аудио — отдельным GetAudioWaveform (числа, не URL)
 ```
 
-`uploadMode` (single/multipart) выбирается по порогу `MediaConfig.multipartThresholdBytes`;
-размер части — `MediaConfig.multipartPartSizeBytes` (S3 требует ≥ 5 MiB на часть, кроме последней).
+`uploadMode` (single/multipart) и размер части выбирает `MediaUploadPlanner` (читает ключи
+`MediaConfig.multipartThresholdBytes` и `MediaConfig.multipartPartSizeBytes`); S3 требует ≥ 5 MiB
+на часть, кроме последней.
 
 ## Статусы и обработка ошибок
 
-`MediaStatus`: `waitingUpload → uploaded → ready`. Промежуточный `processing` намеренно не
-используется (атомарный переход `uploaded → ready` одним flush). При ошибке обработки
+`MediaStatus`: `waitingUpload → uploaded → ready (→ readyOriginalRemoved опционально)`. Последний
+переход не обязателен: `readyOriginalRemoved` — опциональная терминальная ветка, в которую переводит
+только явная команда `RemoveMediaOriginal`. Промежуточный `processing`
+намеренно не используется (атомарный переход `uploaded → ready` одним flush). Переход
+`ready → readyOriginalRemoved` делает `RemoveMediaOriginal`: оригинальный объект физически удаляется
+из целевого бакета, а `storage`/`path` остаются исторической ссылкой на уже удалённый оригинал;
+конверсии при этом не трогаются и продолжают резолвиться. Команда требует у медиа хотя бы одну
+конверсию (иначе 422 `no_conversions_to_keep`), поэтому удалить оригинал у `Document` или у медиа с
+пустым планом конверсий нельзя, а после удаления всегда остаётся доступный контент. Семантика запросов
+после удаления оригинала: `FindMediaUrl` обслуживает `readyOriginalRemoved` — возвращает
+`MediaUrlsResult` с `original = null` и доступными конверсиями (отдельного 404 на удалённый оригинал
+нет); потребитель решает по `original`: вложение в `Posts` исчезает, аватар в `User` берёт значение по
+умолчанию. `GetAudioWaveform` тоже обслуживает `readyOriginalRemoved`; `CheckMediaAttachable`
+осознанно остаётся строгим (только `ready` → иначе 422).
+Защита финализированного состояния: дубль/повтор `ProcessMedia` после удаления оригинала — ранний no-op
+(`isFinalized()`), а поздняя запись ошибки обработки на `readyOriginalRemoved` — тоже no-op (медиа не
+понижается в `processingFailed`). При ошибке обработки
 `ProcessMediaJob` фиксирует `ProcessingFailed` через `RecordMediaProcessingFailure` и выбирает
 стратегию повтора по **контрактному сигналу** временной ошибки, а не по типу хранилища:
 `MediaFileServiceFailedException::isTransient()` → временная (сетевые/5xx/ограничение скорости) даёт
@@ -116,7 +139,7 @@
   другим набором конверсий, ранее залитые и больше не запрашиваемые конверсии в S3 не удаляются
   (осиротевшие объекты). В текущем контракте такого повтора не возникает.
 - Оригинал И конверсии живут в одном бакете по `visibility` (`media-public`/`media-private`),
-  чтобы `GetMediaUrl` резолвил их единообразно и не было утечки private-медиа.
+  чтобы `FindMediaUrl` резолвил их единообразно и не было утечки private-медиа.
 - `MediaImageConversion` хранит `width`/`height` **из результата процессора**
   (`conversionResult->width`/`height`), а не запрошенные `spec.width`/`spec.height`: в БД должен
   лежать размер реально записанного объекта. Текущий `ImagickMediaImageProcessor` использует
@@ -129,7 +152,9 @@
   `MediaAudioConversionRepository`) и удаляет каждый объект по `storage`/`path` (404 идемпотентно
   игнорируется). Постер видео — это `MediaImageConversion` (Poster), он уже в image-цикле, отдельно
   не чистится. Без этого FK `ON DELETE CASCADE` убрал бы строки конверсий, оставив файлы
-  осиротевшими в постоянном бакете.
+  осиротевшими в постоянном бакете. На `readyOriginalRemoved`-медиа `DeleteMedia` работает без
+  изменений: `storage`/`path` указывают на уже удалённый оригинал, повторный `deleteObject` отдаёт
+  404 (идемпотентный no-op), а конверсии чистятся как обычно.
 - Staging-оригинал из `media-upload` синхронно не удаляется — чистится по expiry (отдельная
   задача).
 
@@ -145,16 +170,23 @@ PHPDoc-типы `list<...Spec>` обязательны для восстанов
 ## Инфраструктура и конфиг
 
 - `app/config/media.php` + `MediaConfig` (`Shared/Infrastructure/Configuration/Media`): staging-TTL,
-  порог и размер части multipart, драйвер обработки изображений, ffmpeg-настройки
-  (`ffmpegBinaryPath`, `ffprobeBinaryPath`, `ffmpegTimeoutSeconds`, `ffmpegThreads` —
+  порог и размер части multipart, драйвер обработки изображений, срок presigned-ссылки скачивания по
+  умолчанию (`presignedTtlSeconds` — env `MEDIA_PRESIGNED_TTL_SECONDS`; нижнюю границу `≥ 1` держит
+  `MediaPresignedTtl`, верхнюю `≤ 604800` — лимит подписи S3 — проверяет `MediaConfig` при старте только
+  для значения по умолчанию, не для override), ffmpeg-настройки (`ffmpegBinaryPath`, `ffprobeBinaryPath`,
+  `ffmpegTimeoutSeconds`, `ffmpegThreads` —
   env `MEDIA_FFMPEG_BINARY`/`MEDIA_FFPROBE_BINARY`/`MEDIA_FFMPEG_TIMEOUT_SECONDS`/`MEDIA_FFMPEG_THREADS`).
-  TTL presigned-ссылок в конфиге **нет** — его
-  задаёт потребитель под контекст: `MediaUploadSpec.presignedTtl` (загрузка) и
-  `GetMediaUrlQuery.presignedTtlSeconds` (скачивание). Ключи `MEDIA_*` — в `.env.sample` и
-  `phpunit.xml`. `MediaConfig` инжектится напрямую в `RequestMediaUploadHandler` — осознанное
-  исключение из правила зависимостей слоёв: `TypedConfig` живёт в `Shared/Infrastructure/Configuration`
-  по конвенции размещения всех config-DTO, и оборачивать его в Application-`*Contract` было бы
-  запрещённой pass-through-обёрткой (см. `docs/arch.md`, «Правила зависимостей»).
+  Срок presigned-ссылок загрузки задаёт потребитель под контекст (`MediaUploadSpec.presignedTtl`); срок
+  скачивания берётся из конфига по умолчанию, но вызывающий может переопределить его
+  (`FindMediaUrlQuery.presignedTtlSeconds`). Ключи `MEDIA_*` — в `.env.sample` и `phpunit.xml`.
+  Application модуля `*Config` не читает: `RequestMediaUploadHandler` получает решения пайплайна
+  загрузки (срок staging-хранения, нужен ли multipart, размер и число частей) через
+  `MediaUploadPlannerContract`; реализация `MediaUploadPlanner` (`Infrastructure/FileService`) читает
+  `MediaConfig` через конструктор и биндится `const BINDINGS` — как `MediaUrlService`. Срок
+  presigned-ссылки скачивания по умолчанию читает сама реализация `MediaUrlService` из
+  `Infrastructure/FileService` (прямая инъекция `MediaConfig`), а Application зависит от контракта
+  `MediaUrlServiceContract` — это технический сервис с поведением, поэтому он живёт в `Infrastructure`
+  (см. `docs/arch.md`, «Правила зависимостей»).
 - presigned/multipart и серверные S3-операции — `S3MediaFileService` поверх `Aws\S3\S3Client`
   (построение клиента вынесено в `S3ClientProvider` для тестируемости). Имя бакета и `prefix`
   резолвятся из `StorageConfig->buckets[alias]`, где alias — значение enum `MediaStorage`.

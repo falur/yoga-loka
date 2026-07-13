@@ -26,6 +26,7 @@ final class NotificationSenderTest extends TestCase
     {
         $userId = UserId::generate();
         $actorId = UserId::generate();
+        $avatarMediaId = UserId::generate()->value();
         $captured = null;
 
         $outboxStore = $this->createMock(OutboxEventStoreContract::class);
@@ -41,7 +42,7 @@ final class NotificationSenderTest extends TestCase
             $userId,
             $this->content(
                 NotificationAction::linkTo('chat', '42'),
-                NotificationActor::of(userId: $actorId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+                NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $avatarMediaId),
             ),
         );
 
@@ -56,7 +57,7 @@ final class NotificationSenderTest extends TestCase
         self::assertNotNull($captured->actor);
         self::assertSame($actorId->value(), $captured->actor->id);
         self::assertSame('Иван', $captured->actor->name);
-        self::assertSame('https://cdn/a.jpg', $captured->actor->avatarUrl);
+        self::assertSame($avatarMediaId, $captured->actor->avatarMediaId);
         self::assertNotSame('', $captured->createdAt);
     }
 

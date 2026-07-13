@@ -21,6 +21,7 @@ final class MediaConfigTest extends TestCase
         $mediaConfig = $this->getContainer()->get(MediaConfig::class);
 
         self::assertSame(86_400, $mediaConfig->stagingTtlSeconds);
+        self::assertSame(3600, $mediaConfig->presignedTtlSeconds);
         self::assertSame(16_777_216, $mediaConfig->multipartThresholdBytes);
         self::assertSame(8_388_608, $mediaConfig->multipartPartSizeBytes);
         self::assertSame('imagick', $mediaConfig->imageProcessingDriver);
@@ -34,6 +35,7 @@ final class MediaConfigTest extends TestCase
     {
         $mediaConfig = $this->mapperFor([
             'stagingTtlSeconds' => 3600,
+            'presignedTtlSeconds' => 7200,
             'multipartThresholdBytes' => 20_971_520,
             'multipartPartSizeBytes' => 5_242_880,
             'imageProcessingDriver' => 'gd',
@@ -45,6 +47,7 @@ final class MediaConfigTest extends TestCase
 
         self::assertSame('media', MediaConfig::configName());
         self::assertSame(3600, $mediaConfig->stagingTtlSeconds);
+        self::assertSame(7200, $mediaConfig->presignedTtlSeconds);
         self::assertSame(20_971_520, $mediaConfig->multipartThresholdBytes);
         self::assertSame(5_242_880, $mediaConfig->multipartPartSizeBytes);
         self::assertSame('gd', $mediaConfig->imageProcessingDriver);
@@ -68,6 +71,27 @@ final class MediaConfigTest extends TestCase
             ffprobeBinaryPath: '/usr/bin/ffprobe',
             ffmpegTimeoutSeconds: 1800,
             ffmpegThreads: 0,
+            presignedTtlSeconds: 3600,
+        );
+    }
+
+    public function testRejectsPresignedTtlAboveUpperBound(): void
+    {
+        // Срок presigned-ссылки больше 7 суток (604800) отвергается при старте, а не падает 500 на
+        // первом построении ссылки для приватного медиа.
+        $this->expectException(InvalidConfigValueException::class);
+        $this->expectExceptionMessage('media.presignedTtlSeconds');
+
+        new MediaConfig(
+            stagingTtlSeconds: 86_400,
+            multipartThresholdBytes: 16_777_216,
+            multipartPartSizeBytes: 8_388_608,
+            imageProcessingDriver: 'imagick',
+            ffmpegBinaryPath: '/usr/bin/ffmpeg',
+            ffprobeBinaryPath: '/usr/bin/ffprobe',
+            ffmpegTimeoutSeconds: 1800,
+            ffmpegThreads: 0,
+            presignedTtlSeconds: 604_801,
         );
     }
 

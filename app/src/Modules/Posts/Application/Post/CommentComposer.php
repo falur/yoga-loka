@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Application\Post;
 
 use App\Modules\Posts\Application\Notification\CommentNotificationTarget;
+use App\Modules\Posts\Application\Notification\PostNotificationAction;
+use App\Modules\Posts\Application\Notification\PostNotificationActionTarget;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
 use App\Modules\Posts\Application\Notification\PostNotifier;
 use App\Modules\Posts\Domain\Entity\Comment;
@@ -43,7 +45,12 @@ final readonly class CommentComposer
         $uniqueMentions = \array_values(\array_unique($mentionIds));
 
         foreach ($uniqueMentions as $mentionId) {
-            $this->entityManager->persist(CommentMention::create(commentId: $comment->id, userId: UserId::fromString($mentionId)));
+            $this->entityManager->persist(
+                CommentMention::create(
+                    commentId: $comment->id,
+                    userId: UserId::fromString($mentionId),
+                ),
+            );
         }
 
         $mentionProfiles = $this->mentionRecipientResolver->resolveRequired($uniqueMentions);
@@ -74,8 +81,10 @@ final readonly class CommentComposer
                 type: $target->type,
                 actor: $actor,
                 recipient: $target->recipient,
-                actionType: 'comment',
-                actionId: $comment->id->value(),
+                action: new PostNotificationAction(
+                    target: PostNotificationActionTarget::Comment,
+                    id: $comment->id->value(),
+                ),
             );
         }
     }
@@ -98,8 +107,10 @@ final readonly class CommentComposer
             type: $type,
             actor: $this->mentionRecipientResolver->profile($actorUserId),
             recipient: $this->mentionRecipientResolver->profile($commentAuthor->value()),
-            actionType: 'comment',
-            actionId: $commentId,
+            action: new PostNotificationAction(
+                target: PostNotificationActionTarget::Comment,
+                id: $commentId,
+            ),
         );
     }
 }

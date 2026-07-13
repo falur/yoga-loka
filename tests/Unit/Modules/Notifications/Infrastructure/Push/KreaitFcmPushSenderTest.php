@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Push;
 
 use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
 use App\Modules\Notifications\Application\Dto\NotificationPush;
+use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
 use App\Modules\Notifications\Infrastructure\Push\KreaitFcmPushSender;
 use Kreait\Firebase\Contract\Messaging;
@@ -48,7 +48,7 @@ final class KreaitFcmPushSenderTest extends TestCase
                 title: 'Заголовок',
                 body: 'Текст',
                 action: new NotificationActionPayload(actionType: 'chat', actionId: '42'),
-                actor: new NotificationActorPayload(id: 'actor-1', name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+                actor: new NotificationPushActorPayload(id: 'actor-1', name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
             ),
             ['token-1'],
         );
@@ -60,6 +60,36 @@ final class KreaitFcmPushSenderTest extends TestCase
         self::assertSame('actor-1', $payload['data']['actorId']);
         self::assertSame('Иван', $payload['data']['actorName']);
         self::assertSame('https://cdn/a.jpg', $payload['data']['actorAvatarUrl']);
+    }
+
+    public function testOmitsAvatarKeyWhenActorHasNoAvatar(): void
+    {
+        $capturedMessage = null;
+        $messaging = $this->createMock(Messaging::class);
+        $messaging->expects(self::once())
+            ->method('sendMulticast')
+            ->willReturnCallback(function (Message $message) use (&$capturedMessage): MulticastSendReport {
+                $capturedMessage = $message;
+
+                return MulticastSendReport::withItems([]);
+            });
+
+        new KreaitFcmPushSender($messaging)->send(
+            new NotificationPush(
+                title: 'Заголовок',
+                body: 'Текст',
+                action: null,
+                actor: new NotificationPushActorPayload(id: 'actor-1', name: 'Иван', avatarUrl: null),
+            ),
+            ['token-1'],
+        );
+
+        self::assertInstanceOf(CloudMessage::class, $capturedMessage);
+        $data = $capturedMessage->jsonSerialize()['data'];
+        // Аватара нет -> id и имя есть, а ключ actorAvatarUrl в плоскую строковую карту не кладём.
+        self::assertSame('actor-1', $data['actorId']);
+        self::assertSame('Иван', $data['actorName']);
+        self::assertArrayNotHasKey('actorAvatarUrl', $data);
     }
 
     public function testTransientFailureBecomesFcmPushFailedException(): void

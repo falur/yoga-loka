@@ -12,7 +12,7 @@ use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
+use App\Shared\Domain\Locale\LocaleResolver;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\NullLogger;
 use Ramsey\Uuid\Uuid;
@@ -74,7 +74,7 @@ final class SendLoginCodeJobTest extends TestCase
         return new SendLoginCodeHandler(
             loginCodeMailer: $loginCodeMailer,
             translator: $this->getContainer()->get(TranslatorInterface::class),
-            localeConfig: $this->getContainer()->get(LocaleConfig::class),
+            localeResolver: $this->getContainer()->get(LocaleResolver::class),
         );
     }
 

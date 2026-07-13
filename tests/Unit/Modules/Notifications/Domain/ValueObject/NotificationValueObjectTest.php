@@ -275,14 +275,16 @@ final class NotificationValueObjectTest extends TestCase
     public function testActorPresentStateKeepsSnapshot(): void
     {
         $userId = UserId::generate();
-        $actor = NotificationActor::of(userId: $userId, name: '  Иван Петров  ', avatarUrl: '  https://cdn/a.jpg  ');
+        $avatarMediaId = UserId::generate()->value();
+        // Регистр приводится к нижнему: снимок хранит канонический id медиа.
+        $actor = NotificationActor::of(userId: $userId, name: '  Иван Петров  ', avatarMediaId: \strtoupper($avatarMediaId));
 
         self::assertTrue($actor->isPresent());
         self::assertSame($userId->value(), $actor->presentId());
         self::assertSame('Иван Петров', $actor->presentName());
-        self::assertSame('https://cdn/a.jpg', $actor->presentAvatarUrl());
+        self::assertSame($avatarMediaId, $actor->presentAvatarMediaId());
         self::assertSame(
-            ['id' => $userId->value(), 'name' => 'Иван Петров', 'avatarUrl' => 'https://cdn/a.jpg'],
+            ['id' => $userId->value(), 'name' => 'Иван Петров', 'avatarMediaId' => $avatarMediaId],
             $actor->jsonSerialize(),
         );
     }
@@ -290,12 +292,14 @@ final class NotificationValueObjectTest extends TestCase
     public function testActorEqualsComparesEveryField(): void
     {
         $userId = UserId::generate();
-        $actor = NotificationActor::of(userId: $userId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg');
+        $avatarMediaId = UserId::generate()->value();
+        $otherAvatarMediaId = UserId::generate()->value();
+        $actor = NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: $avatarMediaId);
 
-        self::assertTrue($actor->equals(NotificationActor::of(userId: $userId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg')));
-        self::assertFalse($actor->equals(NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarUrl: 'https://cdn/a.jpg')));
-        self::assertFalse($actor->equals(NotificationActor::of(userId: $userId, name: 'Пётр', avatarUrl: 'https://cdn/a.jpg')));
-        self::assertFalse($actor->equals(NotificationActor::of(userId: $userId, name: 'Иван', avatarUrl: 'https://cdn/b.jpg')));
+        self::assertTrue($actor->equals(NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: $avatarMediaId)));
+        self::assertFalse($actor->equals(NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarMediaId: $avatarMediaId)));
+        self::assertFalse($actor->equals(NotificationActor::of(userId: $userId, name: 'Пётр', avatarMediaId: $avatarMediaId)));
+        self::assertFalse($actor->equals(NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: $otherAvatarMediaId)));
         self::assertFalse($actor->equals(NotificationActor::none()));
     }
 
@@ -306,7 +310,7 @@ final class NotificationValueObjectTest extends TestCase
         self::assertFalse($none->isPresent());
         self::assertNull($none->jsonSerialize());
         self::assertTrue($none->equals(NotificationActor::none()));
-        self::assertFalse($none->equals(NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarUrl: 'https://cdn/a.jpg')));
+        self::assertFalse($none->equals(NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarMediaId: UserId::generate()->value())));
     }
 
     public function testActorPresentIdFailsWhenAbsent(): void
@@ -323,39 +327,46 @@ final class NotificationValueObjectTest extends TestCase
         NotificationActor::none()->presentName();
     }
 
-    public function testActorPresentAvatarUrlFailsWhenAbsent(): void
+    public function testActorPresentAvatarMediaIdFailsWhenAbsent(): void
     {
         $this->expectException(InvalidDomainValueException::class);
 
-        NotificationActor::none()->presentAvatarUrl();
+        NotificationActor::none()->presentAvatarMediaId();
     }
 
     public function testActorRejectsEmptyName(): void
     {
         $this->expectException(InvalidDomainValueException::class);
 
-        NotificationActor::of(userId: UserId::generate(), name: '   ', avatarUrl: 'https://cdn/a.jpg');
+        NotificationActor::of(userId: UserId::generate(), name: '   ', avatarMediaId: UserId::generate()->value());
     }
 
     public function testActorRejectsTooLongName(): void
     {
         $this->expectException(InvalidDomainValueException::class);
 
-        NotificationActor::of(userId: UserId::generate(), name: \str_repeat('a', 256), avatarUrl: 'https://cdn/a.jpg');
+        NotificationActor::of(userId: UserId::generate(), name: \str_repeat('a', 256), avatarMediaId: UserId::generate()->value());
     }
 
-    public function testActorRejectsEmptyAvatarUrl(): void
+    public function testActorPresentWithoutAvatarMediaId(): void
+    {
+        $userId = UserId::generate();
+        $actor = NotificationActor::of(userId: $userId, name: 'Иван', avatarMediaId: null);
+
+        self::assertTrue($actor->isPresent());
+        self::assertNull($actor->presentAvatarMediaId());
+        self::assertSame(
+            ['id' => $userId->value(), 'name' => 'Иван', 'avatarMediaId' => null],
+            $actor->jsonSerialize(),
+        );
+    }
+
+    public function testActorRejectsNonUuidAvatarMediaId(): void
     {
         $this->expectException(InvalidDomainValueException::class);
 
-        NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarUrl: '   ');
-    }
-
-    public function testActorRejectsTooLongAvatarUrl(): void
-    {
-        $this->expectException(InvalidDomainValueException::class);
-
-        NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarUrl: \str_repeat('a', 2049));
+        // Аватар в снимке — id медиа (UUID v7), а не ссылка: не-UUID это внутреннее нарушение (500).
+        NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarMediaId: 'https://cdn/a.jpg');
     }
 
     public function testReadStateUnread(): void

@@ -55,7 +55,7 @@ final class CreatePostHttpTest extends PostsHttpTestCase
         $data = $this->json($response)['data'];
         self::assertSame('media', $data['attachmentType']);
         self::assertCount(1, $data['media']);
-        self::assertSame($media->id->value(), $data['media'][0]['mediaId']);
+        self::assertSame($media->id->value(), $data['media'][0]['id']);
     }
 
     public function testDeduplicatesRepeatedMediaId(): void
@@ -71,7 +71,7 @@ final class CreatePostHttpTest extends PostsHttpTestCase
         $data = $this->json($response)['data'];
         self::assertSame('media', $data['attachmentType']);
         self::assertCount(1, $data['media']);
-        self::assertSame($media->id->value(), $data['media'][0]['mediaId']);
+        self::assertSame($media->id->value(), $data['media'][0]['id']);
     }
 
     public function testRejectsForeignMedia(): void

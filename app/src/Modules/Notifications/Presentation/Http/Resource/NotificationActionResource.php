@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Presentation\Http\Resource;
 
-use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
+use App\Modules\Notifications\Application\View\NotificationActionView;
 use App\Shared\Presentation\Http\Resource\AbstractResource;
 
 /**
@@ -18,11 +18,11 @@ final readonly class NotificationActionResource extends AbstractResource
         public string $actionId,
     ) {}
 
-    public static function fromAction(NotificationAction $action): self
+    public static function fromView(NotificationActionView $action): self
     {
         return new self(
-            actionType: $action->actionType()->presentValue(),
-            actionId: $action->actionId()->presentValue(),
+            actionType: $action->actionType,
+            actionId: $action->actionId,
         );
     }
 }

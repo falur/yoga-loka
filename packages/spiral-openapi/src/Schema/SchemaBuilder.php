@@ -53,11 +53,24 @@ final readonly class SchemaBuilder
      */
     public function schemaForProperty(PropertyMetadata $propertyMetadata): array
     {
-        $schema = $propertyMetadata->listItemType !== null ? ['type' => 'array', 'items' => $this->schemaForType($propertyMetadata->listItemType)] : $this->schemaForType($propertyMetadata->type);
+        $schema = $this->baseSchemaForProperty($propertyMetadata);
         if ($propertyMetadata->nullable) {
             return $this->nullableSchema->makeNullable($schema);
         }
         return $schema;
+    }
+    /**
+     * @return array<string, mixed>
+     */
+    private function baseSchemaForProperty(PropertyMetadata $propertyMetadata): array
+    {
+        if ($propertyMetadata->listItemType !== null) {
+            return ['type' => 'array', 'items' => $this->schemaForType($propertyMetadata->listItemType)];
+        }
+        if ($propertyMetadata->unionTypes !== []) {
+            return ['oneOf' => \array_map(fn(string $unionType): array => $this->schemaForType($unionType), $propertyMetadata->unionTypes)];
+        }
+        return $this->schemaForType($propertyMetadata->type);
     }
     /**
      * @return array<string, mixed>
@@ -71,6 +84,7 @@ final readonly class SchemaBuilder
             'float', 'double' => ['type' => 'number'],
             'bool', 'boolean' => ['type' => 'boolean'],
             'array' => ['type' => 'array', 'items' => ['type' => 'string']],
+            'DateTimeImmutable', 'DateTimeInterface' => ['type' => 'string', 'format' => 'date-time'],
             default => $this->referenceFor($baseType),
         };
     }

@@ -16,6 +16,7 @@ use App\Modules\User\Repository\ReservedNicknameRepository;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\Exception\ValidationException;
+use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
@@ -117,7 +118,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
             reservedNicknameRepository: $this->reservedNicknameRepository(),
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
-            localeConfig: $this->getContainer()->get(LocaleConfig::class),
+            localeResolver: $this->getContainer()->get(LocaleResolver::class),
         );
     }
 

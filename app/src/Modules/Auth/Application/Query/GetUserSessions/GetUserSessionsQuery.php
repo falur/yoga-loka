@@ -8,5 +8,6 @@ final readonly class GetUserSessionsQuery
 {
     public function __construct(
         public string $userId,
+        public string $currentSessionId,
     ) {}
 }

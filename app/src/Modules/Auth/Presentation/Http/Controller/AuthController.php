@@ -16,9 +16,9 @@ use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionComm
 use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionHandler;
 use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeCommand;
 use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeHandler;
-use App\Modules\Auth\Application\Query\GetUserSessions\AuthSession;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsHandler;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsQuery;
+use App\Modules\Auth\Application\View\SessionView;
 use App\Modules\Auth\Presentation\Http\Filter\ListSessionsFilter;
 use App\Modules\Auth\Presentation\Http\Filter\LogoutFilter;
 use App\Modules\Auth\Presentation\Http\Filter\RefreshFilter;
@@ -226,15 +226,15 @@ final readonly class AuthController
         QueryBusInterface $queryBus,
     ): CollectionResponse {
         $userSessions = $queryBus->dispatch(
-            query: new GetUserSessionsQuery(userId: $listSessionsFilter->authUserId),
+            query: new GetUserSessionsQuery(
+                userId: $listSessionsFilter->authUserId,
+                currentSessionId: $listSessionsFilter->authSessionId,
+            ),
             handler: $getUserSessionsHandler->handle(...),
         );
 
         $sessionResources = $userSessions->mapToList(
-            static fn(AuthSession $session): SessionResource => SessionResource::fromSession(
-                session: $session,
-                currentSessionId: $listSessionsFilter->authSessionId,
-            ),
+            static fn(SessionView $session): SessionResource => SessionResource::fromView($session),
         );
 
         return new CollectionResponse($sessionResources);

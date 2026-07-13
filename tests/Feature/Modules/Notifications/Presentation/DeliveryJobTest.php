@@ -30,12 +30,17 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\NullLogger;
 use Spiral\Queue\Exception\RetryException;
 use Tests\DatabaseTestCase;
+use Tests\Support\Media\PersistsMedia;
 
 final class DeliveryJobTest extends DatabaseTestCase
 {
+    use PersistsMedia;
+
+
     public function testPushJobRetriesOnTransientFailure(): void
     {
         $userId = UserId::generate();
@@ -69,7 +74,7 @@ final class DeliveryJobTest extends DatabaseTestCase
 
         $this->expectException(RetryException::class);
 
-        $this->invokeRealtimeJob(new PublishRealtimeNotificationHandler($centrifugoService, new NullLogger()));
+        $this->invokeRealtimeJob($this->realtimeHandler($centrifugoService));
     }
 
     public function testRealtimeJobRethrowsTerminalFailure(): void
@@ -79,7 +84,7 @@ final class DeliveryJobTest extends DatabaseTestCase
 
         $this->expectException(\RuntimeException::class);
 
-        $this->invokeRealtimeJob(new PublishRealtimeNotificationHandler($centrifugoService, new NullLogger()));
+        $this->invokeRealtimeJob($this->realtimeHandler($centrifugoService));
     }
 
     public function testJobRegistryMapsMessagesToJobs(): void
@@ -146,7 +151,19 @@ final class DeliveryJobTest extends DatabaseTestCase
             notificationDeviceTokenRepository: $this->getContainer()->get(NotificationDeviceTokenRepository::class),
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence,
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
+            logger: new NullLogger(),
+        );
+    }
+
+    private function realtimeHandler(CentrifugoServiceContract $centrifugoService): PublishRealtimeNotificationHandler
+    {
+        return new PublishRealtimeNotificationHandler(
+            centrifugoService: $centrifugoService,
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
             logger: new NullLogger(),
         );
     }

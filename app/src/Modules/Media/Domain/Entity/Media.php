@@ -173,30 +173,35 @@ final class Media
     }
 
     /**
-     * Готовое медиа не «ломается» задним числом: повторная/запоздалая фиксация ошибки на уже
-     * ready-медиа — no-op (симметрично guard'у в markReadyMovedTo). Защищает инвариант
-     * «ready без ошибки» независимо от вызывающего, даже если фиксацию сбоя задиспатчат в обход
-     * isReady-guard'а в ProcessMediaHandler (другой relay, ручной перезапуск Job, дубликат в очереди).
+     * Финализированное медиа не «ломается» задним числом: повторная/запоздалая фиксация ошибки на
+     * уже готовом медиа (ready или readyOriginalRemoved) — no-op (симметрично guard'у в
+     * markReadyMovedTo). Защищает инвариант «готовое без ошибки» независимо от вызывающего, даже
+     * если фиксацию сбоя запустят в обход isFinalized-guard'а в ProcessMediaHandler (другой relay,
+     * ручной перезапуск Job, дубликат в очереди после удаления оригинала).
      */
     public function recordTemporaryProcessingError(MediaProcessingError $processingError): void
     {
-        if ($this->status === MediaStatus::Ready) {
-            return;
-        }
-
-        $this->status = MediaStatus::ProcessingFailed;
-        $this->processingAttempts = $this->processingAttempts->increment();
-        $this->processingError = $processingError;
-        $this->touch();
+        $this->recordProcessingError($processingError);
     }
 
     /**
-     * См. recordTemporaryProcessingError: тот же инвариант «ready без ошибки» — на уже
-     * ready-медиа фиксация постоянной ошибки также no-op.
+     * См. recordTemporaryProcessingError: тот же инвариант «готовое без ошибки» — на уже
+     * финализированном медиа (ready или readyOriginalRemoved) фиксация постоянной ошибки также no-op.
      */
     public function recordPermanentProcessingError(MediaProcessingError $processingError): void
     {
-        if ($this->status === MediaStatus::Ready) {
+        $this->recordProcessingError($processingError);
+    }
+
+    /**
+     * Общее тело фиксации ошибки обработки для временной и постоянной ошибки: оба перехода
+     * идентичны (статус processingFailed, инкремент попыток, запись ошибки) и одинаково защищены
+     * guard'ом isFinalized. Остаётся приватным, а recordTemporary/PermanentProcessingError —
+     * публичные точки доменного контракта.
+     */
+    private function recordProcessingError(MediaProcessingError $processingError): void
+    {
+        if ($this->isFinalized()) {
             return;
         }
 
@@ -246,8 +251,45 @@ final class Media
         return $this->status === MediaStatus::Ready;
     }
 
+    /**
+     * Оригинал удалён, но конверсии обслуживаются (readyOriginalRemoved). Прячет сравнение с конкретным
+     * статусом от вызывающих (как isReady()/isFinalized()), чтобы Application не знал конкретный вариант
+     * enum.
+     */
+    public function isOriginalRemoved(): bool
+    {
+        return $this->status === MediaStatus::ReadyOriginalRemoved;
+    }
+
+    /**
+     * Терминальное «готовое» состояние: обработка завершена и конверсии обслуживаются — как при ready,
+     * так и после удаления оригинала (readyOriginalRemoved). Используется там, где важна готовность
+     * конверсий, а не наличие оригинала: конверсионные запросы и защита от поздней переобработки.
+     */
+    public function isFinalized(): bool
+    {
+        return $this->status === MediaStatus::Ready || $this->status === MediaStatus::ReadyOriginalRemoved;
+    }
+
+    /**
+     * Перевод в readyOriginalRemoved после физического удаления оригинала из целевого бакета.
+     * Домен сам отстаивает инвариант источника независимо от вызывающего (симметрично markReadyMovedTo
+     * и guard'у isFinalized в recordProcessingError): допустим только из ready. Идемпотентен: повторный
+     * вызов на уже readyOriginalRemoved — no-op. Из любого другого статуса — InvalidDomainValueException,
+     * чтобы оригинал не оказался «удалён» у медиа, которое никогда не было готовым.
+     */
     public function markReadyOriginalRemoved(): void
     {
+        if ($this->status === MediaStatus::ReadyOriginalRemoved) {
+            return;
+        }
+
+        if ($this->status !== MediaStatus::Ready) {
+            throw new InvalidDomainValueException(
+                'Удаление оригинала медиа допустимо только из ready.',
+            );
+        }
+
         $this->status = MediaStatus::ReadyOriginalRemoved;
         $this->processingError = MediaProcessingError::none();
         $this->touch();

@@ -8,6 +8,6 @@ final readonly class FindMediaUrlQuery
 {
     public function __construct(
         public string $mediaId,
-        public int $presignedTtlSeconds,
+        public int|null $presignedTtlSeconds = null,
     ) {}
 }

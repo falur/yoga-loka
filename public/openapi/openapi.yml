@@ -524,6 +524,13 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
 components:
   schemas:
+    AttachmentType:
+      type: string
+      enum:
+        - none
+        - media
+        - lesson
+        - practice
     AuthorResource:
       type: object
       properties:
@@ -531,12 +538,11 @@ components:
           type: string
         name:
           type: string
-        avatarUrl:
-          type: string
+        avatar:
+          oneOf: [{ $ref: '#/components/schemas/MediaResource' }, { type: 'null' }]
       required:
         - userId
         - name
-        - avatarUrl
     CommentResource:
       type: object
       properties:
@@ -556,6 +562,7 @@ components:
           type: boolean
         createdAt:
           type: string
+          format: date-time
         author:
           $ref: '#/components/schemas/AuthorResource'
       required:
@@ -567,6 +574,11 @@ components:
         - likedByMe
         - createdAt
         - author
+    DevicePlatform:
+      type: string
+      enum:
+        - ios
+        - android
     ErrorResponse:
       type: object
       properties:
@@ -587,6 +599,68 @@ components:
       type: string
       enum:
         - ok
+    MediaAudioConversionType:
+      type: string
+      enum:
+        - normalizedAacM4a
+    MediaConversionKind:
+      type: string
+      enum:
+        - image
+        - video
+        - audio
+    MediaConversionResource:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/MediaConversionKind'
+        type:
+          oneOf: [{ $ref: '#/components/schemas/MediaImageConversionType' }, { $ref: '#/components/schemas/MediaVideoConversionType' }, { $ref: '#/components/schemas/MediaAudioConversionType' }]
+        url:
+          type: string
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+      required:
+        - kind
+        - type
+        - url
+    MediaImageConversionType:
+      type: string
+      enum:
+        - thumbnail
+        - preview
+        - large
+        - poster
+    MediaOriginalResource:
+      type: object
+      properties:
+        url:
+          type: string
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+      required:
+        - url
+    MediaResource:
+      type: object
+      properties:
+        id:
+          type: string
+        position:
+          type: [integer, 'null']
+        original:
+          oneOf: [{ $ref: '#/components/schemas/MediaOriginalResource' }, { type: 'null' }]
+        conversions:
+          type: array
+          items: { $ref: '#/components/schemas/MediaConversionResource' }
+      required:
+        - id
+        - conversions
+    MediaVideoConversionType:
+      type: string
+      enum:
+        - normalizedMp4H264
     NotificationActionResource:
       type: object
       properties:
@@ -605,20 +679,26 @@ components:
         name:
           type: string
         avatarUrl:
-          type: string
+          type: [string, 'null']
       required:
         - id
         - name
-        - avatarUrl
+    NotificationChannel:
+      type: string
+      enum:
+        - database
+        - push
+        - realtime
     NotificationDeviceTokenResource:
       type: object
       properties:
         id:
           type: string
         platform:
-          type: string
+          $ref: '#/components/schemas/DevicePlatform'
         createdAt:
           type: string
+          format: date-time
       required:
         - id
         - platform
@@ -642,6 +722,7 @@ components:
           type: boolean
         createdAt:
           type: string
+          format: date-time
       required:
         - id
         - type
@@ -655,7 +736,7 @@ components:
         type:
           type: string
         channel:
-          type: string
+          $ref: '#/components/schemas/NotificationChannel'
         enabled:
           type: boolean
         default:
@@ -665,19 +746,6 @@ components:
         - channel
         - enabled
         - default
-    PostMediaItemResource:
-      type: object
-      properties:
-        mediaId:
-          type: string
-        url:
-          type: string
-        position:
-          type: integer
-      required:
-        - mediaId
-        - url
-        - position
     PostResource:
       type: object
       properties:
@@ -686,9 +754,9 @@ components:
         text:
           type: [string, 'null']
         status:
-          type: string
+          $ref: '#/components/schemas/PostStatus'
         attachmentType:
-          type: string
+          $ref: '#/components/schemas/AttachmentType'
         likesCount:
           type: integer
         repostsCount:
@@ -699,11 +767,12 @@ components:
           type: boolean
         createdAt:
           type: string
+          format: date-time
         author:
           $ref: '#/components/schemas/AuthorResource'
         media:
           type: array
-          items: { $ref: '#/components/schemas/PostMediaItemResource' }
+          items: { $ref: '#/components/schemas/MediaResource' }
         tags:
           type: array
           items: { $ref: '#/components/schemas/TagResource' }
@@ -721,6 +790,12 @@ components:
         - author
         - media
         - tags
+    PostStatus:
+      type: string
+      enum:
+        - draft
+        - published
+        - blocked
     SessionResource:
       type: object
       properties:
@@ -728,8 +803,10 @@ components:
           type: string
         createdAt:
           type: string
+          format: date-time
         expiresAt:
           type: string
+          format: date-time
         ip:
           type: [string, 'null']
         device:

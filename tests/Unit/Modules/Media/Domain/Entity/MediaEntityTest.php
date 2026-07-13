@@ -99,6 +99,78 @@ final class MediaEntityTest extends TestCase
         self::assertTrue($media->processingError->isEmpty());
     }
 
+    public function testIsFinalizedIsTrueForReadyAndRemovedOriginal(): void
+    {
+        self::assertTrue($this->readyMedia()->isFinalized());
+        self::assertTrue($this->readyOriginalRemovedMedia()->isFinalized());
+    }
+
+    public function testIsFinalizedIsFalseForEveryNonFinalizedStatus(): void
+    {
+        $error = MediaProcessingError::fromString('Ошибка обработки');
+
+        $waitingUpload = $this->createMedia();
+
+        $completing = $this->createMedia();
+        $completing->startCompletingMultipartUpload();
+
+        $multipartFailedCanRetry = $this->createMedia();
+        $multipartFailedCanRetry->markMultipartCompletionFailedCanRetry($error);
+
+        $multipartFailedNeedReupload = $this->createMedia();
+        $multipartFailedNeedReupload->markMultipartCompletionFailedNeedReupload($error);
+
+        $uploaded = $this->createMedia();
+        $uploaded->markUploaded();
+
+        $processing = $this->createMedia();
+        $processing->markUploaded();
+        $processing->startProcessing();
+
+        $processingFailed = $this->createMedia();
+        $processingFailed->markUploaded();
+        $processingFailed->recordPermanentProcessingError($error);
+
+        $nonFinalized = [
+            MediaStatus::WaitingUpload->value => $waitingUpload,
+            MediaStatus::CompletingMultipartUpload->value => $completing,
+            MediaStatus::MultipartCompletionFailedCanRetry->value => $multipartFailedCanRetry,
+            MediaStatus::MultipartCompletionFailedNeedReupload->value => $multipartFailedNeedReupload,
+            MediaStatus::Uploaded->value => $uploaded,
+            MediaStatus::Processing->value => $processing,
+            MediaStatus::ProcessingFailed->value => $processingFailed,
+        ];
+
+        foreach ($nonFinalized as $statusValue => $media) {
+            self::assertSame($statusValue, $media->status->value);
+            self::assertFalse($media->isFinalized(), $statusValue);
+        }
+    }
+
+    public function testIsOriginalRemovedIsTrueOnlyAfterOriginalRemoved(): void
+    {
+        self::assertFalse($this->createMedia()->isOriginalRemoved());
+        self::assertFalse($this->readyMedia()->isOriginalRemoved());
+        self::assertTrue($this->readyOriginalRemovedMedia()->isOriginalRemoved());
+    }
+
+    public function testRecordProcessingErrorIsNoOpOnReadyOriginalRemovedMedia(): void
+    {
+        // Симметрично кейсу для ready: после удаления оригинала медиа также не «ломается» задним
+        // числом — поздняя фиксация ошибки (временной и постоянной) остаётся no-op.
+        $media = $this->readyOriginalRemovedMedia();
+
+        $media->recordTemporaryProcessingError(MediaProcessingError::fromString('Временная ошибка'));
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        self::assertSame(0, $media->processingAttempts->value());
+        self::assertTrue($media->processingError->isEmpty());
+
+        $media->recordPermanentProcessingError(MediaProcessingError::fromString('Постоянная ошибка'));
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        self::assertSame(0, $media->processingAttempts->value());
+        self::assertTrue($media->processingError->isEmpty());
+    }
+
     public function testRecordPermanentProcessingErrorMovesUploadedToProcessingFailed(): void
     {
         $media = $this->createMedia();
@@ -163,6 +235,26 @@ final class MediaEntityTest extends TestCase
         $media->markReadyMovedTo(MediaStorage::Public, $this->readyPath());
     }
 
+    public function testMarkReadyOriginalRemovedRejectsTransitionFromNonReady(): void
+    {
+        $media = $this->createMedia();
+        $media->markUploaded();
+
+        $this->expectException(InvalidDomainValueException::class);
+
+        $media->markReadyOriginalRemoved();
+    }
+
+    public function testMarkReadyOriginalRemovedIsIdempotent(): void
+    {
+        $media = $this->readyOriginalRemovedMedia();
+
+        // Повторный вызов на уже removed-original — no-op, статус сохраняется.
+        $media->markReadyOriginalRemoved();
+
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+    }
+
     public function testAudioConversionCreateInitializesFields(): void
     {
         $media = $this->createMedia();
@@ -192,6 +284,23 @@ final class MediaEntityTest extends TestCase
         self::assertSame(44_100, $audioConversion->sampleRate->value());
         self::assertSame([0, 64, 128, 255], $audioConversion->waveform->peaks());
         self::assertSame($audioConversion->createdAt, $audioConversion->updatedAt);
+    }
+
+    private function readyMedia(): Media
+    {
+        $media = $this->createMedia();
+        $media->markUploaded();
+        $media->markReadyMovedTo(MediaStorage::Public, $this->readyPath());
+
+        return $media;
+    }
+
+    private function readyOriginalRemovedMedia(): Media
+    {
+        $media = $this->readyMedia();
+        $media->markReadyOriginalRemoved();
+
+        return $media;
     }
 
     private function readyPath(): MediaPath

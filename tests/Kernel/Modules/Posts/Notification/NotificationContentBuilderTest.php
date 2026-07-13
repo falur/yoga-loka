@@ -4,42 +4,39 @@ declare(strict_types=1);
 
 namespace Tests\Kernel\Modules\Posts\Notification;
 
+use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
+use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Posts\Application\Notification\NotificationContentBuilder;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Shared\Domain\Exception\InvalidDomainValueException;
+use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Tests\TestCase;
 
 /**
  * Сборщик содержимого уведомлений Posts рендерит непустые заголовок и тело в локали получателя
- * (ru и en дают разный текст), корректно собирает deep-link action и снимок автора; пустой
- * avatarUrl недопустим (его непустоту гарантирует профиль автора).
+ * (ru и en дают разный текст) и прокладывает готовые снимок автора (actor) и переход (action) в
+ * NotificationContent без изменений.
  */
 final class NotificationContentBuilderTest extends TestCase
 {
     public function testBuildsNonEmptyTranslatedContentForEveryTypeInBothLocales(): void
     {
         $builder = $this->builder();
-        $actorId = UserId::generate();
+        $actor = NotificationActor::of(userId: UserId::generate(), name: 'Иван', avatarMediaId: UserId::generate()->value());
+        $action = NotificationAction::linkTo(actionType: 'post', actionId: UserId::generate()->value());
 
         foreach (PostNotificationType::cases() as $type) {
             $russian = $builder->build(
                 type: $type,
-                actorUserId: $actorId,
-                actorName: 'Иван',
-                actorAvatarUrl: 'https://cdn.example/avatar.jpg',
-                recipientLocale: 'ru',
-                actionType: 'post',
-                actionId: $actorId->value(),
+                actor: $actor,
+                action: $action,
+                recipientLocale: Locale::Ru,
             );
             $english = $builder->build(
                 type: $type,
-                actorUserId: $actorId,
-                actorName: 'Иван',
-                actorAvatarUrl: 'https://cdn.example/avatar.jpg',
-                recipientLocale: 'en',
-                actionType: 'post',
-                actionId: $actorId->value(),
+                actor: $actor,
+                action: $action,
+                recipientLocale: Locale::En,
             );
 
             self::assertNotSame('', $russian->title->value());
@@ -53,19 +50,17 @@ final class NotificationContentBuilderTest extends TestCase
         }
     }
 
-    public function testAssemblesActionAndActor(): void
+    public function testPassesActionAndActorThrough(): void
     {
         $actorId = UserId::generate();
         $commentId = UserId::generate()->value();
+        $avatarMediaId = UserId::generate()->value();
 
         $content = $this->builder()->build(
             type: PostNotificationType::CommentReply,
-            actorUserId: $actorId,
-            actorName: 'Мария',
-            actorAvatarUrl: 'https://cdn.example/m.jpg',
-            recipientLocale: 'ru',
-            actionType: 'comment',
-            actionId: $commentId,
+            actor: NotificationActor::of(userId: $actorId, name: 'Мария', avatarMediaId: $avatarMediaId),
+            action: NotificationAction::linkTo(actionType: 'comment', actionId: $commentId),
+            recipientLocale: Locale::Ru,
         );
 
         self::assertSame(
@@ -73,23 +68,8 @@ final class NotificationContentBuilderTest extends TestCase
             $content->action->jsonSerialize(),
         );
         self::assertSame(
-            ['id' => $actorId->value(), 'name' => 'Мария', 'avatarUrl' => 'https://cdn.example/m.jpg'],
+            ['id' => $actorId->value(), 'name' => 'Мария', 'avatarMediaId' => $avatarMediaId],
             $content->actor->jsonSerialize(),
-        );
-    }
-
-    public function testRejectsEmptyAvatarUrl(): void
-    {
-        $this->expectException(InvalidDomainValueException::class);
-
-        $this->builder()->build(
-            type: PostNotificationType::PostLike,
-            actorUserId: UserId::generate(),
-            actorName: 'Иван',
-            actorAvatarUrl: '',
-            recipientLocale: 'ru',
-            actionType: 'post',
-            actionId: UserId::generate()->value(),
         );
     }
 

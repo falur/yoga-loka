@@ -53,8 +53,8 @@ final readonly class ProcessMediaHandler
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
             ?? throw new NotFoundException('app.media.not_found');
 
-        if ($media->isReady()) {
-            $this->logger->debug(message: 'Обработка медиа пропущена: уже ready.', context: [
+        if ($media->isFinalized()) {
+            $this->logger->debug(message: 'Обработка медиа пропущена: медиа уже финализировано.', context: [
                 'mediaId' => $media->id->value(),
             ]);
 

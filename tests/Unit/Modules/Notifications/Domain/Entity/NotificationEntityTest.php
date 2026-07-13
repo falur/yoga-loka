@@ -49,14 +49,15 @@ final class NotificationEntityTest extends TestCase
     public function testCreateStoresActorSnapshot(): void
     {
         $actorId = UserId::generate();
+        $avatarMediaId = UserId::generate()->value();
         $notification = $this->createNotification(
-            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $avatarMediaId),
         );
 
         self::assertTrue($notification->actor->isPresent());
         self::assertSame($actorId->value(), $notification->actor->presentId());
         self::assertSame('Иван', $notification->actor->presentName());
-        self::assertSame('https://cdn/a.jpg', $notification->actor->presentAvatarUrl());
+        self::assertSame($avatarMediaId, $notification->actor->presentAvatarMediaId());
     }
 
     public function testCreateWithoutActorHasNoActor(): void

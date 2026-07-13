@@ -17,11 +17,15 @@ use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
+use Tests\Support\Media\PersistsMedia;
 
 final class SendPushNotificationHandlerTest extends DatabaseTestCase
 {
+    use PersistsMedia;
+
     public function testSendsPushAndRemovesInvalidTokens(): void
     {
         $userId = UserId::generate();
@@ -41,12 +45,13 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             });
 
         $actorId = UserId::generate();
+        $avatarMedia = $this->persistReadyPublicMedia();
         $this->handler($fcmPushSender)->handle(new SendPushNotificationCommand(
             userId: $userId->value(),
             title: 'Новое сообщение',
             body: 'Вам пришло сообщение',
             action: null,
-            actor: new NotificationActorPayload(id: $actorId->value(), name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
+            actor: new NotificationActorPayload(id: $actorId->value(), name: 'Иван', avatarMediaId: $avatarMedia->id->value()),
         ));
 
         self::assertInstanceOf(NotificationPush::class, $capturedPush);
@@ -54,7 +59,8 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
         self::assertNotNull($capturedPush->actor);
         self::assertSame($actorId->value(), $capturedPush->actor->id);
         self::assertSame('Иван', $capturedPush->actor->name);
-        self::assertSame('https://cdn/a.jpg', $capturedPush->actor->avatarUrl);
+        // Аватар хранится как id медиа — для push резолвится в одну ссылку (original) к моменту отправки.
+        self::assertSame(self::STUBBED_MEDIA_URL, $capturedPush->actor->avatarUrl);
         // Порядок задаётся репозиторием: ORDER BY id DESC по UUID v7; invalid-token создан позже, поэтому идёт первым.
         self::assertSame(['invalid-token', 'valid-token'], $capturedTokens);
 
@@ -62,6 +68,42 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
         self::assertCount(1, $remaining);
         self::assertInstanceOf(NotificationDeviceToken::class, $this->deviceTokenRepository()->findByToken(DeviceToken::fromString('valid-token')));
         self::assertNull($this->deviceTokenRepository()->findByToken(DeviceToken::fromString('invalid-token')));
+    }
+
+    public function testResolvesAvatarUrlToNullWhenMediaUnavailable(): void
+    {
+        $userId = UserId::generate();
+        $this->persistToken($userId, 'valid-token');
+        $notReadyMedia = $this->persistNotReadyMedia();
+
+        $capturedPush = $this->capturePush(new SendPushNotificationCommand(
+            userId: $userId->value(),
+            title: 'Новое сообщение',
+            body: 'Вам пришло сообщение',
+            action: null,
+            actor: new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $notReadyMedia->id->value()),
+        ));
+
+        self::assertNotNull($capturedPush->actor);
+        // Медиа не финализировано -> ссылки нет; в FCM data ключ actorAvatarUrl не попадёт.
+        self::assertNull($capturedPush->actor->avatarUrl);
+    }
+
+    public function testResolvesAvatarUrlToNullWhenActorHasNoAvatarMedia(): void
+    {
+        $userId = UserId::generate();
+        $this->persistToken($userId, 'valid-token');
+
+        $capturedPush = $this->capturePush(new SendPushNotificationCommand(
+            userId: $userId->value(),
+            title: 'Новое сообщение',
+            body: 'Вам пришло сообщение',
+            action: null,
+            actor: new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: null),
+        ));
+
+        self::assertNotNull($capturedPush->actor);
+        self::assertNull($capturedPush->actor->avatarUrl);
     }
 
     public function testKeepsAllTokensWhenNoneInvalid(): void
@@ -143,6 +185,25 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
         self::assertCount(1, $this->deviceTokenRepository()->findAllForUser($userId));
     }
 
+    private function capturePush(SendPushNotificationCommand $command): NotificationPush
+    {
+        $capturedPush = null;
+        $fcmPushSender = $this->createMock(FcmPushSenderContract::class);
+        $fcmPushSender->expects(self::once())
+            ->method('send')
+            ->willReturnCallback(function (NotificationPush $push, array $tokens) use (&$capturedPush): FcmPushResult {
+                $capturedPush = $push;
+
+                return new FcmPushResult(invalidTokens: []);
+            });
+
+        $this->handler($fcmPushSender)->handle($command);
+
+        self::assertInstanceOf(NotificationPush::class, $capturedPush);
+
+        return $capturedPush;
+    }
+
     private function handler(
         FcmPushSenderContract $fcmPushSender,
         OnlinePresenceContract|null $onlinePresence = null,
@@ -151,6 +212,8 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             notificationDeviceTokenRepository: $this->deviceTokenRepository(),
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence ?? $this->offlinePresence(),
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: new NullLogger(),
         );

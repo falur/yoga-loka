@@ -7,6 +7,9 @@ namespace Tests\Feature\Modules\User\Application;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Entity\MediaImageConversion;
+use App\Modules\Media\Domain\Enum\MediaConversionStatus;
+use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
@@ -14,7 +17,9 @@ use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
+use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\FileService\MediaUrlService;
 use App\Modules\Media\Repository\MediaRepository;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
 use App\Modules\User\Domain\Entity\User;
@@ -25,8 +30,9 @@ use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Configuration\User\UserConfig;
+use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
 use Cycle\ORM\EntityManagerInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Tests\DatabaseTestCase;
 
 /**
@@ -80,23 +86,57 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
         return $media;
     }
 
+    protected function persistReadyOriginalRemovedMedia(): Media
+    {
+        $media = $this->createMedia(MediaVisibility::Public);
+        $media->markUploaded();
+        $media->markReadyMovedTo(
+            MediaStorage::Public,
+            MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Image, extension: 'jpg'),
+        );
+        $media->markReadyOriginalRemoved();
+        $this->persist($media);
+
+        return $media;
+    }
+
+    protected function persistThumbnailConversion(Media $media): MediaImageConversion
+    {
+        $conversion = MediaImageConversion::create(
+            media: $media,
+            type: MediaImageConversionType::Thumbnail,
+            status: MediaConversionStatus::Ready,
+            storage: $media->storage,
+            path: MediaPath::imageConversion(
+                storageKey: $media->storageKey,
+                type: MediaImageConversionType::Thumbnail,
+                extension: 'jpg',
+            ),
+            mimeType: MediaMimeType::fromString('image/jpeg'),
+            size: MediaFileSize::fromInt(256),
+            width: MediaPixelDimension::fromInt(100),
+            height: MediaPixelDimension::fromInt(100),
+        );
+        $this->persist($conversion);
+
+        return $conversion;
+    }
+
     protected function profileHandlerAssembler(): UserPublicProfileAssembler
     {
         $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('publicUrl')->willReturn(self::STUBBED_AVATAR_URL);
 
         return new UserPublicProfileAssembler(
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
             findMediaUrlHandler: new FindMediaUrlHandler(
                 mediaRepository: $this->getContainer()->get(MediaRepository::class),
-                mediaFileService: $fileService,
+                mediaUrlService: new MediaUrlService(
+                    mediaFileService: $fileService,
+                    mediaConfig: $this->getContainer()->get(MediaConfig::class),
+                ),
             ),
-            userConfig: $this->getContainer()->get(UserConfig::class),
         );
-    }
-
-    protected function defaultAvatarUrl(): string
-    {
-        return $this->getContainer()->get(UserConfig::class)->defaultAvatarUrl;
     }
 
     protected function userRepository(): UserRepository

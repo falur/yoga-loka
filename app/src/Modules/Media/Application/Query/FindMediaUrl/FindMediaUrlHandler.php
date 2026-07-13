@@ -4,49 +4,42 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Query\FindMediaUrl;
 
-use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaUrlResult;
-use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
+use App\Modules\Media\Application\Dto\MediaUrlsResult;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
 use App\Modules\Media\Repository\MediaRepository;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
 /**
- * Не бросающий вариант GetMediaUrl для best-effort отображения (например, аватара в профиле):
- * если медиа отсутствует или ещё не готово — возвращает null, чтобы вызывающий подставил значение
- * по умолчанию без try-catch. Для публичного медиа отдаёт прямой URL, для приватного — presigned.
+ * Best-effort разрешение всех URL медиа по его id: оригинал (если не удалён) и все конверсии.
+ * Грузит медиа вместе с конверсиями одним набором запросов и делегирует построение URL в
+ * MediaUrlService. Возвращает null, если медиа нет или оно не финализировано, чтобы вызывающий
+ * подставил значение по умолчанию (аватар в профиле) без try-catch. Оговорка: невалидный переданный
+ * presignedTtlSeconds (например, явный 0) — ошибка входа, она бросается, а не превращается в null.
+ *
+ * Для модулей, которые уже держат сущность Media загруженной (например, лента Posts через relation),
+ * есть прямой путь MediaUrlService::getUrls(Media) — без повторной загрузки.
+ *
+ * Аватар профиля (User) разрешает ссылки через этот путь: набор MediaUrlsResult (оригинал + все
+ * конверсии) отдаётся одним свойством avatar. Лента Posts строит такой же полный набор из уже
+ * загруженной сущности напрямую через MediaUrlService::getUrls.
  */
 final readonly class FindMediaUrlHandler
 {
     public function __construct(
         private MediaRepository $mediaRepository,
-        private MediaFileServiceContract $mediaFileService,
+        private MediaUrlServiceContract $mediaUrlService,
     ) {}
 
     #[LogOperation]
-    public function handle(FindMediaUrlQuery $query): MediaUrlResult|null
+    public function handle(FindMediaUrlQuery $query): MediaUrlsResult|null
     {
-        $media = $this->mediaRepository->findById(MediaId::fromString($query->mediaId));
+        $media = $this->mediaRepository->findByIdWithConversions(MediaId::fromString($query->mediaId));
 
-        if ($media === null || !$media->isReady()) {
+        if ($media === null) {
             return null;
         }
 
-        if ($media->visibility === MediaVisibility::Public) {
-            return new MediaUrlResult(
-                url: $this->mediaFileService->publicUrl(storage: $media->storage, path: $media->path),
-                expiresAt: null,
-            );
-        }
-
-        $expiresAt = new \DateTimeImmutable()->add(
-            new \DateInterval(\sprintf('PT%dS', MediaPresignedTtl::fromInt($query->presignedTtlSeconds)->value())),
-        );
-
-        return new MediaUrlResult(
-            url: $this->mediaFileService->presignGet(storage: $media->storage, path: $media->path, expiresAt: $expiresAt),
-            expiresAt: $expiresAt,
-        );
+        return $this->mediaUrlService->getUrls(media: $media, presignedTtlSeconds: $query->presignedTtlSeconds);
     }
 }

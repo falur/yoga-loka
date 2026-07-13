@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Presentation\Http\Resource;
 
-use App\Modules\Notifications\Domain\Entity\Notification;
+use App\Modules\Notifications\Application\View\NotificationView;
 use App\Shared\Presentation\Http\Resource\AbstractResource;
 
 /**
  * Ресурс уведомления для мобильного клиента. title/body отдаются как сохранено (без перевода),
- * action — вложенный ресурс перехода либо null, actor — вложенный снимок автора {id, name, avatarUrl}
+ * action — вложенный ресурс перехода либо null, actor — вложенный снимок автора с аватаром-MediaView
  * либо null (клиент показывает аватар автора без отдельного запроса к профилю).
  */
 final readonly class NotificationResource extends AbstractResource
@@ -22,22 +22,20 @@ final readonly class NotificationResource extends AbstractResource
         public NotificationActionResource|null $action,
         public NotificationActorResource|null $actor,
         public bool $read,
-        public string $createdAt,
+        public \DateTimeImmutable $createdAt,
     ) {}
 
-    public static function fromEntity(Notification $notification): self
+    public static function fromView(NotificationView $notification): self
     {
-        $action = $notification->action();
-
         return new self(
-            id: $notification->id->value(),
-            type: $notification->type->value(),
-            title: $notification->title->value(),
-            body: $notification->body->value(),
-            action: $action->hasLink() ? NotificationActionResource::fromAction($action) : null,
-            actor: $notification->actor->isPresent() ? NotificationActorResource::fromActor($notification->actor) : null,
-            read: $notification->isRead(),
-            createdAt: $notification->createdAt->format(\DateTimeInterface::ATOM),
+            id: $notification->id,
+            type: $notification->type,
+            title: $notification->title,
+            body: $notification->body,
+            action: $notification->action === null ? null : NotificationActionResource::fromView($notification->action),
+            actor: $notification->actor === null ? null : NotificationActorResource::fromView($notification->actor),
+            read: $notification->read,
+            createdAt: $notification->createdAt,
         );
     }
 }

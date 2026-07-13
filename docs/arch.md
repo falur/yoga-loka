@@ -123,6 +123,8 @@ Shared/
     Exception/
     Trait/
     ValueObject/
+  Application/
+    View/
   Presentation/
     Http/
       Resource/
@@ -155,14 +157,36 @@ User/Application/SetAvatar
 
 `Media` не должен знать про аватар. Аватар - это часть `User`.
 
+### Исключение: `Media` — foundational-модуль
+
+`Media` — универсальный (foundational) модуль: хранение и раздача файлов нужны почти любому
+модулю. Поэтому для него действует осознанное исключение из правила «модули общаются только через
+`Application`»: другим модулям разрешено **держать ORM-relation на сущности `Media` (на чтение)** и
+**передавать загруженную сущность `Media` в Application-сервисы `Media`**.
+
+Зачем: чтение списков с вложениями (лента `Posts`) должно грузить медиа и их конверсии вместе с
+основной выборкой (`->load('media.imageConversions'...)`), а не разрешать URL поэлементно (N+1).
+Для этого `PostMedia` объявляет `#[BelongsTo(target: Media::class, ..., cascade: false, fkCreate:
+false)]` и eager-грузит её в репозитории, после чего URL строится из уже загруженной сущности без
+обращений в БД: лента получает URL через `MediaUrlService::getUrls(Media $media)` и берёт из набора
+только оригинал (eager-загруженные конверсии держатся под планируемый показ превью); тот же метод
+отдаёт полный набор «оригинал + конверсии» (путь `FindMediaUrl`).
+
+Что по-прежнему **запрещено** даже для `Media`: использовать `MediaRepository` или `Media/Infrastructure`
+из другого модуля; писать/менять данные `Media` через relation (поэтому `cascade: false`); заводить
+кросс-модульный FK ради такой связи (`fkCreate: false` — FK либо уже есть в миграции, либо его нет).
+Запись и изменение медиа идут только через Command-сценарии `Media/Application`.
+
 `Media` должен давать только свои сценарии:
 
 ```text
 CreateMedia
 DeleteMedia
+RemoveMediaOriginal
 CheckMediaExists
 CheckMediaIsImage
-GetMediaUrl
+FindMediaUrl
+FindMediaUrls
 ```
 
 ## Локальный Docker-runtime
@@ -199,6 +223,8 @@ app/
         Domain/                   # Entity, ValueObject, Enum, доменные коллекции
         Application/              # Command/Query сценарии модуля
           Contract/               # Контракты технических сервисов, *Contract
+          Service/                # Внутримодульные stateless-помощники Application (резолверы/чекеры): инкапсулируют репозитории своего модуля под один use-case-вопрос
+          View/                   # Read-model: {Name}View и {Name}ViewAssembler
         Repository/               # Cycle repositories с доменными методами
         Infrastructure/
           Cycle/                  # Typecast и другие классы Cycle ORM
@@ -237,12 +263,18 @@ app/
 
     Shared/
       Domain/
+        Collection/               # Базовая типизированная коллекция TypedCollection
+        Enum/                     # Общие доменные enum (например Locale)
         Exception/                # Общие доменные исключения
+        Locale/                   # Доменный сервис разбора локали (LocaleResolver)
+        Pagination/               # Примитивы cursor-пагинации (CursorSlice)
         Trait/                    # Общие доменные трейты
         ValueObject/              # Общие базовые VO и общие идентификаторы
+      Application/
+        View/                     # Общие View нескольких модулей (MediaView)
       Presentation/
         Http/
-          Resource/               # Общие базовые API-ресурсы
+          Resource/               # Общие базовые и общие конкретные API-ресурсы
       Infrastructure/
         Cache/
         Configuration/            # Типизированные config DTO и ConfigMapper
@@ -264,22 +296,40 @@ Domain         -> PHP standard library, свой Domain, Shared/Domain
 Shared         -> общий доменный и инфраструктурный код без привязки к одному модулю
 ```
 
-Осознанное исключение: типизированный `TypedConfig` из
-`Shared/Infrastructure/Configuration` может инжектиться напрямую в Application-Handler,
-когда сценарию нужны инфра-дефолты (staging-TTL, пороги, размеры, драйвер). Пример —
-`MediaConfig` в `RequestMediaUploadHandler` модуля `Media`.
-Формально `Shared/Infrastructure` не входит в список зависимостей Application выше, но
-`TypedConfig` — это не технический сервис с поведением и не зависимость от чужого модуля:
-правила (`rules.md` «Typed config для каждого config-файла») и эта же `arch.md`
-(«Configuration → app/config → Shared/Infrastructure/Configuration») предписывают единое
-размещение всех config-DTO в `Shared/Infrastructure/Configuration`. Оборачивать такой
-config-DTO в Application-`*Contract` и привязывать его в бутлоадере означало бы создать
-pass-through-обёртку над `TypedConfig` ради формального списка — это запрещённый паттерн
-(ср. «Без pass-through typecast-обёрток») и сделало бы модуль единственным, кто прячет
-собственный typed-config за контрактом. Поэтому прямая инъекция `TypedConfig` в Application
-допускается явно. Если Application нужен именно технический сервис с поведением (S3,
-процессор, внешний клиент) — он по-прежнему идёт через `Application/Contract` + реализацию
-в `Infrastructure`, без исключений.
+Строгое правило: **Domain и Application не зависят от `Shared/Infrastructure/Configuration` и
+не импортируют `*Config`.** Конфиг читается в Infrastructure (бутлоадеры, инфра-сервисы,
+middleware), которая отдаёт в Application уже готовые значения через DI. Допустимы две формы
+передачи самого значения:
+
+- **Единичное готовое значение или VO через фабрику бутлоадера.** Бутлоадер модуля читает нужный
+  `*Config` в фабрике `defineSingletons()` — контейнер подставляет config параметром фабрики, это
+  законное чтение конфига в Infrastructure — собирает из него одно готовое значение и биндит его в
+  Application-класс, куда оно авто-вайрится. Живой образец: `UserBootloader` отдаёт
+  `UserPublicProfileAssembler` готовый `defaultAvatarUrl`.
+- **Доменный сервис над значениями.** Значения конфига собираются в доменный сервис, который
+  Application получает как зависимость. Живой образец: `LocaleResolver` из `LocaleConfig`.
+
+Так слой сценариев не знает ни про источник значения, ни про `Shared/Infrastructure`.
+
+Конфиг-зависимое **поведение** (а не одно значение) выносится в Infrastructure-сервис за
+`Application/Contract`: реализация читает `*Config` сама через конструктор и отдаёт Application готовые
+решения. Образцы — `MediaUrlServiceContract`/`MediaUrlService` (срок presigned-ссылки скачивания по
+умолчанию) и `MediaUploadPlannerContract`/`MediaUploadPlanner` (срок staging-хранения, нужен ли
+multipart, размер и число частей), реализации биндятся `const BINDINGS`. Общее правило —
+«Infrastructure-сервис за контрактом», папка — просто `Infrastructure`; конкретное размещение
+`MediaUploadPlanner` в `Infrastructure/FileService` рядом с `MediaUrlService` — частная деталь модуля
+Media, а не предписание для всех будущих config-зависимых сервисов.
+
+Промежуточный settings-объект, который лишь проецирует набор полей `*Config` в Application-объект,
+запрещён как «конфиг от конфига»: вместо него — одна из двух форм передачи значения выше или
+Infrastructure-сервис за контрактом для конфиг-зависимого поведения.
+
+Если Application нужен именно технический сервис с поведением (S3, процессор, внешний клиент) — он
+по-прежнему идёт через `Application/Contract` + реализацию в `Infrastructure`, без исключений.
+
+Оговорка по охвату: правило адресовано Domain и Application. Некоторые Presentation-адаптеры
+(`HealthController`, `SwaggerController`, `OpenApiGenerateCommand`) пока читают `*Config` напрямую —
+это вне охвата текущей задачи и возможная отдельная чистка.
 
 ## Взаимодействие слоёв
 
@@ -315,6 +365,7 @@ HTTP Request
         -> QueryBus::dispatch(query, handler)
           -> Handler::handle(Query)
             -> Modules/{Module}/Repository read method
+            -> {Name}ViewAssembler -> {Name}View (обогащённые ответы)
         -> Modules/{Module}/Presentation/Http/Resource
         -> Response
       -> JSON Response
@@ -465,19 +516,66 @@ Query DTO
   -> QueryBus::dispatch(query, handler)
   -> Handler::handle(Query)
   -> Repository read method
-  -> Entity / typed collection / Result DTO / PaginatedResult<T>
+  -> {Name}ViewAssembler -> {Name}View (обогащённые ответы)
+  -> Entity / typed collection / Result DTO / View / PaginatedResult<T>
 ```
 
 Command Handler создаёт VO, enum и доменные коллекции до передачи данных в
 Entity. Примитивы не передаются в `Entity::create()` и доменные методы Entity.
 
-Command Handler возвращает Entity, Result DTO или `void`. Query Handler
-возвращает Entity, типизированную коллекцию, Result DTO или `PaginatedResult<T>`.
+Command Handler возвращает `void` или Result DTO с минимальным результатом
+операции (идентификатор, токены); read-model (View) команды не возвращают.
+Query Handler возвращает Entity, типизированную коллекцию, Result DTO, View
+или `PaginatedResult<T>`. Result DTO — ответ сценария для кода
+(межмодульный контракт), View — обогащённая форма для показа клиенту,
+`PaginatedResult<T>` — страница элементов (Entity, Result DTO или View).
 Query не изменяет состояние и не оборачивается в транзакцию. Если Query
 Handler помечен `#[Transactional]`, это ошибка контракта.
 
 Data Grid не используется как бизнесовый Query-слой. Фильтрация и сортировка в
 Query Handler должны быть явными.
+
+## Read-model для ответов API: View, Assembler, Resource
+
+```text
+Controller
+  -> Query Handler (Application)
+    -> {Name}ViewAssembler (Application/View) -> {Name}View
+  -> Resource::fromView(View) (Presentation)
+  -> Response
+```
+
+View — read-model DTO в `Modules/{Module}/Application/View/`. Не знает про
+HTTP и OpenAPI. Поля View — только скаляры, enum, `DateTimeImmutable` и
+другие View (своего модуля или из `Shared/Application/View/`), в том числе
+их списки. Entity, VO и чужие Application-DTO (результаты сценариев других
+модулей) во View не попадают — Assembler перекладывает их в View-типы.
+
+Assembler (`{Name}ViewAssembler`, рядом со своим View) — единственное место
+кросс-модульного обогащения при чтении: Entity и репозитории своего модуля
+плюс Application других модулей, пакетно, без N+1.
+
+Resource — форма JSON-ответа и источник OpenAPI: чистый маппинг `from*()` из
+своего View, Entity или Result DTO. Даты не форматирует —
+`DateTimeImmutable` сериализует `AbstractResource` (ATOM), в OpenAPI-схеме
+это `string`/`date-time`.
+
+Без обогащения View не нужен: Resource маппится из Entity или Result DTO
+напрямую. Command read-model не возвращает — `void` или Result DTO с
+минимальным результатом операции (идентификатор, токены), обогащённый ответ
+клиент дочитывает отдельным Query.
+
+Одно понятие API — один Resource; копии одной формы запрещены. Resource,
+общий для нескольких модулей, лежит в `Shared/Presentation/Http/Resource`
+(`MediaResource` `{id, position, original, conversions}` с вложенными
+`MediaOriginalResource` и `MediaConversionResource`). Общей форме
+соответствует и общий View: `Shared/Application/View/MediaView`
+`{id, position, original, conversions}`, из которого `MediaResource`
+маппится одним `fromView()`. Неприменимое в контексте поле — `null`;
+фиктивные значения и придуманные сервером заглушки запрещены. `id` всегда
+задан (объект существует только за реальной сущностью медиа); отсутствие медиа —
+это `MediaView|null` у потребителя: аватар без медиа отдаётся как `null`, а
+дефолтный аватар подставляет клиент (фронт), сервер заглушку не выдумывает.
 
 ## Архитектура шины
 

@@ -203,6 +203,49 @@ final class MediaRepositoryTest extends DatabaseTestCase
         self::assertTrue($mediaId->equals($savedImageConversion->media->id));
     }
 
+    public function testExistsReadyForMediaIdReportsReadyConversionPresence(): void
+    {
+        $mediaWithConversions = $this->createMedia();
+        $this->entityManager()->persist($mediaWithConversions);
+        $this->entityManager()->persist($this->createImageConversion($mediaWithConversions));
+        $this->entityManager()->persist($this->createVideoConversion($mediaWithConversions));
+        $this->entityManager()->persist($this->createAudioConversion($mediaWithConversions));
+        $this->entityManager()->run();
+
+        $mediaWithoutConversions = $this->createMedia();
+        $this->entityManager()->persist($mediaWithoutConversions);
+        $this->entityManager()->run();
+
+        self::assertTrue($this->imageConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
+        self::assertTrue($this->videoConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
+        self::assertTrue($this->audioConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
+
+        self::assertFalse($this->imageConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
+        self::assertFalse($this->videoConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
+        self::assertFalse($this->audioConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
+    }
+
+    public function testExistsReadyForMediaIdIgnoresNonReadyConversions(): void
+    {
+        // Есть только не-Ready конверсии (processing/processingFailed) -> готовой нет, метод даёт false.
+        $media = $this->createMedia();
+        $this->entityManager()->persist($media);
+        $this->entityManager()->persist(
+            $this->createImageConversion(media: $media, status: MediaConversionStatus::Processing),
+        );
+        $this->entityManager()->persist(
+            $this->createVideoConversion(media: $media, status: MediaConversionStatus::ProcessingFailed),
+        );
+        $this->entityManager()->persist(
+            $this->createAudioConversion(media: $media, status: MediaConversionStatus::Processing),
+        );
+        $this->entityManager()->run();
+
+        self::assertFalse($this->imageConversionRepository()->existsReadyForMediaId($media->id));
+        self::assertFalse($this->videoConversionRepository()->existsReadyForMediaId($media->id));
+        self::assertFalse($this->audioConversionRepository()->existsReadyForMediaId($media->id));
+    }
+
     public function testFindExpiredReturnsTypedCollection(): void
     {
         $media = $this->createMedia(
@@ -215,6 +258,29 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $expiredMedia = $this->mediaRepository()->findExpired(new \DateTimeImmutable());
 
         self::assertTrue($expiredMedia->contains(static fn(Media $expired) => $expired->id->equals($media->id)));
+    }
+
+    public function testFindByIdsWithConversionsReturnsEmptyForEmptyInput(): void
+    {
+        self::assertCount(0, $this->mediaRepository()->findByIdsWithConversions());
+    }
+
+    public function testFindByIdsWithConversionsLoadsMediaWithConversions(): void
+    {
+        $first = $this->createMedia();
+        $second = $this->createMedia();
+        $this->entityManager()->persist($first);
+        $this->entityManager()->persist($second);
+        $this->entityManager()->persist($this->createImageConversion($first));
+        $this->entityManager()->run();
+        $this->cleanOrmHeap();
+
+        $media = $this->mediaRepository()->findByIdsWithConversions($first->id, $second->id);
+
+        self::assertCount(2, $media);
+        $restoredFirst = $media->first(static fn(Media $candidate): bool => $candidate->id->equals($first->id));
+        self::assertInstanceOf(Media::class, $restoredFirst);
+        self::assertCount(1, $restoredFirst->imageConversions);
     }
 
     public function testStorageKeyIsUnique(): void
@@ -271,14 +337,16 @@ final class MediaRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private function createImageConversion(Media $media): MediaImageConversion
-    {
+    private function createImageConversion(
+        Media $media,
+        MediaConversionStatus $status = MediaConversionStatus::Ready,
+    ): MediaImageConversion {
         $storageKey = MediaStorageKey::generate();
 
         return MediaImageConversion::create(
             media: $media,
             type: MediaImageConversionType::Thumbnail,
-            status: MediaConversionStatus::Ready,
+            status: $status,
             storage: MediaStorage::Public,
             path: MediaPath::fromString(\sprintf('images/%s/%s/thumbnail.jpg', $storageKey->shard(), $storageKey)),
             mimeType: MediaMimeType::fromString('image/jpeg'),
@@ -288,14 +356,16 @@ final class MediaRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private function createVideoConversion(Media $media): MediaVideoConversion
-    {
+    private function createVideoConversion(
+        Media $media,
+        MediaConversionStatus $status = MediaConversionStatus::Ready,
+    ): MediaVideoConversion {
         $storageKey = MediaStorageKey::generate();
 
         return MediaVideoConversion::create(
             media: $media,
             type: MediaVideoConversionType::NormalizedMp4H264,
-            status: MediaConversionStatus::Ready,
+            status: $status,
             storage: MediaStorage::Public,
             path: MediaPath::fromString(\sprintf('videos/%s/%s/normalized.mp4', $storageKey->shard(), $storageKey)),
             mimeType: MediaMimeType::fromString('video/mp4'),
@@ -307,14 +377,16 @@ final class MediaRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private function createAudioConversion(Media $media): MediaAudioConversion
-    {
+    private function createAudioConversion(
+        Media $media,
+        MediaConversionStatus $status = MediaConversionStatus::Ready,
+    ): MediaAudioConversion {
         $storageKey = MediaStorageKey::generate();
 
         return MediaAudioConversion::create(
             media: $media,
             type: MediaAudioConversionType::NormalizedAacM4a,
-            status: MediaConversionStatus::Ready,
+            status: $status,
             storage: MediaStorage::Public,
             path: MediaPath::fromString(\sprintf('audios/%s/%s/normalizedAacM4a.m4a', $storageKey->shard(), $storageKey)),
             mimeType: MediaMimeType::fromString('audio/mp4'),

@@ -70,7 +70,7 @@ final class UserValueObjectTest extends TestCase
 
     public function testNameNormalizesUnicodeAndRejectsInvalidValue(): void
     {
-        $name = UserName::fromString(" Йога   Тест ");
+        $name = UserName::fromString(' Йога   Тест ');
 
         self::assertSame('Йога Тест', $name->value());
         self::assertTrue($name->equals(UserName::fromString('Йога Тест')));
@@ -99,7 +99,7 @@ final class UserValueObjectTest extends TestCase
     public function testSpiritualNameSupportsNoneAndValue(): void
     {
         $empty = UserSpiritualName::none();
-        $spiritualName = UserSpiritualName::fromString(" Шанти   Деви ");
+        $spiritualName = UserSpiritualName::fromString(' Шанти   Деви ');
 
         self::assertNull($empty->value());
         self::assertTrue($empty->isEmpty());

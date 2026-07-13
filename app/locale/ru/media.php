@@ -8,6 +8,8 @@ return [
     'app.media.not_ready' => 'Медиа ещё не готово.',
     'app.media.conversion_not_found' => 'Запрошенное преобразование отсутствует.',
     'app.media.cannot_make_permanent' => 'Постоянным можно сделать только загруженное или готовое медиа.',
+    'app.media.original_not_removable' => 'Удалить оригинал можно только у готового медиа.',
+    'app.media.no_conversions_to_keep' => 'Нельзя удалить оригинал: у медиа нет ни одного преобразования.',
     'app.media.upload_not_pending' => 'Загрузка медиа не ожидает подтверждения.',
     'app.media.multipart_upload_not_found' => 'Для медиа не найдена multipart-загрузка.',
     'app.media.uploaded_object_mismatch' => 'Загруженный объект отсутствует или его размер не совпадает с заявленным.',

@@ -35,13 +35,13 @@ final class JoinEntityTest extends TestCase
         $mediaUuid = Uuid::uuid7()->toString();
         $postMedia = PostMedia::create(
             post: $post,
-            media: PostMediaReference::fromString($mediaUuid),
+            mediaId: PostMediaReference::fromString($mediaUuid),
             position: MediaPosition::fromInt(0),
         );
 
         self::assertTrue(AbstractUuidV7Id::isUuidV7($postMedia->id->value()));
         self::assertTrue($post->id->equals($postMedia->postId));
-        self::assertSame($mediaUuid, $postMedia->media->value());
+        self::assertSame($mediaUuid, $postMedia->mediaId->value());
         self::assertSame(0, $postMedia->position->value());
         self::assertSame($post, $postMedia->post);
     }

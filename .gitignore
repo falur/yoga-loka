@@ -12,3 +12,8 @@
 /.env
 /*.cache
 /.phpactor.json
+.DS_Store
+
+/docs/design/.design-canvas.state.json
+/docs/design/.thumbnail
+/docs/design/.tmp/

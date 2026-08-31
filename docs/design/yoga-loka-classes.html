@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · Занятия</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  @keyframes ylpop { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.15); } to { transform: scale(1); opacity: 1; } }
+
+  /* ── colourful phone scope (.ylp) ─────────────────────────────── */
+  .ylp {
+    --p-bg: #ffffff; --p-elev: #ffffff; --p-ctrl: #F2EFF7;
+    --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86); --p-statbg: rgba(20,16,40,0.025);
+    --p-ink: #241b30; --p-soft: #3f384b; --p-mute: #6b6478; --p-faint: #a49bb0;
+    --ctrl-accent: #4D9DE0; --ctrl-accent-soft: #E2EEFA;
+    --c-coral: #FF6F61; --c-sun: #FFB020; --c-mint: #22C2B0;
+    --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5; --c-leaf: #5DBB63;
+    --c-goldink: #C77F0A;
+    --t-coral: #FFE7E3; --t-sun: #FFF0D2; --t-mint: #D4F3EF;
+    --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF; --t-leaf: #E1F3E3;
+
+    height: 100%; position: relative;
+    background-color: var(--p-bg); color: var(--p-ink);
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    font-size: 15px; line-height: 1.45; overflow: hidden; isolation: isolate;
+  }
+  .ylp.dark {
+    background-color: #15121c; color: #f3eef9;
+    --p-bg: #15121c; --p-elev: #211b2c; --p-ctrl: #2a2438;
+    --p-border: #2c2639; --p-chrome: rgba(21,18,28,0.82); --p-statbg: rgba(255,255,255,0.045);
+    --p-ink: #f3eef9; --p-soft: #d3ccdd; --p-mute: #a79fb4; --p-faint: #8c8499;
+    --ctrl-accent: #6FB1EE; --ctrl-accent-soft: rgba(77,157,224,0.24);
+    --c-coral: #FF8A7E; --c-sun: #FFC04D; --c-mint: #3CD6C4;
+    --c-sky: #6FB1EE; --c-grape: #B98BF0; --c-bubble: #FF7EC8; --c-leaf: #7BD080;
+    --c-goldink: #FFC861;
+    --t-coral: rgba(255,111,97,0.20); --t-sun: rgba(255,176,32,0.20); --t-mint: rgba(34,194,176,0.20);
+    --t-sky: rgba(77,157,224,0.20); --t-grape: rgba(155,93,229,0.24); --t-bubble: rgba(241,91,181,0.20); --t-leaf: rgba(93,187,99,0.20);
+  }
+  .ylp .pscroll { position: absolute; inset: 0; z-index: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .ylp .pscroll::-webkit-scrollbar { display: none; }
+  .ylp .tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ylp .picon { appearance: none; border: none; cursor: pointer; background: transparent; display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 38px; height: 38px; border-radius: 12px; transition: transform .12s ease; }
+  .ylp .picon:active { transform: scale(0.9); }
+  .ylp .pbtn { transition: transform .12s ease; }
+  .ylp .pbtn:active { transform: scale(0.955); }
+  .ylp .pscrim { position: absolute; inset: 0; z-index: 40; background: rgba(20,14,30,0.42); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: pfade .2s ease; }
+  .ylp .psheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; box-sizing: border-box; animation: pup .3s cubic-bezier(.2,.9,.25,1); }
+  .ylp .ptoast { animation: ptoast .22s ease; }
+  @keyframes pfade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes pup { from { transform: translateY(105%) } to { transform: translateY(0) } }
+  @keyframes ptoast { from { opacity: 0; transform: translate(-50%, 10px) } to { opacity: 1; transform: translate(-50%, 0) } }
+  .ylp input::placeholder, .ylp textarea::placeholder { color: var(--p-faint); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="playful.jsx"></script>
+<script type="text/babel" src="classes-data.jsx"></script>
+<script type="text/babel" src="classes.jsx"></script>
+<script type="text/babel" src="classes-sheets.jsx"></script>
+
+<script type="text/babel">
+  const { useState: uApp } = React;
+  function ClassesPage() {
+    const [dark, setDark] = uApp(false);
+    const segBtn = (on) => ({
+      border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 999,
+      fontFamily: "'Quicksand', sans-serif", fontWeight: 700, fontSize: 13,
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      background: on ? '#fff' : 'transparent', color: on ? '#2a2330' : '#8b8398',
+      boxShadow: on ? '0 3px 10px -5px rgba(20,20,40,0.4)' : 'none', transition: 'all .15s ease',
+    });
+    return (
+      <div style={{
+        minHeight: '100vh', padding: '40px 40px 70px', boxSizing: 'border-box',
+        background: dark
+          ? 'radial-gradient(120% 90% at 50% 0%, #1c1826 0%, #100d16 100%)'
+          : 'radial-gradient(120% 90% at 50% 0%, #f6f4f9 0%, #eceaf0 100%)',
+        display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center',
+        transition: 'background .25s ease',
+      }}>
+        <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 999, marginBottom: 22, background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(20,20,40,0.06)' }}>
+          <button style={segBtn(!dark)} onClick={() => setDark(false)}>☀️ Светлая</button>
+          <button style={segBtn(dark)} onClick={() => setDark(true)}>🌙 Тёмная</button>
+        </div>
+        <IOSDevice width={390} height={844} dark={dark}>
+          <ClassesScreen dark={dark} />
+        </IOSDevice>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<ClassesPage />);
+</script>
+</body>
+</html>

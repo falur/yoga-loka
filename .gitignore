@@ -11,6 +11,4 @@
 
 /.env
 /*.cache
-.codex/
-.claude/
 /.phpactor.json

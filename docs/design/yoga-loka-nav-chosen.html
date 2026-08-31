@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · меню 🌀🧘📅❤️🪬</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    font-family: 'Nunito Sans', system-ui, sans-serif; color: #241b30;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+    padding: 40px 20px;
+    --t-coral: #FFE7E3; --t-mint: #D4F3EF; --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF;
+    --c-coral: #FF6F61; --c-mint: #22C2B0; --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5;
+    --p-mute: #6b6478; --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.9);
+  }
+  .cap { font-size: 13.5px; color: var(--p-mute); letter-spacing: 0.2px; }
+
+  /* экран-рамка телефона */
+  .phone {
+    width: 392px; height: 320px; background: #fff; border-radius: 30px; overflow: hidden;
+    border: 1px solid #e3dfea; box-shadow: 0 20px 50px -22px rgba(40,28,60,0.4);
+    display: flex; flex-direction: column; position: relative;
+  }
+  .content { flex: 1; padding: 26px 22px 10px; }
+  .content h2 { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 20px; margin: 0; }
+  .stories { display: flex; gap: 10px; margin-top: 16px; }
+  .stories i { width: 54px; height: 54px; border-radius: 50%; display: block; }
+  .ph-line { height: 86px; border-radius: 16px; background: #F2EFF7; margin-top: 18px; }
+
+  .nav { display: flex; align-items: stretch; justify-content: space-around; padding: 10px 6px 22px; background: var(--p-chrome); border-top: 1px solid var(--p-border); backdrop-filter: blur(16px); }
+  .navbtn { flex: 1; min-width: 0; border: none; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 1px; transition: transform .12s ease; }
+  .navbtn:active { transform: scale(0.93); }
+  .navtile { width: 42px; height: 30px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 21px; transition: background .15s ease; }
+  .navlab { font-size: 9.5px; line-height: 1; letter-spacing: -0.1px; white-space: nowrap; }
+
+  /* отдельная «голая» полоска */
+  .bar { width: 392px; background: #fff; border: 1px solid #e7e3ee; border-radius: 20px; }
+  .bar .nav { border-top: none; border-radius: 20px; padding: 12px 6px; }
+</style>
+</head>
+<body>
+<span class="cap">🌀 Приложения · 🧘 Занятия · 📅 Календарь · ❤️ Сангат · 🪬 Ахамкара</span>
+
+<div class="phone">
+  <div class="content">
+    <h2>Сангат</h2>
+    <div class="stories">
+      <i style="background:var(--t-coral)"></i>
+      <i style="background:var(--t-sky)"></i>
+      <i style="background:var(--t-mint)"></i>
+      <i style="background:var(--t-grape)"></i>
+    </div>
+    <div class="ph-line"></div>
+  </div>
+  <div class="nav" id="nav"></div>
+</div>
+
+<div class="bar"><div class="nav" id="bar"></div></div>
+<span class="cap" style="margin-top:-12px">↑ все цвета радуги сразу · ↑ в телефоне — активный по тапу</span>
+
+<script>
+  const ITEMS = [
+    { key: 'apps',     label: 'Приложения', e: '🌀', pop: '#E8615A', tint: '#FCE3E1' },
+    { key: 'classes',  label: 'Занятия',    e: '🧘', pop: '#E8902F', tint: '#FBEBD6' },
+    { key: 'calendar', label: 'Календарь',  e: '📅', pop: '#4FA85B', tint: '#E0F1E2' },
+    { key: 'sangat',   label: 'Сангат',     e: '❤️', pop: '#3E92D8', tint: '#DEEBF9' },
+    { key: 'ahamkara', label: 'Ахамкара',   e: '🪬', pop: '#8E55D8', tint: '#EBDFFA' },
+  ];
+  let active = 'sangat';
+  function render(elId, allOn) {
+    const el = document.getElementById(elId);
+    el.innerHTML = '';
+    ITEMS.forEach((it) => {
+      const on = allOn || active === it.key;
+      const b = document.createElement('button');
+      b.className = 'navbtn';
+      b.innerHTML = '<span class="navtile" style="background:' + (on ? it.tint : 'transparent') + '">'
+        + '<span style="filter:' + (on ? 'none' : 'saturate(0.8) opacity(0.7)') + '">' + it.e + '</span></span>'
+        + '<span class="navlab" style="font-weight:' + (on ? 800 : 600) + ';color:' + (on ? it.pop : 'var(--p-mute)') + '">' + it.label + '</span>';
+      b.onclick = () => { active = it.key; render('nav'); render('bar', true); };
+      el.appendChild(b);
+    });
+  }
+  render('nav'); render('bar', true);
+</script>
+</body>
+</html>

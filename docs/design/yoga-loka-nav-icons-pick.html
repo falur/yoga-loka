@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · иконки Занятия + Сангат</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    font-family: 'Nunito Sans', system-ui, sans-serif; color: #241b30;
+    min-height: 100vh; padding: 40px 24px 60px;
+    --c-coral: #FF6F61; --c-mint: #22C2B0; --t-coral: #FFE7E3; --t-mint: #D4F3EF;
+    --p-mute: #6b6478; --p-border: #f0eef2;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--p-mute); font-size: 14.5px; margin: 0 0 32px; }
+  .group { background: #fff; border: 1px solid #e7e3ee; border-radius: 22px; padding: 24px 26px 28px; margin-bottom: 22px; }
+  .ghead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+  .gtitle { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 18px; }
+  .gnote { color: var(--p-mute); font-size: 13px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .cand {
+    flex: 1; min-width: 120px; border: 1.5px solid var(--p-border); border-radius: 16px;
+    padding: 18px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    background: #fff; transition: border-color .15s ease, box-shadow .15s ease; cursor: default;
+  }
+  .cand.cur { border-color: currentColor; }
+  .tile {
+    width: 46px; height: 34px; border-radius: 12px; display: inline-flex;
+    align-items: center; justify-content: center;
+  }
+  .cname { font-size: 12px; font-weight: 700; color: var(--p-mute); }
+  .badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="icons.jsx"></script>
+
+<script type="text/babel">
+  /* новые простые линейные иконки-кандидаты */
+  const svg = (paths, sw = 1.8) => ({ size = 22, style }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={style}>{paths}</svg>
+  );
+  // фигура в позе (звезда/тадасана) — практика
+  const IconPose = svg(<><circle cx="12" cy="4.6" r="2.1" /><path d="M12 6.7v6.1" /><path d="M12 8.4 7.6 5.9M12 8.4l4.4-2.5" /><path d="M12 12.8 8.3 19M12 12.8 15.7 19" /></>);
+  // сидящая медитация
+  const IconMeditate = svg(<><circle cx="12" cy="5.4" r="2.1" /><path d="M12 7.8v3.4" /><path d="M5 18.5c1.6-3.6 12.4-3.6 14 0" /><path d="M8.4 12.6c-1.7.6-2.9 1.8-3.4 3.4M15.6 12.6c1.7.6 2.9 1.8 3.4 3.4" /></>);
+  // два человека — сообщество
+  const IconPeople = svg(<><circle cx="8.6" cy="8" r="2.6" /><circle cx="16" cy="9" r="2.1" /><path d="M3.8 18.4c0-2.9 2.1-4.8 4.8-4.8s4.8 1.9 4.8 4.8" /><path d="M14.2 13.8c2.2-.1 4 1.7 4 4.6" /></>);
+  // круг людей / лотос-сообщество
+  const IconCircle = svg(<><circle cx="12" cy="12" r="2.4" /><circle cx="12" cy="4.8" r="1.7" /><circle cx="12" cy="19.2" r="1.7" /><circle cx="4.8" cy="12" r="1.7" /><circle cx="19.2" cy="12" r="1.7" /></>);
+
+  const ZAN = [
+    { name: 'Лотос', cur: true, Icon: IconLotus },
+    { name: 'Поза', Icon: IconPose },
+    { name: 'Медитация', Icon: IconMeditate },
+    { name: 'Огонь', Icon: IconFlame },
+    { name: 'Искра', Icon: IconSpark },
+  ];
+  const SAN = [
+    { name: 'Дом', cur: true, Icon: IconHome },
+    { name: 'Люди', Icon: IconPeople },
+    { name: 'Круг', Icon: IconCircle },
+    { name: 'Сердце', Icon: IconHeart },
+    { name: 'Диалог', Icon: IconComment },
+  ];
+
+  function Candidate({ c, pop, tint }) {
+    return (
+      <div className={'cand' + (c.cur ? ' cur' : '')} style={{ color: pop }}>
+        <span className="tile" style={{ background: tint, color: pop }}>
+          <c.Icon size={22} style={{ strokeWidth: 2 }} />
+        </span>
+        <span className="cname" style={{ color: c.cur ? pop : 'var(--p-mute)' }}>{c.name}</span>
+        {c.cur && <span className="badge" style={{ background: tint, color: pop }}>сейчас</span>}
+      </div>
+    );
+  }
+
+  function Group({ title, note, items, pop, tint }) {
+    return (
+      <div className="group">
+        <div className="ghead">
+          <span className="gtitle">{title}</span>
+          <span className="gnote">{note}</span>
+        </div>
+        <div className="row">
+          {items.map((c) => <Candidate key={c.name} c={c} pop={pop} tint={tint} />)}
+        </div>
+      </div>
+    );
+  }
+
+  function App() {
+    return (
+      <>
+        <h1>Иконки: Занятия и Сангат</h1>
+        <p className="sub">Стиль «вариант 2» — цветной контур. Выбери по одной иконке для каждого раздела.</p>
+        <Group title="Занятия" note="мятный · сейчас лотос" items={ZAN} pop="var(--c-mint)" tint="var(--t-mint)" />
+        <Group title="Сангат" note="коралл · сейчас дом" items={SAN} pop="var(--c-coral)" tint="var(--t-coral)" />
+      </>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

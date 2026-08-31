@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · Строгий vs Цветной</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  /* ── tokens for the STRICT phone (warm/neutral original) ──────── */
+  :root {
+    --bg: #fcfbf7;
+    --bg-2: #efebe2;
+    --ink: #211d18;
+    --ink-soft: #6e685d;
+    --ink-faint: #a39c8e;
+    --accent: oklch(0.55 0.12 42);
+    --accent-soft: oklch(0.55 0.12 42 / 0.12);
+    --on-accent: #fcfbf7;
+    --hairline: rgba(40,33,22,0.12);
+    --hairline-2: rgba(40,33,22,0.06);
+    --glass-bg: rgba(252,251,247,0.74);
+    --glass-bd: rgba(40,33,22,0.08);
+    --glass-blur: 18px;
+    --r-lg: 22px;
+    --r-md: 14px;
+    --r-sm: 10px;
+    --sp: 1;
+    --font-display: 'Sora', system-ui, sans-serif;
+    --font-body: 'Manrope', system-ui, sans-serif;
+    --fontScale: 1;
+  }
+
+  /* ── strict phone scope (.yl) ─────────────────────────────────── */
+  .yl {
+    height: 100%; position: relative;
+    color: var(--ink); background: var(--bg);
+    font-family: var(--font-body);
+    font-size: calc(15px * var(--fontScale, 1));
+    line-height: 1.45; overflow: hidden; isolation: isolate;
+  }
+  .yl .scroll { position: absolute; inset: 0; z-index: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .yl .scroll::-webkit-scrollbar { display: none; }
+  .glass {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+    border: 1px solid var(--glass-bd);
+  }
+  .display { font-family: var(--font-display); letter-spacing: -0.01em; }
+  .soft { color: var(--ink-soft); }
+  .faint { color: var(--ink-faint); }
+  .hr { height: 1px; background: var(--hairline); border: 0; margin: 0; }
+  .btn { appearance: none; cursor: pointer; font-family: var(--font-body); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 14px; border: 1px solid transparent; transition: transform .12s ease, background .15s ease, opacity .15s ease; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 8px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.15); }
+  .btn-ghost  { background: transparent; color: var(--ink); border-color: var(--hairline); }
+  .icon-btn { appearance: none; border: none; background: none; cursor: pointer; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: transform .12s ease, color .15s ease; }
+  .icon-btn:active { transform: scale(0.88); }
+  .tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--hairline); color: var(--ink-soft); white-space: nowrap; }
+  .ph { position: relative; overflow: hidden; background: var(--bg-2); background-image: repeating-linear-gradient(135deg, var(--hairline-2) 0 1px, transparent 1px 12px); display: flex; align-items: flex-end; }
+  .ph .ph-tag { font-family: 'Space Grotesk', monospace; font-size: 10px; letter-spacing: 0.2px; color: var(--ink-faint); margin: 8px; padding: 2px 7px; border-radius: 6px; background: var(--bg); }
+  @keyframes ylpop { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.15); } to { transform: scale(1); opacity: 1; } }
+  @keyframes ylslide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .yl-enter { animation: ylslide .22s ease both; }
+
+  /* ── colourful phone scope (.ylp) ─────────────────────────────── */
+  .ylp {
+    /* neutrals — light */
+    --p-bg: #ffffff; --p-elev: #ffffff; --p-ctrl: #F2EFF7;
+    --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86); --p-statbg: rgba(20,16,40,0.025);
+    --p-ink: #241b30; --p-soft: #3f384b; --p-mute: #6b6478; --p-faint: #a49bb0;
+    /* control accent — sky blue in light, grape in dark */
+    --ctrl-accent: #4D9DE0; --ctrl-accent-soft: #E2EEFA;
+    /* pops — light */
+    --c-coral: #FF6F61; --c-sun: #FFB020; --c-mint: #22C2B0;
+    --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5; --c-leaf: #5DBB63;
+    --c-goldink: #C77F0A;
+    /* tints — light */
+    --t-coral: #FFE7E3; --t-sun: #FFF0D2; --t-mint: #D4F3EF;
+    --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF; --t-leaf: #E1F3E3;
+
+    height: 100%; position: relative;
+    background-color: var(--p-bg); color: var(--p-ink);
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    font-size: 15px; line-height: 1.45; overflow: hidden; isolation: isolate;
+    transition: background-color .25s ease, color .25s ease;
+  }
+  /* ── dark theme overrides ─────────────────────────────────────── */
+  .ylp.dark {
+    --p-bg: #15121c; --p-elev: #211b2c; --p-ctrl: #2a2438;
+    --p-border: #2c2639; --p-chrome: rgba(21,18,28,0.82); --p-statbg: rgba(255,255,255,0.045);
+    --p-ink: #f3eef9; --p-soft: #d3ccdd; --p-mute: #a79fb4; --p-faint: #8c8499;
+    --ctrl-accent: #6FB1EE; --ctrl-accent-soft: rgba(77,157,224,0.24);
+    /* slightly brighter pops for contrast on dark */
+    --c-coral: #FF8A7E; --c-sun: #FFC04D; --c-mint: #3CD6C4;
+    --c-sky: #6FB1EE; --c-grape: #B98BF0; --c-bubble: #FF7EC8; --c-leaf: #7BD080;
+    --c-goldink: #FFC861;
+    /* tints become translucent colour-glass on dark */
+    --t-coral: rgba(255,111,97,0.20); --t-sun: rgba(255,176,32,0.20); --t-mint: rgba(34,194,176,0.20);
+    --t-sky: rgba(77,157,224,0.20); --t-grape: rgba(155,93,229,0.24); --t-bubble: rgba(241,91,181,0.20); --t-leaf: rgba(93,187,99,0.20);
+  }
+  .ylp .pscroll { position: absolute; inset: 0; z-index: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .ylp .pscroll::-webkit-scrollbar { display: none; }
+  .ylp .picon { appearance: none; border: none; cursor: pointer; background: transparent; display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 38px; height: 38px; border-radius: 12px; transition: transform .12s ease; }
+  .ylp .picon:active { transform: scale(0.9); }
+  .ylp .tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ylp .pbtn { transition: transform .12s ease; }
+  .ylp .pbtn:active { transform: scale(0.955); }
+  .ylp .pscrim { position: absolute; inset: 0; z-index: 40; background: rgba(20,14,30,0.42); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: pfade .2s ease; }
+  .ylp .psheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; box-sizing: border-box; animation: pup .3s cubic-bezier(.2,.9,.25,1); }
+  .ylp .ptoast { animation: ptoast .22s ease; }
+  @keyframes pfade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes pup { from { transform: translateY(105%) } to { transform: translateY(0) } }
+  @keyframes ptoast { from { opacity: 0; transform: translate(-50%, 10px) } to { opacity: 1; transform: translate(-50%, 0) } }
+  .ylp .pcreatepop { transform-origin: top left; animation: ppop .18s cubic-bezier(.2,.9,.25,1); }
+  @keyframes ppop { from { opacity: 0; transform: scale(0.9) translateY(-4px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="my-practice.jsx"></script>
+<script type="text/babel" src="playful.jsx"></script>
+<script type="text/babel" src="compare-app.jsx"></script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · иконки меню — 4 варианта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  /* ── colourful phone scope (.ylp) ─────────────────────────────── */
+  .ylp {
+    --p-bg: #ffffff; --p-elev: #ffffff; --p-ctrl: #F2EFF7;
+    --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86);
+    --p-ink: #241b30; --p-soft: #3f384b; --p-mute: #6b6478; --p-faint: #a49bb0;
+    --ctrl-accent: #9B5DE5; --ctrl-accent-soft: #EDE4FB;
+    --c-coral: #FF6F61; --c-sun: #FFB020; --c-mint: #22C2B0;
+    --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5; --c-leaf: #5DBB63;
+    --t-coral: #FFE7E3; --t-sun: #FFF0D2; --t-mint: #D4F3EF;
+    --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF; --t-leaf: #E1F3E3;
+    background-color: var(--p-bg); color: var(--p-ink);
+    font-family: 'Nunito Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45;
+  }
+  .tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .navbtn { transition: transform .12s ease; }
+  .navbtn:active { transform: scale(0.94); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+
+<script type="text/babel">
+  const { useState } = React;
+
+  /* пять разделов + индивидуальный цвет / эмодзи / градиент */
+  const ITEMS = [
+    { key: 'apps',     label: 'Приложения', Icon: IconGrid,     emoji: '🧩', pop: 'var(--c-grape)',  tint: 'var(--t-grape)',  grad: ['#9B5DE5', '#4D9DE0'] },
+    { key: 'classes',  label: 'Занятия',    Icon: IconLotus,    emoji: '🧘', pop: 'var(--c-mint)',   tint: 'var(--t-mint)',   grad: ['#22C2B0', '#5DBB63'] },
+    { key: 'calendar', label: 'Календарь',  Icon: IconCalendar, emoji: '📅', pop: 'var(--c-sky)',    tint: 'var(--t-sky)',    grad: ['#4D9DE0', '#22C2B0'] },
+    { key: 'sangat',   label: 'Сангат',     Icon: IconHome,     emoji: '🪷', pop: 'var(--c-coral)',  tint: 'var(--t-coral)',  grad: ['#FF6F61', '#FFB020'] },
+    { key: 'ahamkara', label: 'Ахамкара',   Icon: IconUser,     emoji: '👤', pop: 'var(--c-bubble)', tint: 'var(--t-bubble)', grad: ['#F15BB5', '#9B5DE5'] },
+  ];
+
+  const LABEL = (on, color) => ({
+    fontFamily: "'Nunito Sans', sans-serif", fontSize: 9.5, lineHeight: 1, letterSpacing: '-0.1px',
+    whiteSpace: 'nowrap', fontWeight: on ? 800 : 600, color,
+  });
+
+  /* ── вариант 1 — эмодзи ──────────────────────────────────────── */
+  function NavEmoji({ active, set }) {
+    return ITEMS.map((it) => {
+      const on = active === it.key;
+      return (
+        <button key={it.key} className="tap navbtn" onClick={() => set(it.key)} style={btnStyle}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 40, height: 28, borderRadius: 10, backgroundColor: on ? it.tint : 'transparent',
+            transition: 'background .15s ease',
+          }}>
+            <span style={{ fontSize: 20, filter: on ? 'none' : 'saturate(0.85)' }}>{it.emoji}</span>
+          </span>
+          <span style={LABEL(on, on ? it.pop : 'var(--p-mute)')}>{it.label}</span>
+        </button>
+      );
+    });
+  }
+
+  /* ── вариант 2 — цветной контур (каждая иконка своим цветом) ──── */
+  function NavLine({ active, set }) {
+    return ITEMS.map((it) => {
+      const on = active === it.key;
+      return (
+        <button key={it.key} className="tap navbtn" onClick={() => set(it.key)} style={btnStyle}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 40, height: 28, borderRadius: 10, color: it.pop,
+            backgroundColor: on ? it.tint : 'transparent', transition: 'background .15s ease',
+          }}>
+            <it.Icon size={20} style={{ strokeWidth: on ? 2.2 : 1.85 }} />
+          </span>
+          <span style={LABEL(on, on ? it.pop : 'var(--p-mute)')}>{it.label}</span>
+        </button>
+      );
+    });
+  }
+
+  /* ── вариант 3 — цветные плашки (tint-tile) ──────────────────── */
+  function NavTile({ active, set }) {
+    return ITEMS.map((it) => {
+      const on = active === it.key;
+      return (
+        <button key={it.key} className="tap navbtn" onClick={() => set(it.key)} style={btnStyle}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 38, height: 38, borderRadius: 12, color: it.pop, backgroundColor: it.tint,
+            opacity: on ? 1 : 0.5, transform: on ? 'translateY(0)' : 'translateY(1px)',
+            transition: 'all .15s ease',
+          }}>
+            <it.Icon size={20} style={{ strokeWidth: 2 }} />
+          </span>
+          <span style={LABEL(on, on ? it.pop : 'var(--p-mute)')}>{it.label}</span>
+        </button>
+      );
+    });
+  }
+
+  /* ── вариант 4 — градиентные плашки (squircle + белая иконка) ── */
+  function NavGradient({ active, set }) {
+    return ITEMS.map((it) => {
+      const on = active === it.key;
+      return (
+        <button key={it.key} className="tap navbtn" onClick={() => set(it.key)} style={btnStyle}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 38, height: 38, borderRadius: 13, color: '#fff',
+            background: `linear-gradient(140deg, ${it.grad[0]}, ${it.grad[1]})`,
+            opacity: on ? 1 : 0.4, filter: on ? 'none' : 'grayscale(0.15)',
+            boxShadow: on ? `0 7px 16px -8px ${it.grad[0]}` : 'none',
+            transform: on ? 'translateY(-1px)' : 'none', transition: 'all .16s ease',
+          }}>
+            <it.Icon size={19} style={{ strokeWidth: 2 }} />
+          </span>
+          <span style={LABEL(on, on ? 'var(--p-ink)' : 'var(--p-mute)')}>{it.label}</span>
+        </button>
+      );
+    });
+  }
+
+  const btnStyle = {
+    flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '4px 1px',
+  };
+
+  /* ── рамка-«экран» с реальным содержимым над меню ────────────── */
+  function ScreenFrame({ Nav }) {
+    const [active, setActive] = useState('sangat');
+    return (
+      <div className="ylp" style={{
+        position: 'relative', width: 380, height: 300, borderRadius: 26, overflow: 'hidden',
+        border: '1px solid #e7e3ee', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 1px 0 rgba(255,255,255,0.6) inset',
+      }}>
+        {/* faux content */}
+        <div style={{ flex: 1, padding: '20px 18px', overflow: 'hidden' }}>
+          <div style={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, fontSize: 18, color: 'var(--p-ink)' }}>Сангат</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            {['var(--t-coral)', 'var(--t-sky)', 'var(--t-mint)', 'var(--t-grape)'].map((c, i) => (
+              <div key={i} style={{ width: 52, height: 52, borderRadius: '50%', background: c, flexShrink: 0 }} />
+            ))}
+          </div>
+          <div style={{ marginTop: 18, borderRadius: 16, background: 'var(--p-ctrl)', height: 92 }} />
+          <div style={{ marginTop: 12, height: 11, width: '70%', borderRadius: 6, background: 'var(--p-ctrl)' }} />
+          <div style={{ marginTop: 8, height: 11, width: '52%', borderRadius: 6, background: 'var(--p-ctrl)' }} />
+        </div>
+        {/* bottom nav */}
+        <div style={{
+          backgroundColor: 'var(--p-chrome)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          borderTop: '1px solid var(--p-border)', display: 'flex', alignItems: 'stretch',
+          justifyContent: 'space-around', padding: '8px 4px 14px',
+        }}>
+          <Nav active={active} set={setActive} />
+        </div>
+      </div>
+    );
+  }
+
+  const VARIANTS = [
+    { id: 'emoji',    name: 'Вариант 1 · Эмодзи',           hint: 'плоские цветные глифы',     Nav: NavEmoji },
+    { id: 'line',     name: 'Вариант 2 · Цветной контур',   hint: 'линии, у каждой свой цвет',  Nav: NavLine },
+    { id: 'tile',     name: 'Вариант 3 · Цветные плашки',   hint: 'иконка на мягкой подложке', Nav: NavTile },
+    { id: 'gradient', name: 'Вариант 4 · Градиент',         hint: 'белая иконка на градиенте', Nav: NavGradient },
+  ];
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="nav" title="Иконки нижнего меню — 4 варианта" subtitle="Приложения · Занятия · Календарь · Сангат · Ахамкара — тапни пункт, чтобы переключить активный">
+          {VARIANTS.map((v) => (
+            <DCArtboard key={v.id} id={v.id} label={`${v.name} — ${v.hint}`} width={380} height={300}>
+              <ScreenFrame Nav={v.Nav} />
+            </DCArtboard>
+          ))}
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

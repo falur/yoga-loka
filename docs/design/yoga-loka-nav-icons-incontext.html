@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · варианты иконок в меню</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    font-family: 'Nunito Sans', system-ui, sans-serif; color: #241b30;
+    min-height: 100vh; padding: 40px 24px 64px;
+    --c-coral: #FF6F61; --c-mint: #22C2B0; --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5;
+    --t-coral: #FFE7E3; --t-mint: #D4F3EF; --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF;
+    --p-mute: #6b6478; --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86);
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--p-mute); font-size: 14.5px; margin: 0 0 30px; }
+  .sect { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 16px; margin: 28px 0 14px; }
+  .sect span { color: var(--p-mute); font-weight: 600; font-size: 13px; margin-left: 8px; }
+  .rowcard {
+    display: flex; align-items: stretch; gap: 0; background: #fff; border: 1px solid #e7e3ee;
+    border-radius: 18px; overflow: hidden; margin-bottom: 12px;
+  }
+  .rowlab {
+    width: 150px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    padding: 0 18px; font-weight: 800; font-size: 13.5px; border-right: 1px solid var(--p-border);
+  }
+  .rowlab .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .navwrap { flex: 1; min-width: 0; }
+  .nav {
+    display: flex; align-items: stretch; justify-content: space-around;
+    padding: 10px 6px; background: var(--p-chrome);
+  }
+  .navbtn {
+    flex: 1; min-width: 0; border: none; background: transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 1px;
+  }
+  .navtile { width: 40px; height: 28px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; transition: background .15s ease; }
+  .navlab { font-size: 9.5px; line-height: 1; letter-spacing: -0.1px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="icons.jsx"></script>
+
+<script type="text/babel">
+  const svg = (paths, sw = 1.8) => ({ size = 22, style }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={style}>{paths}</svg>
+  );
+  const IconPose = svg(<><circle cx="12" cy="4.6" r="2.1" /><path d="M12 6.7v6.1" /><path d="M12 8.4 7.6 5.9M12 8.4l4.4-2.5" /><path d="M12 12.8 8.3 19M12 12.8 15.7 19" /></>);
+  const IconMeditate = svg(<><circle cx="12" cy="5.4" r="2.1" /><path d="M12 7.8v3.4" /><path d="M5 18.5c1.6-3.6 12.4-3.6 14 0" /><path d="M8.4 12.6c-1.7.6-2.9 1.8-3.4 3.4M15.6 12.6c1.7.6 2.9 1.8 3.4 3.4" /></>);
+  const IconPeople = svg(<><circle cx="8.6" cy="8" r="2.6" /><circle cx="16" cy="9" r="2.1" /><path d="M3.8 18.4c0-2.9 2.1-4.8 4.8-4.8s4.8 1.9 4.8 4.8" /><path d="M14.2 13.8c2.2-.1 4 1.7 4 4.6" /></>);
+  const IconCircle = svg(<><circle cx="12" cy="12" r="2.4" /><circle cx="12" cy="4.8" r="1.7" /><circle cx="12" cy="19.2" r="1.7" /><circle cx="4.8" cy="12" r="1.7" /><circle cx="19.2" cy="12" r="1.7" /></>);
+
+  const POP = { apps: 'var(--c-grape)', classes: 'var(--c-mint)', calendar: 'var(--c-sky)', sangat: 'var(--c-coral)', ahamkara: 'var(--c-bubble)' };
+  const TINT = { apps: 'var(--t-grape)', classes: 'var(--t-mint)', calendar: 'var(--t-sky)', sangat: 'var(--t-coral)', ahamkara: 'var(--t-bubble)' };
+
+  /* собрать меню из 5 пунктов с подменой иконок занятий/сангат + активным пунктом */
+  function Nav({ classesIcon, sangatIcon, active }) {
+    const items = [
+      { key: 'apps', label: 'Приложения', Icon: IconGrid },
+      { key: 'classes', label: 'Занятия', Icon: classesIcon },
+      { key: 'calendar', label: 'Календарь', Icon: IconCalendar },
+      { key: 'sangat', label: 'Сангат', Icon: sangatIcon },
+      { key: 'ahamkara', label: 'Ахамкара', Icon: IconUser },
+    ];
+    return (
+      <div className="nav">
+        {items.map((it) => {
+          const on = active === it.key;
+          return (
+            <div key={it.key} className="navbtn">
+              <span className="navtile" style={{ color: POP[it.key], background: on ? TINT[it.key] : 'transparent' }}>
+                <it.Icon size={20} style={{ strokeWidth: on ? 2.2 : 1.85 }} />
+              </span>
+              <span className="navlab" style={{ fontWeight: on ? 800 : 600, color: on ? POP[it.key] : 'var(--p-mute)' }}>{it.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function Row({ name, dot, classesIcon, sangatIcon, active }) {
+    return (
+      <div className="rowcard">
+        <div className="rowlab"><span className="dot" style={{ background: dot }} />{name}</div>
+        <div className="navwrap"><Nav classesIcon={classesIcon} sangatIcon={sangatIcon} active={active} /></div>
+      </div>
+    );
+  }
+
+  const ZAN = [
+    { name: 'Лотос', Icon: IconLotus }, { name: 'Поза', Icon: IconPose },
+    { name: 'Медитация', Icon: IconMeditate }, { name: 'Огонь', Icon: IconFlame }, { name: 'Искра', Icon: IconSpark },
+  ];
+  const SAN = [
+    { name: 'Дом', Icon: IconHome }, { name: 'Люди', Icon: IconPeople },
+    { name: 'Круг', Icon: IconCircle }, { name: 'Сердце', Icon: IconHeart }, { name: 'Диалог', Icon: IconComment },
+  ];
+
+  function App() {
+    return (
+      <>
+        <h1>Иконки в меню — все предложенные варианты</h1>
+        <p className="sub">Стиль «вариант 2». Слева — какая иконка подставлена; активный пункт подсвечен.</p>
+
+        <div className="sect">Занятия <span>Сангат остаётся «Дом»</span></div>
+        {ZAN.map((z) => (
+          <Row key={z.name} name={z.name} dot="var(--c-mint)" classesIcon={z.Icon} sangatIcon={IconHome} active="classes" />
+        ))}
+
+        <div className="sect">Сангат <span>Занятия остаётся «Лотос»</span></div>
+        {SAN.map((s) => (
+          <Row key={s.name} name={s.name} dot="var(--c-coral)" classesIcon={IconLotus} sangatIcon={s.Icon} active="sangat" />
+        ))}
+      </>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

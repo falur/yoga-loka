@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · эмодзи для меню</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    font-family: 'Nunito Sans', system-ui, sans-serif; color: #241b30;
+    min-height: 100vh; padding: 40px 24px 70px;
+    --t-coral: #FFE7E3; --t-mint: #D4F3EF; --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF;
+    --c-coral: #FF6F61; --c-mint: #22C2B0; --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5;
+    --p-mute: #6b6478; --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86);
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--p-mute); font-size: 14.5px; margin: 0 0 30px; }
+  .sect { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 17px; margin: 34px 0 14px; }
+
+  /* готовый набор — панель меню */
+  .setcard { display: flex; align-items: stretch; background: #fff; border: 1px solid #e7e3ee; border-radius: 18px; overflow: hidden; margin-bottom: 12px; }
+  .setlab { width: 168px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 18px; border-right: 1px solid #f0eef2; }
+  .setlab b { font-size: 14px; }
+  .setlab span { font-size: 12px; color: var(--p-mute); }
+  .nav { flex: 1; min-width: 0; display: flex; align-items: stretch; justify-content: space-around; padding: 12px 6px; background: var(--p-chrome); }
+  .navbtn { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 1px; }
+  .navtile { width: 42px; height: 30px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 21px; }
+  .navlab { font-size: 9.5px; line-height: 1; letter-spacing: -0.1px; white-space: nowrap; font-weight: 700; color: var(--p-mute); }
+
+  /* палитра кандидатов */
+  .palette { background: #fff; border: 1px solid #e7e3ee; border-radius: 18px; padding: 18px 20px 20px; margin-bottom: 12px; }
+  .phead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .pdot { width: 10px; height: 10px; border-radius: 50%; }
+  .ptitle { font-weight: 800; font-size: 14.5px; }
+  .pnote { font-size: 12.5px; color: var(--p-mute); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { width: 46px; height: 46px; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center; font-size: 23px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+
+<script>
+  const SECT = [
+    { key: 'apps',     label: 'Приложения', pop: 'var(--c-grape)',  tint: 'var(--t-grape)' },
+    { key: 'classes',  label: 'Занятия',    pop: 'var(--c-mint)',   tint: 'var(--t-mint)' },
+    { key: 'calendar', label: 'Календарь',  pop: 'var(--c-sky)',    tint: 'var(--t-sky)' },
+    { key: 'sangat',   label: 'Сангат',     pop: 'var(--c-coral)',  tint: 'var(--t-coral)' },
+    { key: 'ahamkara', label: 'Ахамкара',   pop: 'var(--c-bubble)', tint: 'var(--t-bubble)' },
+  ];
+  const TINT = Object.fromEntries(SECT.map(s => [s.key, s.tint]));
+
+  /* готовые наборы: [apps, classes, calendar, sangat, ahamkara] */
+  const SETS = [
+    { name: 'Набор 1 · Базовый',     note: 'понятный, прямой',       e: ['🧩','🧘','📅','🏠','👤'] },
+    { name: 'Набор 2 · Духовный',    note: 'сакральные символы',     e: ['🪟','🕉️','🗓️','🪷','🪞'] },
+    { name: 'Набор 3 · Природа',     note: 'мягкий, тёплый',         e: ['✨','🌱','📆','🌸','🌼'] },
+    { name: 'Набор 4 · Энергия',     note: 'динамичный',             e: ['🌀','🔥','⏳','🤝','🌟'] },
+    { name: 'Набор 5 · Символы',     note: 'минимал-знаки',          e: ['🔷','☸️','📌','👥','🙂'] },
+    { name: 'Набор 6 · Игривый',     note: 'яркий, дружелюбный',     e: ['🧿','🤸','🔔','🌈','😌'] },
+    { name: 'Набор 7 · Лотос-линия', note: 'цветочная тема',         e: ['🪷','🧘‍♀️','📅','🫂','🌷'] },
+  ];
+
+  /* палитры кандидатов по разделам */
+  const PAL = {
+    apps:     ['🧩','🗂️','📲','🪟','🔷','💠','🌀','✨','🧿','🎛️','🔲','📦'],
+    classes:  ['🧘','🧘‍♀️','🧘‍♂️','🤸','🙆','🕉️','☸️','🌱','🍃','🔥','💪','✨'],
+    calendar: ['📅','📆','🗓️','⏰','🕰️','⏳','📌','🔔','🌙','☀️'],
+    sangat:   ['🪷','🤝','🫂','👥','💬','🌸','📣','🔥','🌈','🪔','❤️','⛩️'],
+    ahamkara: ['👤','🧑','🙂','🪞','😌','🌟','💛','☀️','🌼','🪬','🌟','🧠'],
+  };
+
+  const root = document.getElementById('root');
+  let html = '';
+  html += '<h1>Эмодзи для меню — перебор</h1>';
+  html += '<p class="sub">Сверху — готовые наборы в контексте меню. Ниже — палитра по каждому разделу: называй любимые, соберём свой набор.</p>';
+
+  html += '<div class="sect">Готовые наборы</div>';
+  SETS.forEach(s => {
+    html += '<div class="setcard"><div class="setlab"><b>' + s.name + '</b><span>' + s.note + '</span></div><div class="nav">';
+    SECT.forEach((sec, i) => {
+      html += '<div class="navbtn"><span class="navtile" style="background:' + sec.tint + '">' + s.e[i] + '</span><span class="navlab">' + sec.label + '</span></div>';
+    });
+    html += '</div></div>';
+  });
+
+  html += '<div class="sect">Палитра по разделам</div>';
+  SECT.forEach(sec => {
+    html += '<div class="palette"><div class="phead"><span class="pdot" style="background:' + sec.pop + '"></span><span class="ptitle">' + sec.label + '</span><span class="pnote">тапни глазами и выбери</span></div><div class="chips">';
+    PAL[sec.key].forEach(em => {
+      html += '<span class="chip" style="background:' + sec.tint + '">' + em + '</span>';
+    });
+    html += '</div></div>';
+  });
+
+  root.innerHTML = html;
+</script>
+</body>
+</html>

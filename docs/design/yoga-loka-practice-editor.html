@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoga Loka · Новая практика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #eceaf0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  /* ── colourful phone scope (.ylp) ─────────────────────────────── */
+  .ylp {
+    --p-bg: #ffffff; --p-elev: #ffffff; --p-ctrl: #F2EFF7;
+    --p-border: #f0eef2; --p-chrome: rgba(255,255,255,0.86); --p-statbg: rgba(20,16,40,0.025);
+    --p-ink: #241b30; --p-soft: #3f384b; --p-mute: #6b6478; --p-faint: #a49bb0;
+    --ctrl-accent: #4D9DE0; --ctrl-accent-soft: #E2EEFA;
+    --c-coral: #FF6F61; --c-sun: #FFB020; --c-mint: #22C2B0;
+    --c-sky: #4D9DE0; --c-grape: #9B5DE5; --c-bubble: #F15BB5; --c-leaf: #5DBB63;
+    --c-goldink: #C77F0A;
+    --t-coral: #FFE7E3; --t-sun: #FFF0D2; --t-mint: #D4F3EF;
+    --t-sky: #E2EEFA; --t-grape: #EDE4FB; --t-bubble: #FCE1EF; --t-leaf: #E1F3E3;
+
+    height: 100%; position: relative;
+    background-color: var(--p-bg); color: var(--p-ink);
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    font-size: 15px; line-height: 1.45; overflow: hidden; isolation: isolate;
+    transition: background-color .25s ease, color .25s ease; color-scheme: light;
+  }
+  .ylp.dark {
+    --p-bg: #15121c; --p-elev: #211b2c; --p-ctrl: #2a2438;
+    --p-border: #2c2639; --p-chrome: rgba(21,18,28,0.82); --p-statbg: rgba(255,255,255,0.045);
+    --p-ink: #f3eef9; --p-soft: #d3ccdd; --p-mute: #a79fb4; --p-faint: #8c8499;
+    --ctrl-accent: #6FB1EE; --ctrl-accent-soft: rgba(77,157,224,0.24);
+    --c-coral: #FF8A7E; --c-sun: #FFC04D; --c-mint: #3CD6C4;
+    --c-sky: #6FB1EE; --c-grape: #B98BF0; --c-bubble: #FF7EC8; --c-leaf: #7BD080;
+    --c-goldink: #FFC861;
+    --t-coral: rgba(255,111,97,0.20); --t-sun: rgba(255,176,32,0.20); --t-mint: rgba(34,194,176,0.20);
+    --t-sky: rgba(77,157,224,0.20); --t-grape: rgba(155,93,229,0.24); --t-bubble: rgba(241,91,181,0.20); --t-leaf: rgba(93,187,99,0.20);
+    color-scheme: dark;
+  }
+  .ylp .pscroll { position: absolute; inset: 0; z-index: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .ylp .pscroll::-webkit-scrollbar { display: none; }
+  .ylp .hrow::-webkit-scrollbar { display: none; }
+  .ylp .tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ylp .pbtn { transition: transform .12s ease; }
+  .ylp .pbtn:active { transform: scale(0.955); }
+  .ylp .pscrim { position: absolute; inset: 0; z-index: 40; background: rgba(20,14,30,0.42); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: pfade .2s ease; }
+  .ylp .psheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; box-sizing: border-box; animation: pup .3s cubic-bezier(.2,.9,.25,1); }
+  .ylp .ptoast { animation: ptoast .22s ease; }
+  .ylp input::placeholder, .ylp textarea::placeholder { color: var(--p-faint); }
+  .ylp input, .ylp textarea { font-family: 'Nunito Sans', sans-serif; }
+
+  @keyframes pfade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes pup { from { transform: translateY(105%) } to { transform: translateY(0) } }
+  @keyframes ptoast { from { opacity: 0; transform: translate(-50%, 10px) } to { opacity: 1; transform: translate(-50%, 0) } }
+  @keyframes peSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+
+  /* превью анимаций «между повторами» */
+  @keyframes peInflate { 0% { transform: scale(0.5) } 80%,100% { transform: scale(1) } }
+  @keyframes peDeflate { 0% { transform: scale(1) } 80%,100% { transform: scale(0.5) } }
+  @keyframes peVibrate { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-3px) } 75% { transform: translateX(3px) } }
+  @keyframes pePulse  { 0% { transform: scale(0.7); opacity: 0.45 } 50% { transform: scale(1.15); opacity: 1 } 100% { transform: scale(0.7); opacity: 0.45 } }
+  @media (prefers-reduced-motion: reduce) {
+    .ylp [style*="peInflate"], .ylp [style*="peDeflate"], .ylp [style*="peVibrate"], .ylp [style*="pePulse"] { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="practice-editor.jsx"></script>
+<script type="text/babel" src="pe-mount.jsx"></script>
+</body>
+</html>

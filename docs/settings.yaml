@@ -1,28 +1,262 @@
-version: 1
+version: 3
 
-defaults:
-  # Включает strict-режим по умолчанию для eda-explore, eda-plan и eda-review.
+orhestra:
+  # Режим полного цикла eda-orhestra.
+  # automatic | manual
+  mode: automatic
+  # Упорядоченная цепочка. Шаги можно отключать, удалять и переставлять.
+  steps:
+    - id: plan
+      skill: eda-plan
+      enabled: true
+      # Строка аргументов передаётся скиллу как часть текущего вызова.
+      args: "без проверок"
+    - id: plan-polish
+      skill: eda-plan-polish
+      enabled: true
+      # Строка аргументов передаётся скиллу как часть текущего вызова.
+      args: ""
+    - id: execute
+      skill: eda-plan-execute
+      enabled: true
+      # Строка аргументов передаётся скиллу как часть текущего вызова.
+      args: ""
+    - id: polish
+      skill: eda-polish
+      enabled: true
+      # Строка аргументов передаётся скиллу как часть текущего вызова.
+      args: "limit 5"
+    - id: manual-test
+      skill: eda-manual-test
+      enabled: true
+      # Строка аргументов передаётся скиллу как часть текущего вызова.
+      args: ""
+      # Обработка failed-результата этого шага.
+      on_failure:
+        skill: eda-fix
+        args: ""
+        # После исправления повторно запускаются включённые шаги с этими id.
+        then:
+          - manual-test
+        max_cycles: 5
+
+aim:
+  # Режим ответов на рабочие вопросы eda-aim.
+  # automatic | manual
+  mode: automatic
+
+explore:
+  # Включает кросс-CLI ревью в eda-explore.
   # true | false
-  strict: true
-  # Задаёт размер плана по умолчанию для eda-plan.
-  # normal | short | ask_each_time
-  plan_size: normal
-  # Определяет, как eda-explore и eda-plan принимают существенные решения.
+  strict: false
+  # Определяет, как eda-explore ведёт исследовательские развилки.
   # autonomous | recommend_and_ask | ask_each_time
   decision_mode: ask_each_time
-  # Задаёт стратегию тестов по умолчанию для eda-plan.
+
+plan:
+  # Включает кросс-CLI ревью в eda-plan.
+  # true | false
+  strict: false
+  # Запускает изолированный цикл eda-plan-polish.
+  # true | false
+  review: false
+  # Задаёт размер плана.
+  # normal | short | ask_each_time
+  size: normal
+  # Определяет, как eda-plan принимает существенные решения.
+  # autonomous | recommend_and_ask | ask_each_time
+  decision_mode: ask_each_time
+  # Задаёт стратегию тестов.
   # after_each_phase | tdd_each_phase | end_of_plan | ask_each_time
   test_strategy: after_each_phase
-  # Задаёт стратегию логирования по умолчанию для eda-plan.
+  # Задаёт стратегию логирования.
   # debug_precise | standard | ask_each_time
   logging_strategy: debug_precise
 
-automate:
-  # Добавляет docs/plans/ в обычный запуск eda-automate.
-  # true | false
-  include_plans: true
+plan-review:
+  # Доля закрытых пунктов чек-листа, при которой план считается готовым.
+  # 1..100
+  threshold: 95
+
+plan-polish:
+  # Максимальное число подтверждающих review-итераций.
+  # Положительное целое число.
+  limit: 5
 
 review:
-  # Добавляет в eda-review проверку качества кода и meta-reviewer quality-check.
+  # Каждая проверка имеет собственный режим запуска и модели для обеих сред.
+  agents:
+    # Проверяет ошибки в логике, крайние случаи и обработку ошибок.
+    # Эта базовая проверка по умолчанию запускается всегда.
+    correctness:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: always
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет архитектурные границы, зависимости и разделение ответственности.
+    # В auto запускается при изменении модулей, зависимостей, публичных контрактов или границ системы.
+    architecture:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: opus
+        # Модель для Codex.
+        codex: gpt-5.6-sol
+
+    # Проверяет соблюдение AGENTS.md, CLAUDE.md и docs/rules.md.
+    # Эта базовая проверка по умолчанию запускается всегда.
+    rules:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: always
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет соответствие применимым карточкам из docs/references/.
+    # В auto запускается только когда для изменений выбраны применимые карточки.
+    references:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет изменённое поведение по применимым карточкам из docs/business/.
+    # В auto запускается только когда изменения затрагивают поведение с применимой business-карточкой.
+    business:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет, что реализация соответствует указанному или однозначно найденному плану.
+    # В auto запускается только когда у ревью есть конкретный план.
+    plan_alignment:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет читаемость, сложность, дублирование и поддерживаемость кода.
+    # Эта базовая проверка по умолчанию запускается всегда.
+    code_quality:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: always
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет достаточность, корректность и устойчивость тестов.
+    # Эта базовая проверка по умолчанию запускается всегда.
+    tests:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: always
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет уязвимости, права доступа, валидацию и работу с чувствительными данными.
+    # В auto запускается для auth, permissions, внешнего ввода, файлов, сети, секретов и криптографии.
+    security:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: opus
+        # Модель для Codex.
+        codex: gpt-5.6-sol
+
+    # Проверяет запросы, циклы, память, конкурентность и другие риски производительности.
+    # В auto запускается при изменении запросов, пакетной обработки, кешей, конкурентности или горячих путей.
+    performance:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Проверяет фронтенд-код, UI, UX, адаптивность и состояния интерфейса.
+    # В auto обязательно запускается при изменении компонентов, стилей, клиентских маршрутов или состояния UI.
+    frontend:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: opus
+        # Модель для Codex.
+        codex: gpt-5.6-sol
+
+    # Проверяет API-контракты, совместимость, валидацию и обработку ошибок.
+    # В auto запускается при изменении маршрутов, handlers, DTO, схем API, GraphQL или RPC.
+    api:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: opus
+        # Модель для Codex.
+        codex: gpt-5.6-sol
+
+    # Проверяет схемы, миграции, запросы, индексы и целостность данных.
+    # В auto запускается при изменении миграций, моделей хранения, SQL, схем или транзакций.
+    database:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: opus
+        # Модель для Codex.
+        codex: gpt-5.6-sol
+
+    # Проверяет, обновлена ли документация для изменившегося пользовательского поведения.
+    # В auto запускается при изменении публичного API, CLI, настроек или документируемого поведения.
+    documentation:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: sonnet
+        # Модель для Codex.
+        codex: gpt-5.6-terra
+
+    # Перепроверяет незакрытые замечания предыдущих ревью для удалённого PR или MR.
+    # В auto запускается только для ссылки на PR/MR или другой цели с доступными удалёнными обсуждениями.
+    previous_reviews:
+      # always — всегда, auto — когда применимо, off — отключено.
+      mode: auto
+      model:
+        # Модель для Claude Code.
+        claude: haiku
+        # Модель для Codex.
+        codex: gpt-5.6-luna
+
+send-review:
+  # После успешной отправки скрывает предыдущие сводки eda-send-review и резолвит их inline-треды.
   # true | false
-  include_code_quality: true
+  close_previous_reviews: true
+
+discover-automations:
+  # Добавляет docs/artifacts/plans/ в обычный запуск eda-discover-automations.
+  # true | false
+  include_plans: false

@@ -22,7 +22,7 @@ use Cycle\Annotated\Annotation\Entity;
 
 #[Entity(
     role: 'user',
-    table: 'users',
+    table: UserColumns::TABLE,
     repository: CycleUserRepository::class,
 )]
 final class UserCycleEntity

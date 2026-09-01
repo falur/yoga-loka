@@ -10,6 +10,8 @@
 | Command handler | Для сценария, изменяющего состояние | [Command handler](references/command-handler.md) |
 | Query handler | Для сценария чтения без изменения состояния | [Query handler](references/query-handler.md) |
 | Result DTO | Когда результат Query отличается от Entity | [Result DTO](references/result-dto.md) |
+| Data | Для данных, которые Reader читает из своих таблиц | [Data](references/data.md) |
+| Reader | Для чтения данных модуля без загрузки агрегатов | [Reader](references/reader.md) |
 | HTTP Filter | Для типизированного приёма и проверки HTTP-данных | [HTTP Filter](references/http-filter.md) |
 | HTTP Controller | Для передачи HTTP-запроса в Command или Query | [HTTP Controller](references/http-controller.md) |
 | API Resource | Для типизированной формы ответа и OpenAPI | [API Resource](references/api-resource.md) |

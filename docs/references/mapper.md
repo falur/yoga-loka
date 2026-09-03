@@ -17,12 +17,12 @@ namespace App\Modules\User\Infrastructure\Persistence\Cycle\Mapper;
 
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\UserDisplayName;
-use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\UserCycleEntity;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
 use App\Shared\Domain\ValueObject\UserId;
 
 final readonly class UserMapper
 {
-    public function toDomain(UserCycleEntity $cycleEntity): User
+    public function toDomain(CycleUserEntity $cycleEntity): User
     {
         return User::restore(
             id: UserId::fromString($cycleEntity->id),
@@ -32,9 +32,9 @@ final readonly class UserMapper
 
     public function toCycleEntity(
         User $user,
-        UserCycleEntity|null $cycleEntity = null,
-    ): UserCycleEntity {
-        $cycleEntity ??= new UserCycleEntity();
+        CycleUserEntity|null $cycleEntity = null,
+    ): CycleUserEntity {
+        $cycleEntity ??= new CycleUserEntity();
         $cycleEntity->id = $user->id->value();
         $cycleEntity->name = $user->name->value();
 

@@ -43,6 +43,7 @@ app/
           Spiral/                      адаптеры и ресурсы Spiral Framework
             Bootloader/
             Configuration/
+            PublicApi/                 реализации контрактов из Public
             Http/
               Controller/
               Filter/
@@ -57,7 +58,6 @@ app/
             Resources/
               locale/
               views/
-          PublicApi/                   реализации контрактов из Public
           Persistence/
             Cycle/
               Migration/
@@ -93,7 +93,7 @@ tests/                                 сквозные и межмодульн�
 
 ```text
 Domain Entity           {Name}
-Cycle Entity            {Name}CycleEntity
+Cycle Entity            Cycle{Name}Entity
 Domain Repository       {Name}Repository
 Cycle Repository        Cycle{Name}Repository
 Reader                  {Name}Reader
@@ -129,7 +129,7 @@ Bootloader модуля регистрирует его конфигурацию
 
 Публичный контракт описывает возможность модуля, не его внутренний сценарий. Изменяется как API: совместимо либо с согласованным переходом потребителей.
 
-За публичным контрактом нет отдельной логики: его обслуживают сценарии Application. Реализация контракта живёт в `Infrastructure/PublicApi`, вызывает Command или Query своего модуля и преобразует Result в DTO из `Public/Dto`. Новая возможность для соседа появляется как сценарий Application, а не как код за контрактом.
+За публичным контрактом нет отдельной логики: его обслуживают сценарии Application. Реализация контракта живёт в `Infrastructure/Spiral/PublicApi`, вызывает Command или Query своего модуля и преобразует Result в DTO из `Public/Dto`. Новая возможность для соседа появляется как сценарий Application, а не как код за контрактом.
 
 `Public/Event` — стабильные интеграционные события. Внутреннее доменное событие остаётся в `Domain/Event`. Application решает, какое доменное действие становится интеграционным событием.
 
@@ -161,9 +161,9 @@ Cycle Entity повторяет форму хранения, mapper преобр
 
 Reader реализует объявленный в `Application/Contract` порт чтения и содержит запрос к своим таблицам. Доменные сущности он не создаёт.
 
-`Infrastructure/PublicApi` реализует собственный `Public/Contract`. Это входной адаптер наравне с `Http`, `Console`, `Job` и `Temporal`: вызов приходит от соседнего модуля. Provider преобразует аргументы контракта в Command или Query, вызывает handler через шину и возвращает DTO из `Public/Dto`; бизнес-правил, ветвлений по ним и обращений к Repository, Reader и `Public` соседей он не содержит.
+`Infrastructure/Spiral/PublicApi` реализует собственный `Public/Contract`. Это входной адаптер наравне с `Http`, `Console`, `Job` и `Temporal`: вызов приходит от соседнего модуля. Provider преобразует аргументы контракта в Command или Query, вызывает handler через шину и возвращает DTO из `Public/Dto`; бизнес-правил, ветвлений по ним и обращений к Repository, Reader и `Public` соседей он не содержит.
 
-`Infrastructure/Spiral` содержит все прямые зависимости модуля от Spiral. Входные адаптеры `Http`, `Console`, `Job`, `Temporal` преобразуют внешний ввод в Command или Query и результат обратно, бизнес-правил не содержат. Filter отвечает за чтение и первичную проверку запроса, Resource — за JSON и OpenAPI. Импорт `Spiral\...` в `Public`, `Domain` и `Application` запрещён.
+`Infrastructure/Spiral` содержит все прямые зависимости модуля от Spiral. Входные адаптеры `PublicApi`, `Http`, `Console`, `Job`, `Temporal` преобразуют входящий вызов в Command или Query и результат обратно, бизнес-правил не содержат. Filter отвечает за чтение и первичную проверку запроса, Resource — за JSON и OpenAPI. Импорт `Spiral\...` в `Public`, `Domain` и `Application` запрещён.
 
 ### Shared
 
@@ -239,7 +239,7 @@ Command handler не обращается к Reader. Если ответу ну�
 Infrastructure/Spiral/{Transport} модуля A
   -> Application handler A
     -> Public/Contract модуля B
-      -> Infrastructure/PublicApi модуля B
+      -> Infrastructure/Spiral/PublicApi модуля B
         -> Application handler B
           -> Domain B и Repository B
       <- Public/Dto модуля B

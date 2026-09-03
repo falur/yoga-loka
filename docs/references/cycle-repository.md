@@ -18,7 +18,7 @@ namespace App\Modules\User\Infrastructure\Persistence\Cycle\Repository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Columns\UserColumns;
-use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\UserCycleEntity;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractCycleRepository;
@@ -27,10 +27,10 @@ use Cycle\ORM\ORMInterface;
 use Cycle\ORM\Select;
 use Cycle\ORM\Transaction\Runner;
 
-/** @extends AbstractCycleRepository<UserCycleEntity> */
+/** @extends AbstractCycleRepository<CycleUserEntity> */
 final class CycleUserRepository extends AbstractCycleRepository implements UserRepository
 {
-    /** @param Select<UserCycleEntity> $select */
+    /** @param Select<CycleUserEntity> $select */
     public function __construct(
         Select $select,
         ORMInterface $orm,
@@ -44,7 +44,7 @@ final class CycleUserRepository extends AbstractCycleRepository implements UserR
     #[\Override]
     public function findById(UserId $userId): User|null
     {
-        /** @var UserCycleEntity|null $cycleEntity */
+        /** @var CycleUserEntity|null $cycleEntity */
         $cycleEntity = $this->findOne([
             UserColumns::ID => $userId->value(),
         ]);
@@ -57,7 +57,7 @@ final class CycleUserRepository extends AbstractCycleRepository implements UserR
     #[\Override]
     public function save(User $user): void
     {
-        /** @var UserCycleEntity|null $cycleEntity */
+        /** @var CycleUserEntity|null $cycleEntity */
         $cycleEntity = $this->findOne([
             UserColumns::ID => $user->id->value(),
         ]);

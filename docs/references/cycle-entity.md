@@ -25,7 +25,7 @@ use Cycle\Annotated\Annotation\Entity;
     table: UserColumns::TABLE,
     repository: CycleUserRepository::class,
 )]
-final class UserCycleEntity
+final class CycleUserEntity
 {
     #[Column(type: 'uuid', name: UserColumns::ID, primary: true)]
     public string $id;
@@ -37,7 +37,7 @@ final class UserCycleEntity
 
 ## Что повторять
 
-- Имя имеет форму `{Entity}CycleEntity`.
+- Имя имеет форму `Cycle{Entity}Entity`.
 - Класс находится в `Infrastructure/Persistence/Cycle/Entity`.
 - Атрибуты Cycle находятся только здесь.
 - Поля отражают хранение и не содержат бизнес-методов.

@@ -1,5 +1,0 @@
-<?php
-
-namespace GianTiaga\PhpStanStrictRules\Tests\Unit\PHPStan\Fixtures;
-
-final class StrictTypesMissingDeclare {}

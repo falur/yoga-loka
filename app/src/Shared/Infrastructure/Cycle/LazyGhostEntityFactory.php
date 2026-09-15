@@ -140,6 +140,8 @@ final class LazyGhostEntityFactory
         $reflection = $this->reflectionRegistry->reflection($entity::class);
 
         foreach ($relMap->getRelations() as $name => $relation) {
+            // Cycle объявляет ключ как non-empty-string, но PHP приводит числовое имя связи
+            // к int, поэтому проверка нужна и при обещанном PHPDoc-типе.
             if (!\is_string($name)) {
                 continue;
             }

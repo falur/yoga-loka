@@ -11,7 +11,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Вложенный пункт обновления настроек «вид × канал». Семантика toggle: отсутствие enabled = выключено.
  * channel и type принимаются строкой и проверяются Handler-ом: enum нельзя типизировать прямо в Filter,
- * пока генератор OpenAPI (packages/spiral-openapi) не строит схему для enum-свойства фильтра.
+ * пока генератор OpenAPI (gian-tiaga/spiral-openapi) не строит схему для enum-свойства фильтра.
  */
 final class NotificationSettingUpdateInput extends AttributesFilter
 {

@@ -79,7 +79,6 @@ app/
       Application/                     общие нейтральные формы сценариев
       Infrastructure/
         Spiral/                        общая композиция и адаптеры Spiral
-packages/                              внутренние независимые Composer-пакеты
 tests/                                 сквозные и межмодульные проверки
 ```
 
@@ -175,7 +174,7 @@ Reader реализует объявленный в `Application/Contract` по�
 
 ```text
 Domain         -> PHP, свой Domain, Shared/Domain
-Public         -> PHP, свой Public, нейтральные контракты внутренних packages
+Public         -> PHP, свой Public, нейтральные контракты собственных Composer-пакетов
 Application    -> свой Domain, свои Application/Contract, Public других модулей
 Infrastructure -> свой Domain, свой Application, свой Public, Shared/Infrastructure,
                   библиотека своей явно названной границы

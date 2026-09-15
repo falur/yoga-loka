@@ -12,7 +12,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Фильтр регистрации push-токена. platform принимается строкой; допустимость значения проверяет
  * Handler (неизвестная платформа -> 422). Enum нельзя типизировать прямо в Filter: генератор OpenAPI
- * (packages/spiral-openapi) пока не строит схему для enum-свойства фильтра и падает на openapi:generate.
+ * (gian-tiaga/spiral-openapi) пока не строит схему для enum-свойства фильтра и падает на openapi:generate.
  */
 final class RegisterNotificationDeviceTokenFilter extends AttributesFilter
 {

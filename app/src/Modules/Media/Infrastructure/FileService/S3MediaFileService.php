@@ -122,14 +122,14 @@ final readonly class S3MediaFileService implements MediaFileServiceContract
         MediaMultipartUploadIdValue $uploadId,
         MediaMultipartPartCollection $parts,
     ): void {
-        $sdkParts = $parts
+        // \array_values() задаёт список: SDK ожидает part-ы строго с последовательными ключами.
+        $sdkParts = \array_values($parts
             ->toBase()
             ->map(static fn(MediaMultipartPart $part): array => [
                 'PartNumber' => $part->partNumber->value(),
                 'ETag' => $part->eTag->value(),
             ])
-            ->values()
-            ->all();
+            ->all());
 
         try {
             $this->client($storage)->completeMultipartUpload([

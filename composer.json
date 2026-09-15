@@ -17,9 +17,10 @@
         "ext-sockets": "*",
         "aws/aws-sdk-php": "^3.384",
         "cuyz/valinor": "^2.4",
-        "gian-tiaga/spiral-api-errors": "dev-main",
-        "gian-tiaga/spiral-cqrs": "dev-main",
-        "gian-tiaga/spiral-openapi": "dev-main",
+        "gian-tiaga/spiral-api-errors": "^0.1.0",
+        "gian-tiaga/spiral-cqrs": "^0.1.0",
+        "gian-tiaga/spiral-openapi": "^0.1.0",
+        "gian-tiaga/spiral-outbox": "^0.1.0",
         "illuminate/collections": "^13.0",
         "illuminate/support": "^13.0",
         "intervention/image": "^4",
@@ -45,9 +46,9 @@
         "symfony/clock": "^8.0"
     },
     "require-dev": {
-        "brianium/paratest": "7.22.4",
+        "brianium/paratest": "7.24.1",
         "friendsofphp/php-cs-fixer": "*",
-        "gian-tiaga/phpstan-strict-rules": "*",
+        "gian-tiaga/phpstan-strict-rules": "^0.1.0",
         "phpstan/phpstan": "^2.1.54",
         "spiral/code-style": "^2.2",
         "spiral/dumper": "^3.3.1",
@@ -63,15 +64,6 @@
             "Tests\\": "tests"
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "packages/*",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "extra": {
         "publish-cmd": "php app.php publish"
     },

@@ -5,6 +5,9 @@ includes:
 
 parameters:
     level: max
+    # Интерфейс-маркер санкционированной массовой записи: пакет правил не знает классов
+    # приложения, поэтому имя маркера объявляет сам проект.
+    setBasedWriteMarkerInterface: 'App\Shared\Infrastructure\Database\SetBasedWrite'
     tmpDir: runtime/phpstan
     paths:
         - app/src
@@ -30,3 +33,11 @@ parameters:
             message: '#Calls with two or more ordinary arguments must use named arguments\.#'
             paths:
                 - app/src/Modules/Auth/Presentation/Http/Middleware/AuthContextAttributeMiddleware.php
+        # Cycle объявляет ключи RelationMap::getRelations() как non-empty-string, но PHP
+        # приводит числовое имя связи к int. Проверка \is_string() защищает от этого случая
+        # и покрыта тестом LazyGhostEntityFactoryTest::testExtractRelationsSkipsNonStringRelationName.
+        -
+            identifier: function.alreadyNarrowedType
+            message: '#Call to function is_string\(\) with non-empty-string will always evaluate to true\.#'
+            paths:
+                - app/src/Shared/Infrastructure/Cycle/LazyGhostEntityFactory.php

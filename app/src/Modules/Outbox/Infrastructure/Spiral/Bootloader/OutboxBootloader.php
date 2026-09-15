@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure\Bootloader;
+namespace App\Modules\Outbox\Infrastructure\Spiral\Bootloader;
 
 use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
@@ -13,16 +13,18 @@ use App\Modules\Outbox\Application\Contract\OutboxRelayLoopControlContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelaySleeperContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
 use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
-use App\Modules\Outbox\Infrastructure\Message\OutboxEventStore;
-use App\Modules\Outbox\Infrastructure\Message\OutboxMessageLoader;
-use App\Modules\Outbox\Infrastructure\Message\ValinorOutboxMessageSerializer;
-use App\Modules\Outbox\Infrastructure\Registry\OutboxJobRegistry;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\OutboxEventStore;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\OutboxMessageLoader;
+use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
+use App\Modules\Outbox\Infrastructure\Spiral\Registry\OutboxJobRegistry;
 use App\Modules\Outbox\Infrastructure\Relay\InfiniteOutboxRelayLoopControl;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelayWorker;
 use App\Modules\Outbox\Infrastructure\Relay\SystemOutboxRelaySleeper;
-use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Modules\Outbox\Infrastructure\Spiral\Console\OutboxRelayCommand;
+use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Console\Bootloader\ConsoleBootloader;
 
 final class OutboxBootloader extends Bootloader
 {
@@ -39,6 +41,19 @@ final class OutboxBootloader extends Bootloader
     protected const SINGLETONS = [
         OutboxJobRegistryContract::class => OutboxJobRegistry::class,
     ];
+
+    /**
+     * @return array<int, class-string>
+     */
+    public function defineDependencies(): array
+    {
+        return [ConsoleBootloader::class];
+    }
+
+    public function init(ConsoleBootloader $console): void
+    {
+        $console->addCommand(OutboxRelayCommand::class);
+    }
 
     public function boot(OutboxJobRegistryContract $outboxJobRegistry): void
     {

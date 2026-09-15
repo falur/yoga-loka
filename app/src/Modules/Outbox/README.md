@@ -60,31 +60,25 @@ app/database/migrations/20260525.153700_0_create_outbox_events_table.php
 app/src/Modules/Outbox/Application/Contract/OutboxEventStoreContract.php
 app/src/Modules/Outbox/Application/Contract/OutboxMessageLoaderContract.php
 app/src/Modules/Outbox/Application/Message/OutboxMessage.php
-app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxBootloader.php
-app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxConsoleBootloader.php
-app/src/Modules/Outbox/Infrastructure/Message/OutboxMessageLoader.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Bootloader/OutboxBootloader.php
+app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/OutboxMessageLoader.php
 app/src/Modules/Outbox/Infrastructure/Relay/OutboxRelay.php
-app/src/Modules/Outbox/Infrastructure/Queue/OutboxQueueStatusInterceptor.php
-app/src/Modules/Outbox/Presentation/Console/OutboxRelayCommand.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Queue/OutboxQueueStatusInterceptor.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Console/OutboxRelayCommand.php
 ```
 
 ## Подключение модуля
 
-Модуль подключается в `App\Shared\Infrastructure\Framework\Kernel`.
+Модуль подключается в `App\Shared\Infrastructure\Spiral\Kernel`.
 
 В списке bootloader-ов должны быть:
 
 ```php
-use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
-use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
+use App\Modules\Outbox\Infrastructure\Spiral\Bootloader\OutboxBootloader;
 
 // ...
 
 OutboxBootloader::class,
-
-// ...
-
-OutboxConsoleBootloader::class,
 ```
 
 `OutboxBootloader` регистрирует сервисы модуля:
@@ -97,7 +91,7 @@ OutboxConsoleBootloader::class,
 - `OutboxRelayLoopControlContract`;
 - `OutboxJobRegistryContract`.
 
-`OutboxConsoleBootloader` регистрирует консольную команду `outbox:relay`.
+Он же регистрирует консольную команду `outbox:relay`.
 
 ## Настройка базы данных
 
@@ -265,7 +259,7 @@ SendWelcomeEmailMessage
 
 declare(strict_types=1);
 
-namespace App\Modules\Notification\Presentation\Job;
+namespace App\Modules\Notification\Infrastructure\Spiral\Job;
 
 use App\Modules\Notification\Application\Command\SendWelcomeEmail\SendWelcomeEmailCommand;
 use App\Modules\Notification\Application\Command\SendWelcomeEmail\SendWelcomeEmailHandler;
@@ -480,7 +474,7 @@ Job читает сообщение через `OutboxMessageLoaderContract`. Ap
 Пример есть в:
 
 ```text
-app/src/Modules/Outbox/Presentation/Job/OutboxDebugLogJob.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Job/OutboxDebugLogJob.php
 ```
 
 Такой подход не дублирует большой payload в очереди, сохраняет источник правды в

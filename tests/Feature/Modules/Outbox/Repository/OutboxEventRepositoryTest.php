@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Repository;
 
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\Collection\OutboxEventCollection;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
@@ -31,7 +31,7 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
                 count: 7,
             ),
         );
-        $outboxEventId = OutboxEventId::fromString($storedOutboxEventId->value());
+        $outboxEventId = OutboxEventId::fromString($storedOutboxEventId);
 
         $this->entityManager()->run();
 
@@ -151,9 +151,9 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
         return $this->getContainer()->get(OutboxEventRepository::class);
     }
 
-    private function outboxEventStore(): OutboxEventStoreContract
+    private function outboxEventStore(): IntegrationEventStoreContract
     {
-        return $this->getContainer()->get(OutboxEventStoreContract::class);
+        return $this->getContainer()->get(IntegrationEventStoreContract::class);
     }
 
     private function outboxMessageSerializer(): OutboxMessageSerializerContract
@@ -162,7 +162,7 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
     }
 }
 
-final readonly class OutboxRepositoryTestMessage implements OutboxMessage
+final readonly class OutboxRepositoryTestMessage implements IntegrationEvent
 {
     public function __construct(
         public string $text,

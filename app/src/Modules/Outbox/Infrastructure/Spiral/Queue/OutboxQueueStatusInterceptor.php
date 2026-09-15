@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Infrastructure\Spiral\Queue;
 
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use Cycle\ORM\EntityManagerInterface;
@@ -95,34 +95,36 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
     private function outboxEventIdFromParameters(array $parameters): OutboxEventId|null
     {
         $outboxQueueHeaders = $this->outboxQueueHeadersFromParameters($parameters);
-        $outboxQueueEnvelope = $this->outboxQueueEnvelopeFromParameters($parameters);
+        $outboxEnvelopeDto = $this->outboxEnvelopeDtoFromParameters($parameters);
 
         if (
             $outboxQueueHeaders->outboxId !== null
-            && $outboxQueueEnvelope !== null
+            && $outboxEnvelopeDto !== null
             && (
-                $outboxQueueHeaders->outboxId !== $outboxQueueEnvelope->outboxEventId->value()
+                $outboxQueueHeaders->outboxId !== $outboxEnvelopeDto->outboxEventId
                 || (
                     $outboxQueueHeaders->outboxType !== null
-                    && $outboxQueueHeaders->outboxType !== $outboxQueueEnvelope->outboxEventType->value()
+                    && $outboxQueueHeaders->outboxType !== $outboxEnvelopeDto->outboxEventType
                 )
             )
         ) {
             $this->logger->warning(message: 'Outbox interceptor обнаружил несовпадение outboxId в headers и payload.', context: [
                 'headerOutboxId' => $outboxQueueHeaders->outboxId,
-                'payloadOutboxId' => $outboxQueueEnvelope->outboxEventId->value(),
+                'payloadOutboxId' => $outboxEnvelopeDto->outboxEventId,
                 'headerOutboxType' => $outboxQueueHeaders->outboxType,
-                'payloadOutboxType' => $outboxQueueEnvelope->outboxEventType->value(),
+                'payloadOutboxType' => $outboxEnvelopeDto->outboxEventType,
             ]);
 
             throw new \UnexpectedValueException('Outbox interceptor получил разные outbox-данные в headers и payload.');
         }
 
+        // Строковый идентификатор конверта становится доменным OutboxEventId здесь, внутри Outbox:
+        // наружу, в Job соседних модулей, уходит только строка публичного конверта.
         if ($outboxQueueHeaders->outboxId !== null) {
             return OutboxEventId::fromString($outboxQueueHeaders->outboxId);
         }
 
-        return $outboxQueueEnvelope?->outboxEventId;
+        return $outboxEnvelopeDto === null ? null : OutboxEventId::fromString($outboxEnvelopeDto->outboxEventId);
     }
 
     /**
@@ -143,7 +145,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
     /**
      * @param array<int|string, mixed> $parameters
      */
-    private function outboxQueueEnvelopeFromParameters(array $parameters): OutboxQueueEnvelope|null
+    private function outboxEnvelopeDtoFromParameters(array $parameters): OutboxEnvelopeDto|null
     {
         if (!\array_key_exists(key: 'payload', array: $parameters)) {
             return null;
@@ -151,7 +153,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
 
         $payload = $parameters['payload'];
 
-        if ($payload instanceof OutboxQueueEnvelope) {
+        if ($payload instanceof OutboxEnvelopeDto) {
             return $payload;
         }
 

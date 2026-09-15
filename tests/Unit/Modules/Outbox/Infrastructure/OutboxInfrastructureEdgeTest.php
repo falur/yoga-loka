@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Outbox\Infrastructure;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventDate;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
@@ -70,8 +70,8 @@ final class OutboxInfrastructureEdgeTest extends TestCase
         $this->expectException(OutboxJobRegistryException::class);
 
         (new OutboxJobRegistry())->register(
-            outboxMessageClass: \stdClass::class,
-            outboxJobClass: \stdClass::class,
+            integrationEventClass: \stdClass::class,
+            jobClass: \stdClass::class,
         );
     }
 
@@ -80,8 +80,8 @@ final class OutboxInfrastructureEdgeTest extends TestCase
         $this->expectException(OutboxJobRegistryException::class);
 
         (new OutboxJobRegistry())->register(
-            outboxMessageClass: OutboxInfrastructureEdgeMessage::class,
-            outboxJobClass: \stdClass::class,
+            integrationEventClass: OutboxInfrastructureEdgeMessage::class,
+            jobClass: \stdClass::class,
         );
     }
 
@@ -130,4 +130,4 @@ final class OutboxInfrastructureEdgeTest extends TestCase
     }
 }
 
-final readonly class OutboxInfrastructureEdgeMessage implements OutboxMessage {}
+final readonly class OutboxInfrastructureEdgeMessage implements IntegrationEvent {}

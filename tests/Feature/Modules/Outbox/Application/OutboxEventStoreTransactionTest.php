@@ -15,8 +15,8 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Repository\MediaRepository;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
@@ -44,7 +44,7 @@ final class OutboxEventStoreTransactionTest extends TestCase
     {
         $storeMediaAndOutboxHandler = new StoreMediaAndOutboxHandler(
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
-            outboxEventStore: $this->getContainer()->get(OutboxEventStoreContract::class),
+            outboxEventStore: $this->getContainer()->get(IntegrationEventStoreContract::class),
         );
 
         $storeMediaAndOutboxResult = $this->getContainer()->get(CommandBusInterface::class)->dispatch(
@@ -77,7 +77,7 @@ final readonly class StoreMediaAndOutboxHandler
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private OutboxEventStoreContract $outboxEventStore,
+        private IntegrationEventStoreContract $outboxEventStore,
     ) {}
 
     #[Transactional]
@@ -86,7 +86,7 @@ final readonly class StoreMediaAndOutboxHandler
         $media = $this->createMedia();
         $this->entityManager->persist($media);
         $storedOutboxEventId = $this->outboxEventStore->add(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'transaction check',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:20:00'),
             ),
@@ -95,7 +95,7 @@ final readonly class StoreMediaAndOutboxHandler
 
         return new StoreMediaAndOutboxResult(
             mediaId: $media->id,
-            outboxEventId: OutboxEventId::fromString($storedOutboxEventId->value()),
+            outboxEventId: OutboxEventId::fromString($storedOutboxEventId),
         );
     }
 

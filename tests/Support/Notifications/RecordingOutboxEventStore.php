@@ -4,30 +4,29 @@ declare(strict_types=1);
 
 namespace Tests\Support\Notifications;
 
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\StoredOutboxEventId;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
 /**
- * Тестовый дублёр OutboxEventStoreContract: не пишет в БД, только запоминает застейдженные
+ * Тестовый дублёр IntegrationEventStoreContract: не пишет в БД, только запоминает застейдженные
  * сообщения, чтобы проверять решения рассылки (какие каналы застейджены) без реального outbox.
  */
-final class RecordingOutboxEventStore implements OutboxEventStoreContract
+final class RecordingOutboxEventStore implements IntegrationEventStoreContract
 {
     /**
-     * @var list<OutboxMessage>
+     * @var list<IntegrationEvent>
      */
     public array $messages = [];
 
     private int $counter = 0;
 
     #[\Override]
-    public function add(OutboxMessage $outboxMessage): StoredOutboxEventId
+    public function add(IntegrationEvent $integrationEvent): string
     {
-        $this->messages[] = $outboxMessage;
+        $this->messages[] = $integrationEvent;
         $this->counter++;
 
-        return StoredOutboxEventId::fromString(\sprintf('recorded-%d', $this->counter));
+        return \sprintf('recorded-%d', $this->counter);
     }
 
     /**
@@ -37,7 +36,7 @@ final class RecordingOutboxEventStore implements OutboxEventStoreContract
     {
         return \count(\array_filter(
             $this->messages,
-            static fn(OutboxMessage $message): bool => $message::class === $messageClass,
+            static fn(IntegrationEvent $message): bool => $message::class === $messageClass,
         ));
     }
 }

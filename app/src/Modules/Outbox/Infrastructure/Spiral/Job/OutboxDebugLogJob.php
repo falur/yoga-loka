@@ -6,24 +6,24 @@ namespace App\Modules\Outbox\Infrastructure\Spiral\Job;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageCommand;
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\JobHandler;
 
 final class OutboxDebugLogJob extends JobHandler
 {
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         ProcessOutboxDebugLogMessageHandler $processOutboxDebugLogMessageHandler,
     ): void {
-        $outboxDebugLogMessage = $outboxMessageLoader->load(
+        $outboxDebugLogMessage = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: OutboxDebugLogMessage::class,
+            expectedEventClass: OutboxDebugLogRequestedEvent::class,
         );
 
         $commandBus->dispatch(

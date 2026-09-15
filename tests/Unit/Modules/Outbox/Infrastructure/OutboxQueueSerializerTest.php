@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Outbox\Infrastructure;
 
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use PHPUnit\Framework\TestCase;
 
@@ -16,9 +15,9 @@ final class OutboxQueueSerializerTest extends TestCase
     public function testSerializesTransportEnvelopeAndRestoresEnvelopeWithoutDomainMessage(): void
     {
         $outboxEventId = OutboxEventId::generate();
-        $outboxQueueEnvelope = new OutboxQueueEnvelope(
-            outboxEventId: $outboxEventId,
-            outboxEventType: OutboxEventType::fromString(OutboxDebugLogMessage::class),
+        $outboxQueueEnvelope = new OutboxEnvelopeDto(
+            outboxEventId: $outboxEventId->value(),
+            outboxEventType: OutboxDebugLogRequestedEvent::class,
         );
         $queueSerializer = new OutboxQueueSerializer();
 
@@ -26,16 +25,16 @@ final class OutboxQueueSerializerTest extends TestCase
         $transportPayload = $queueSerializer->transportPayloadFromEnvelope($outboxQueueEnvelope);
         $restoredOutboxQueueEnvelope = $queueSerializer->unserialize(
             payload: $queuePayload,
-            type: OutboxQueueEnvelope::class,
+            type: OutboxEnvelopeDto::class,
         );
 
         self::assertSame([
             'outboxId' => $outboxEventId->value(),
-            'outboxType' => OutboxDebugLogMessage::class,
+            'outboxType' => OutboxDebugLogRequestedEvent::class,
         ], $transportPayload);
-        self::assertInstanceOf(OutboxQueueEnvelope::class, $restoredOutboxQueueEnvelope);
-        self::assertTrue($outboxEventId->equals($restoredOutboxQueueEnvelope->outboxEventId));
-        self::assertSame(OutboxDebugLogMessage::class, $restoredOutboxQueueEnvelope->outboxEventType->value());
+        self::assertInstanceOf(OutboxEnvelopeDto::class, $restoredOutboxQueueEnvelope);
+        self::assertSame($outboxEventId->value(), $restoredOutboxQueueEnvelope->outboxEventId);
+        self::assertSame(OutboxDebugLogRequestedEvent::class, $restoredOutboxQueueEnvelope->outboxEventType);
     }
 
     public function testRestoresTransportEnvelopeWithoutPayloadClass(): void
@@ -46,14 +45,14 @@ final class OutboxQueueSerializerTest extends TestCase
         $restoredOutboxQueueEnvelope = $queueSerializer->unserialize(
             payload: $queueSerializer->serialize([
                 'outboxId' => $outboxEventId->value(),
-                'outboxType' => OutboxDebugLogMessage::class,
+                'outboxType' => OutboxDebugLogRequestedEvent::class,
             ]),
             type: null,
         );
 
-        self::assertInstanceOf(OutboxQueueEnvelope::class, $restoredOutboxQueueEnvelope);
-        self::assertTrue($outboxEventId->equals($restoredOutboxQueueEnvelope->outboxEventId));
-        self::assertSame(OutboxDebugLogMessage::class, $restoredOutboxQueueEnvelope->outboxEventType->value());
+        self::assertInstanceOf(OutboxEnvelopeDto::class, $restoredOutboxQueueEnvelope);
+        self::assertSame($outboxEventId->value(), $restoredOutboxQueueEnvelope->outboxEventId);
+        self::assertSame(OutboxDebugLogRequestedEvent::class, $restoredOutboxQueueEnvelope->outboxEventType);
     }
 
     public function testRejectsNonArrayPayloadOnSerialize(): void
@@ -82,7 +81,7 @@ final class OutboxQueueSerializerTest extends TestCase
 
         (new OutboxQueueSerializer())->unserialize(
             payload: 'null',
-            type: OutboxQueueEnvelope::class,
+            type: OutboxEnvelopeDto::class,
         );
     }
 
@@ -103,14 +102,14 @@ final class OutboxQueueSerializerTest extends TestCase
 
         (new OutboxQueueSerializer())->envelopeFromTransportPayload([
             'outboxId' => '',
-            'outboxType' => OutboxDebugLogMessage::class,
+            'outboxType' => OutboxDebugLogRequestedEvent::class,
         ]);
     }
 
     public function testApplicationEnvelopeDoesNotExposeTransportPayload(): void
     {
-        self::assertFalse(\is_subclass_of(OutboxQueueEnvelope::class, \JsonSerializable::class));
-        self::assertFalse(\method_exists(OutboxQueueEnvelope::class, 'fromTransport'));
-        self::assertFalse(\method_exists(OutboxQueueEnvelope::class, 'toTransport'));
+        self::assertFalse(\is_subclass_of(OutboxEnvelopeDto::class, \JsonSerializable::class));
+        self::assertFalse(\method_exists(OutboxEnvelopeDto::class, 'fromTransport'));
+        self::assertFalse(\method_exists(OutboxEnvelopeDto::class, 'toTransport'));
     }
 }

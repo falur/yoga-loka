@@ -6,9 +6,9 @@ namespace App\Modules\Outbox\Infrastructure\Spiral\Queue;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
-use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use Spiral\Queue\Config\QueueConfig;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Options;
@@ -29,18 +29,21 @@ final readonly class OutboxQueuePublisher
      */
     public function publish(StoredOutboxEvent $storedOutboxEvent): string
     {
-        $outboxMessage = $this->outboxMessageSerializer->deserialize(
+        $integrationEvent = $this->outboxMessageSerializer->deserialize(
             serializedOutboxMessage: new SerializedOutboxMessage(
                 type: $storedOutboxEvent->type->value(),
                 payload: $storedOutboxEvent->payload->value(),
             ),
         );
-        $outboxJobClass = $this->outboxJobRegistry->jobFor($outboxMessage);
-        $outboxQueueEnvelope = OutboxQueueEnvelope::fromStoredEvent($storedOutboxEvent);
+        $outboxJobClass = $this->outboxJobRegistry->jobFor($integrationEvent);
+        $outboxEnvelopeDto = new OutboxEnvelopeDto(
+            outboxEventId: $storedOutboxEvent->id->value(),
+            outboxEventType: $storedOutboxEvent->type->value(),
+        );
 
         $this->queueConnectionProvider->getConnection()->push(
             name: $outboxJobClass,
-            payload: $this->queuePayload($outboxQueueEnvelope),
+            payload: $this->queuePayload($outboxEnvelopeDto),
             options: (new Options())
                 ->withHeader(
                     name: OutboxQueueHeaders::OUTBOX_ID,
@@ -71,17 +74,17 @@ final readonly class OutboxQueuePublisher
     }
 
     /**
-     * @return array<string, string|OutboxQueueEnvelope>
+     * @return array<string, string|OutboxEnvelopeDto>
      */
-    private function queuePayload(OutboxQueueEnvelope $outboxQueueEnvelope): array
+    private function queuePayload(OutboxEnvelopeDto $outboxEnvelopeDto): array
     {
         if ($this->usesSyncConnection()) {
             return [
-                'payload' => $outboxQueueEnvelope,
+                'payload' => $outboxEnvelopeDto,
             ];
         }
 
-        return $this->outboxQueueSerializer->transportPayloadFromEnvelope($outboxQueueEnvelope);
+        return $this->outboxQueueSerializer->transportPayloadFromEnvelope($outboxEnvelopeDto);
     }
 
     /**

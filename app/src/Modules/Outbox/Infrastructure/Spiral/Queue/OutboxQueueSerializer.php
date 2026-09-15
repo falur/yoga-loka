@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Infrastructure\Spiral\Queue;
 
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use Spiral\Serializer\SerializerInterface;
 
 final readonly class OutboxQueueSerializer implements SerializerInterface
@@ -14,7 +12,7 @@ final readonly class OutboxQueueSerializer implements SerializerInterface
     #[\Override]
     public function serialize(mixed $payload): string
     {
-        if ($payload instanceof OutboxQueueEnvelope) {
+        if ($payload instanceof OutboxEnvelopeDto) {
             return $this->encode($this->transportPayloadFromEnvelope($payload));
         }
 
@@ -28,7 +26,7 @@ final readonly class OutboxQueueSerializer implements SerializerInterface
     #[\Override]
     public function unserialize(string|\Stringable $payload, string|object|null $type = null): mixed
     {
-        if ($type !== null && $type !== OutboxQueueEnvelope::class) {
+        if ($type !== null && $type !== OutboxEnvelopeDto::class) {
             throw new \UnexpectedValueException('Outbox serializer не получил класс outbox-envelope.');
         }
 
@@ -40,25 +38,25 @@ final readonly class OutboxQueueSerializer implements SerializerInterface
     /**
      * @return array<string, string>
      */
-    public function transportPayloadFromEnvelope(OutboxQueueEnvelope $outboxQueueEnvelope): array
+    public function transportPayloadFromEnvelope(OutboxEnvelopeDto $outboxEnvelopeDto): array
     {
         return [
-            OutboxQueueHeaders::OUTBOX_ID => $outboxQueueEnvelope->outboxEventId->value(),
-            OutboxQueueHeaders::OUTBOX_TYPE => $outboxQueueEnvelope->outboxEventType->value(),
+            OutboxQueueHeaders::OUTBOX_ID => $outboxEnvelopeDto->outboxEventId,
+            OutboxQueueHeaders::OUTBOX_TYPE => $outboxEnvelopeDto->outboxEventType,
         ];
     }
 
     /**
      * @param array<string, string> $transportPayload
      */
-    public function envelopeFromTransportPayload(array $transportPayload): OutboxQueueEnvelope
+    public function envelopeFromTransportPayload(array $transportPayload): OutboxEnvelopeDto
     {
         $this->assertRequiredStringKey(transportPayload: $transportPayload, key: OutboxQueueHeaders::OUTBOX_ID);
         $this->assertRequiredStringKey(transportPayload: $transportPayload, key: OutboxQueueHeaders::OUTBOX_TYPE);
 
-        return new OutboxQueueEnvelope(
-            outboxEventId: OutboxEventId::fromString($transportPayload[OutboxQueueHeaders::OUTBOX_ID]),
-            outboxEventType: OutboxEventType::fromString($transportPayload[OutboxQueueHeaders::OUTBOX_TYPE]),
+        return new OutboxEnvelopeDto(
+            outboxEventId: $transportPayload[OutboxQueueHeaders::OUTBOX_ID],
+            outboxEventType: $transportPayload[OutboxQueueHeaders::OUTBOX_TYPE],
         );
     }
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Outbox\Domain;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxAttempts;
@@ -192,14 +192,14 @@ final class OutboxValueObjectTest extends TestCase
     }
 }
 
-final readonly class OutboxValueObjectTestMessage implements OutboxMessage
+final readonly class OutboxValueObjectTestMessage implements IntegrationEvent
 {
     public function __construct(
         public string $text,
     ) {}
 }
 
-final readonly class OutboxValueObjectOtherTestMessage implements OutboxMessage
+final readonly class OutboxValueObjectOtherTestMessage implements IntegrationEvent
 {
     public function __construct(
         public string $text,

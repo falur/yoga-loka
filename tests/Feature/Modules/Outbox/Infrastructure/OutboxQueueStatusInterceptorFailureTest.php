@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Outbox\Infrastructure;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
@@ -52,11 +52,11 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
                 core: new QueueStatusDebugLogJobCore(
                     outboxDebugLogJob: $this->getContainer()->get(OutboxDebugLogJob::class),
-                    payload: new OutboxQueueEnvelope(
-                        outboxEventId: $storedOutboxEvent->id,
-                        outboxEventType: $storedOutboxEvent->type,
+                    payload: new OutboxEnvelopeDto(
+                        outboxEventId: $storedOutboxEvent->id->value(),
+                        outboxEventType: $storedOutboxEvent->type->value(),
                     ),
-                    outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
+                    integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
                     commandBus: $this->getContainer()->get(CommandBusInterface::class),
                     processOutboxDebugLogMessageHandler: $this->getContainer()->get(ProcessOutboxDebugLogMessageHandler::class),
                 ),
@@ -71,9 +71,9 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
     public function testInterceptorMarksFailedWhenHeadersAreMissingButPayloadExists(): void
     {
         $storedOutboxEvent = $this->persistQueuedEvent(payload: '{"text":"debug"}');
-        $outboxQueueEnvelope = new OutboxQueueEnvelope(
-            outboxEventId: $storedOutboxEvent->id,
-            outboxEventType: $storedOutboxEvent->type,
+        $outboxQueueEnvelope = new OutboxEnvelopeDto(
+            outboxEventId: $storedOutboxEvent->id->value(),
+            outboxEventType: $storedOutboxEvent->type->value(),
         );
 
         $this->expectException(MappingError::class);
@@ -86,7 +86,7 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusDebugLogJobCore(
                     outboxDebugLogJob: $this->getContainer()->get(OutboxDebugLogJob::class),
                     payload: $outboxQueueEnvelope,
-                    outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
+                    integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
                     commandBus: $this->getContainer()->get(CommandBusInterface::class),
                     processOutboxDebugLogMessageHandler: $this->getContainer()->get(ProcessOutboxDebugLogMessageHandler::class),
                 ),

@@ -5,44 +5,44 @@ declare(strict_types=1);
 namespace App\Modules\Outbox\Infrastructure\Spiral\Registry;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use Spiral\Queue\HandlerInterface;
 
 final class OutboxJobRegistry implements OutboxJobRegistryContract
 {
     /**
-     * @var array<class-string<OutboxMessage>, class-string<HandlerInterface>>
+     * @var array<class-string<IntegrationEvent>, class-string<HandlerInterface>>
      */
-    private array $jobsByMessageClass = [];
+    private array $jobsByEventClass = [];
 
     /**
-     * @param class-string $outboxMessageClass
-     * @param class-string $outboxJobClass
+     * @param class-string $integrationEventClass
+     * @param class-string $jobClass
      */
     #[\Override]
-    public function register(string $outboxMessageClass, string $outboxJobClass): void
+    public function register(string $integrationEventClass, string $jobClass): void
     {
-        if (!\is_subclass_of(object_or_class: $outboxMessageClass, class: OutboxMessage::class)) {
-            throw OutboxJobRegistryException::invalidMessageClass($outboxMessageClass);
+        if (!\is_subclass_of(object_or_class: $integrationEventClass, class: IntegrationEvent::class)) {
+            throw OutboxJobRegistryException::invalidMessageClass($integrationEventClass);
         }
 
-        if (!\is_subclass_of(object_or_class: $outboxJobClass, class: HandlerInterface::class)) {
-            throw OutboxJobRegistryException::invalidJobClass($outboxJobClass);
+        if (!\is_subclass_of(object_or_class: $jobClass, class: HandlerInterface::class)) {
+            throw OutboxJobRegistryException::invalidJobClass($jobClass);
         }
 
-        $this->jobsByMessageClass[$outboxMessageClass] = $outboxJobClass;
+        $this->jobsByEventClass[$integrationEventClass] = $jobClass;
     }
 
     /**
      * @return class-string<HandlerInterface>
      */
     #[\Override]
-    public function jobFor(OutboxMessage $outboxMessage): string
+    public function jobFor(IntegrationEvent $integrationEvent): string
     {
-        $outboxMessageClass = $outboxMessage::class;
+        $integrationEventClass = $integrationEvent::class;
 
-        return $this->jobsByMessageClass[$outboxMessageClass]
-            ?? throw OutboxJobRegistryException::jobNotRegistered($outboxMessageClass);
+        return $this->jobsByEventClass[$integrationEventClass]
+            ?? throw OutboxJobRegistryException::jobNotRegistered($integrationEventClass);
     }
 }

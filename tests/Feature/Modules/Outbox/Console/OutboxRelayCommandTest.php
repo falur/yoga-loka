@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Console;
 
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
@@ -31,8 +31,8 @@ final class OutboxRelayCommandTest extends TestCase
     {
         $fakeQueue = $this->fakeQueue()->getConnection();
 
-        $this->getContainer()->get(OutboxEventStoreContract::class)->add(
-            new OutboxDebugLogMessage(
+        $this->getContainer()->get(IntegrationEventStoreContract::class)->add(
+            new OutboxDebugLogRequestedEvent(
                 text: 'command relay check',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:07:00'),
             ),

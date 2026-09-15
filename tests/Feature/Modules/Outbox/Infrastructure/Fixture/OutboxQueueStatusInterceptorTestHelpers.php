@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Infrastructure\Fixture;
 
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
@@ -22,7 +22,7 @@ trait OutboxQueueStatusInterceptorTestHelpers
     {
         $now = new \DateTimeImmutable('2026-05-25 16:05:00');
         $storedOutboxEvent = StoredOutboxEvent::createAvailableAt(
-            type: OutboxEventType::fromString(OutboxDebugLogMessage::class),
+            type: OutboxEventType::fromString(OutboxDebugLogRequestedEvent::class),
             payload: OutboxEventPayload::fromJson($payload),
             availableAt: $now,
             now: $now,
@@ -44,7 +44,7 @@ trait OutboxQueueStatusInterceptorTestHelpers
     {
         return [
             OutboxQueueHeaders::OUTBOX_ID => [$outboxEventId->value()],
-            OutboxQueueHeaders::OUTBOX_TYPE => [OutboxDebugLogMessage::class],
+            OutboxQueueHeaders::OUTBOX_TYPE => [OutboxDebugLogRequestedEvent::class],
         ];
     }
 

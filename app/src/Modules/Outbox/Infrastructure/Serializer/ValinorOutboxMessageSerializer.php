@@ -6,8 +6,8 @@ namespace App\Modules\Outbox\Infrastructure\Serializer;
 
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Exception\OutboxMessageSerializationException;
-use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use CuyZ\Valinor\Mapper\Source\Source;
 use CuyZ\Valinor\Mapper\TreeMapper;
 use CuyZ\Valinor\MapperBuilder;
@@ -34,18 +34,18 @@ final readonly class ValinorOutboxMessageSerializer implements OutboxMessageSeri
     }
 
     #[\Override]
-    public function serialize(OutboxMessage $outboxMessage): SerializedOutboxMessage
+    public function serialize(IntegrationEvent $integrationEvent): SerializedOutboxMessage
     {
         return new SerializedOutboxMessage(
-            type: $outboxMessage::class,
-            payload: $this->normalizer->normalize($outboxMessage),
+            type: $integrationEvent::class,
+            payload: $this->normalizer->normalize($integrationEvent),
         );
     }
 
     #[\Override]
-    public function deserialize(SerializedOutboxMessage $serializedOutboxMessage): OutboxMessage
+    public function deserialize(SerializedOutboxMessage $serializedOutboxMessage): IntegrationEvent
     {
-        if (!\is_subclass_of(object_or_class: $serializedOutboxMessage->type, class: OutboxMessage::class)) {
+        if (!\is_subclass_of(object_or_class: $serializedOutboxMessage->type, class: IntegrationEvent::class)) {
             throw OutboxMessageSerializationException::unsupportedMessageType($serializedOutboxMessage->type);
         }
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Infrastructure;
 
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
@@ -32,7 +32,7 @@ final class OutboxRelayTest extends TestCase
     public function testRelayWithSyncConnectionRunsJobWithEnvelopeAndKeepsHandledStatus(): void
     {
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'sync relay check',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:07:00'),
             ),
@@ -55,8 +55,8 @@ final class OutboxRelayTest extends TestCase
     public function testRelayDoesNotOverwriteFailedStatusWhenSyncJobFails(): void
     {
         $this->registerOutboxJob(
-            outboxMessageClass: FailingOutboxRelayMessage::class,
-            outboxJobClass: FailingOutboxRelayJob::class,
+            integrationEventClass: FailingOutboxRelayMessage::class,
+            jobClass: FailingOutboxRelayJob::class,
         );
         $outboxEventId = $this->addOutboxMessage(new FailingOutboxRelayMessage(reason: 'sync failure'));
         $this->entityManager()->run();
@@ -78,8 +78,8 @@ final class OutboxRelayTest extends TestCase
     public function testRelayDoesNotOverwriteQueuedStatusWhenSyncJobRetries(): void
     {
         $this->registerOutboxJob(
-            outboxMessageClass: RetryingOutboxRelayMessage::class,
-            outboxJobClass: RetryingOutboxRelayJob::class,
+            integrationEventClass: RetryingOutboxRelayMessage::class,
+            jobClass: RetryingOutboxRelayJob::class,
         );
         $outboxEventId = $this->addOutboxMessage(new RetryingOutboxRelayMessage(reason: 'sync retry'));
         $this->entityManager()->run();

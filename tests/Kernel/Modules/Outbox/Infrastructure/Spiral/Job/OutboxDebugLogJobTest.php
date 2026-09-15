@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Tests\Kernel\Modules\Outbox\Infrastructure\Spiral\Job;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
@@ -33,20 +32,20 @@ final class OutboxDebugLogJobTest extends TestCase
 
     public function testJobDelegatesDebugMessageToApplicationHandler(): void
     {
-        $outboxEventId = $this->addOutboxMessage(new OutboxDebugLogMessage(
+        $outboxEventId = $this->addOutboxMessage(new OutboxDebugLogRequestedEvent(
             text: 'job log check',
             createdAt: new \DateTimeImmutable('2026-05-25T16:06:00+00:00'),
         ));
-        $payload = new OutboxQueueEnvelope(
-            outboxEventId: $outboxEventId,
-            outboxEventType: OutboxEventType::fromString(OutboxDebugLogMessage::class),
+        $payload = new OutboxEnvelopeDto(
+            outboxEventId: $outboxEventId->value(),
+            outboxEventType: OutboxDebugLogRequestedEvent::class,
         );
         $logger = new RecordingLogger();
 
         $this->getContainer()->get(OutboxDebugLogJob::class)->invoke(
             payload: $payload,
             id: 'job-id',
-            outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
+            integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             processOutboxDebugLogMessageHandler: new ProcessOutboxDebugLogMessageHandler($logger),
         );
@@ -56,12 +55,12 @@ final class OutboxDebugLogJobTest extends TestCase
         self::assertTrue($logger->hasDebugContextValue('createdAt', '2026-05-25T16:06:00+00:00'));
     }
 
-    private function addOutboxMessage(OutboxDebugLogMessage $outboxMessage): OutboxEventId
+    private function addOutboxMessage(OutboxDebugLogRequestedEvent $outboxMessage): OutboxEventId
     {
-        $storedOutboxEventId = $this->getContainer()->get(OutboxEventStoreContract::class)->add($outboxMessage);
+        $storedOutboxEventId = $this->getContainer()->get(IntegrationEventStoreContract::class)->add($outboxMessage);
         $this->entityManager()->run();
 
-        return OutboxEventId::fromString($storedOutboxEventId->value());
+        return OutboxEventId::fromString($storedOutboxEventId);
     }
 
     private function entityManager(): EntityManagerInterface

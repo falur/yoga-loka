@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Outbox\Infrastructure;
 
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
@@ -178,17 +178,17 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
     {
         $storedOutboxEvent = $this->persistQueuedEvent();
         $queuePayload = (new OutboxQueueSerializer())->serialize(
-            new OutboxQueueEnvelope(
-                outboxEventId: $storedOutboxEvent->id,
-                outboxEventType: $storedOutboxEvent->type,
+            new OutboxEnvelopeDto(
+                outboxEventId: $storedOutboxEvent->id->value(),
+                outboxEventType: $storedOutboxEvent->type->value(),
             ),
         );
         $restoredPayload = (new OutboxQueueSerializer())->unserialize(
             payload: $queuePayload,
-            type: OutboxQueueEnvelope::class,
+            type: OutboxEnvelopeDto::class,
         );
 
-        if (!$restoredPayload instanceof OutboxQueueEnvelope) {
+        if (!$restoredPayload instanceof OutboxEnvelopeDto) {
             throw new \UnexpectedValueException('Тестовый serializer вернул payload неверного типа.');
         }
 
@@ -199,7 +199,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             core: new QueueStatusDebugLogJobCore(
                 outboxDebugLogJob: $this->getContainer()->get(OutboxDebugLogJob::class),
                 payload: $restoredPayload,
-                outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
+                integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
                 commandBus: $this->getContainer()->get(CommandBusInterface::class),
                 processOutboxDebugLogMessageHandler: $this->getContainer()->get(ProcessOutboxDebugLogMessageHandler::class),
             ),
@@ -212,9 +212,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
     public function testInterceptorUsesPayloadWhenHeadersAreMissing(): void
     {
         $storedOutboxEvent = $this->persistQueuedEvent();
-        $outboxQueueEnvelope = new OutboxQueueEnvelope(
-            outboxEventId: $storedOutboxEvent->id,
-            outboxEventType: $storedOutboxEvent->type,
+        $outboxQueueEnvelope = new OutboxEnvelopeDto(
+            outboxEventId: $storedOutboxEvent->id->value(),
+            outboxEventType: $storedOutboxEvent->type->value(),
         );
 
         $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
@@ -224,7 +224,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             core: new QueueStatusDebugLogJobCore(
                 outboxDebugLogJob: $this->getContainer()->get(OutboxDebugLogJob::class),
                 payload: $outboxQueueEnvelope,
-                outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
+                integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
                 commandBus: $this->getContainer()->get(CommandBusInterface::class),
                 processOutboxDebugLogMessageHandler: $this->getContainer()->get(ProcessOutboxDebugLogMessageHandler::class),
             ),
@@ -269,9 +269,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
                 action: 'handle',
                 parameters: [
                     'headers' => $this->headersFor($storedOutboxEvent->id),
-                    'payload' => new OutboxQueueEnvelope(
-                        outboxEventId: $payloadOutboxEvent->id,
-                        outboxEventType: $payloadOutboxEvent->type,
+                    'payload' => new OutboxEnvelopeDto(
+                        outboxEventId: $payloadOutboxEvent->id->value(),
+                        outboxEventType: $payloadOutboxEvent->type->value(),
                     ),
                 ],
                 core: $core,

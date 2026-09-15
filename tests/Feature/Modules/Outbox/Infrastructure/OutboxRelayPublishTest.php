@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Infrastructure;
 
-use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
+use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
@@ -46,7 +46,7 @@ final class OutboxRelayPublishTest extends TestCase
         $this->useQueueConnection('rabbitmq');
         $fakeQueue = $this->fakeQueue()->getConnection();
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'relay check',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:01:00'),
             ),
@@ -67,11 +67,11 @@ final class OutboxRelayPublishTest extends TestCase
             return \is_array($payload)
                 && (
                     ($payload['outboxId'] ?? null) === $outboxEventId->value()
-                    && ($payload['outboxType'] ?? null) === OutboxDebugLogMessage::class
+                    && ($payload['outboxType'] ?? null) === OutboxDebugLogRequestedEvent::class
                 )
                 && $options instanceof OptionsInterface
                 && $options->getHeaderLine(OutboxQueueHeaders::OUTBOX_ID) === $outboxEventId->value()
-                && $options->getHeaderLine(OutboxQueueHeaders::OUTBOX_TYPE) === OutboxDebugLogMessage::class;
+                && $options->getHeaderLine(OutboxQueueHeaders::OUTBOX_TYPE) === OutboxDebugLogRequestedEvent::class;
         });
 
         self::assertSame(OutboxEventStatus::Queued->value, $this->outboxStatusInDatabase($outboxEventId));
@@ -81,7 +81,7 @@ final class OutboxRelayPublishTest extends TestCase
     public function testRelayDoesNotOverwriteHandledStatusWhenWorkerFinishesDuringPush(): void
     {
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'relay race check',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:13:00'),
             ),
@@ -118,7 +118,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
 
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'relay failure',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
             ),
@@ -148,7 +148,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
 
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'relay warn failure',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
             ),
@@ -185,7 +185,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
 
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'relay error failure',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:03:00'),
             ),
@@ -215,7 +215,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
 
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'long publish failure',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:09:00'),
             ),
@@ -244,7 +244,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
 
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(
+            new OutboxDebugLogRequestedEvent(
                 text: 'last publish attempt',
                 createdAt: new \DateTimeImmutable('2026-05-25 16:11:00'),
             ),
@@ -350,7 +350,7 @@ final class OutboxRelayPublishTest extends TestCase
 
         $stuckSince = new \DateTimeImmutable('2026-05-25 16:00:00');
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(text: 'stuck publishing', createdAt: $stuckSince),
+            new OutboxDebugLogRequestedEvent(text: 'stuck publishing', createdAt: $stuckSince),
         );
         $this->entityManager()->run();
 
@@ -382,7 +382,7 @@ final class OutboxRelayPublishTest extends TestCase
 
         $stuckSince = new \DateTimeImmutable('2026-05-25 16:00:00');
         $outboxEventId = $this->addOutboxMessage(
-            new OutboxDebugLogMessage(text: 'stuck publishing retry', createdAt: $stuckSince),
+            new OutboxDebugLogRequestedEvent(text: 'stuck publishing retry', createdAt: $stuckSince),
         );
         $this->entityManager()->run();
 

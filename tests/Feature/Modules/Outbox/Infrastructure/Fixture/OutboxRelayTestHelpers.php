@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Infrastructure\Fixture;
 
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
@@ -36,9 +36,9 @@ trait OutboxRelayTestHelpers
         return $this->getContainer()->get(OutboxEventRepository::class);
     }
 
-    private function outboxEventStore(): OutboxEventStoreContract
+    private function outboxEventStore(): IntegrationEventStoreContract
     {
-        return $this->getContainer()->get(OutboxEventStoreContract::class);
+        return $this->getContainer()->get(IntegrationEventStoreContract::class);
     }
 
     private function useQueueConnection(string $connection): void
@@ -52,9 +52,9 @@ trait OutboxRelayTestHelpers
         );
     }
 
-    private function addOutboxMessage(OutboxMessage $outboxMessage): OutboxEventId
+    private function addOutboxMessage(IntegrationEvent $outboxMessage): OutboxEventId
     {
-        return OutboxEventId::fromString($this->outboxEventStore()->add($outboxMessage)->value());
+        return OutboxEventId::fromString($this->outboxEventStore()->add($outboxMessage));
     }
 
     private function outboxConfigWithMaxAttempts(int $maxAttempts): OutboxConfig
@@ -70,18 +70,18 @@ trait OutboxRelayTestHelpers
     }
 
     /**
-     * @param class-string<OutboxMessage> $outboxMessageClass
-     * @param class-string<HandlerInterface> $outboxJobClass
+     * @param class-string<IntegrationEvent> $integrationEventClass
+     * @param class-string<HandlerInterface> $jobClass
      */
-    private function registerOutboxJob(string $outboxMessageClass, string $outboxJobClass): void
+    private function registerOutboxJob(string $integrationEventClass, string $jobClass): void
     {
-        $this->getContainer()->get(OutboxJobRegistryContract::class)->register(
-            outboxMessageClass: $outboxMessageClass,
-            outboxJobClass: $outboxJobClass,
+        $this->getContainer()->get(IntegrationEventRoutingContract::class)->register(
+            integrationEventClass: $integrationEventClass,
+            jobClass: $jobClass,
         );
         $this->getContainer()->get(QueueRegistry::class)->setHandler(
-            jobType: $outboxJobClass,
-            handler: $outboxJobClass,
+            jobType: $jobClass,
+            handler: $jobClass,
         );
     }
 

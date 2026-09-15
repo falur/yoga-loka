@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Outbox\Infrastructure\Fixture;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
-final readonly class FailingOutboxRelayMessage implements OutboxMessage
+final readonly class FailingOutboxRelayMessage implements IntegrationEvent
 {
     public function __construct(
         public string $reason,

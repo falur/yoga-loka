@@ -8,6 +8,9 @@ return [
     'app.posts.comment_not_found' => 'Comment not found.',
     'app.posts.forbidden' => 'You are not allowed to perform this action.',
     'app.posts.mention_user_not_found' => 'Mentioned user not found.',
+    // Автор записи или комментария пропал из пакетной карты профилей. Текст совпадает с
+    // 'app.user.not_found' владельца: ответ клиенту не меняется, но чужим ключом Posts не бросает.
+    'app.posts.author_not_found' => 'User not found.',
 
     // Тексты уведомлений на действия. Подставляется имя автора-инициатора через {actorName}.
     'app.posts.notification.post_mention.title' => 'You were mentioned in a post',

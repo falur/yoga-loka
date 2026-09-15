@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Notification;
 
-use App\Modules\User\Application\Dto\UserPublicProfileView;
+use App\Modules\User\Public\Dto\UserProfileDto;
 
 /**
  * Получатель уведомления о комментарии после дедупликации: вид с наибольшим приоритетом для этого
@@ -15,6 +15,6 @@ final readonly class CommentNotificationTarget
 {
     public function __construct(
         public PostNotificationType $type,
-        public UserPublicProfileView $recipient,
+        public UserProfileDto $recipient,
     ) {}
 }

@@ -120,8 +120,7 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
                 secretHasher: $this->secretHasher(),
                 tokenGenerator: new RandomTokenGenerator(),
                 authTokenStorage: $this->tokenStorage(),
-                queryBus: $this->queryBus(),
-                findUserForAuthHandler: $this->findUserForAuthHandler(),
+                users: $this->users(),
                 entityManager: $this->entityManager(),
             ),
         );

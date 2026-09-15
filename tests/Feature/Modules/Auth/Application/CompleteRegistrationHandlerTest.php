@@ -102,8 +102,7 @@ final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
             registrationTicketRepository: $this->registrationTicketRepository(),
             secretHasher: $this->secretHasher(),
             authTokenStorage: $this->tokenStorage(),
-            commandBus: $this->commandBus(),
-            createUserHandler: $this->createUserHandler(),
+            users: $this->users(),
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );

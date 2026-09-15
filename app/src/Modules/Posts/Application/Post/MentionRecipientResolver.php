@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Post;
 
-use App\Modules\User\Application\Dto\UserPublicProfileCollection;
-use App\Modules\User\Application\Dto\UserPublicProfileView;
-use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
-use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistQuery;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
+use App\Modules\User\Public\Contract\UserContract;
+use App\Modules\User\Public\Dto\UserProfileDto;
+use App\Modules\User\Public\Dto\UserProfileDtoCollection;
 use App\Shared\Domain\Exception\ValidationException;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
  * Разрешение получателей упоминаний и сборка профилей для сценариев записей и комментариев.
@@ -34,10 +28,7 @@ final readonly class MentionRecipientResolver
     private const string MENTION_USER_NOT_FOUND_KEY = 'app.posts.mention_user_not_found';
 
     public function __construct(
-        private QueryBusInterface $queryBus,
-        private CheckUsersExistHandler $checkUsersExistHandler,
-        private GetUserPublicProfileHandler $getUserPublicProfileHandler,
-        private GetUserPublicProfilesHandler $getUserPublicProfilesHandler,
+        private UserContract $users,
     ) {}
 
     /**
@@ -49,12 +40,7 @@ final readonly class MentionRecipientResolver
      */
     public function requireAllExist(array $userIds): void
     {
-        $allExist = $this->queryBus->dispatch(
-            query: new CheckUsersExistQuery($userIds),
-            handler: $this->checkUsersExistHandler->handle(...),
-        );
-
-        if (!$allExist) {
+        if (!$this->users->existsAll($userIds)) {
             throw new ValidationException(self::MENTION_USER_NOT_FOUND_KEY);
         }
     }
@@ -65,10 +51,10 @@ final readonly class MentionRecipientResolver
      *
      * @param list<string> $userIds
      */
-    public function resolveRequired(array $userIds): UserPublicProfileCollection
+    public function resolveRequired(array $userIds): UserProfileDtoCollection
     {
         if ($userIds === []) {
-            return new UserPublicProfileCollection();
+            return new UserProfileDtoCollection();
         }
 
         $recipients = $this->profiles($userIds);
@@ -87,27 +73,21 @@ final readonly class MentionRecipientResolver
      *
      * @param list<string> $userIds
      */
-    public function resolveExisting(array $userIds): UserPublicProfileCollection
+    public function resolveExisting(array $userIds): UserProfileDtoCollection
     {
         return $this->profiles($userIds);
     }
 
-    public function profile(string $userId): UserPublicProfileView
+    public function profile(string $userId): UserProfileDto
     {
-        return $this->queryBus->dispatch(
-            query: new GetUserPublicProfileQuery($userId),
-            handler: $this->getUserPublicProfileHandler->handle(...),
-        );
+        return $this->users->profile($userId);
     }
 
     /**
      * @param list<string> $userIds
      */
-    private function profiles(array $userIds): UserPublicProfileCollection
+    private function profiles(array $userIds): UserProfileDtoCollection
     {
-        return $this->queryBus->dispatch(
-            query: new GetUserPublicProfilesQuery($userIds),
-            handler: $this->getUserPublicProfilesHandler->handle(...),
-        );
+        return $this->users->profilesByIds($userIds);
     }
 }

@@ -8,13 +8,9 @@ use App\Modules\Posts\Domain\Collection\CommentCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Repository\CommentLikeRepository;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
  * Собирает read-model CommentView из доменного комментария: автор — через User, флаг likedByMe и
@@ -23,9 +19,7 @@ use GianTiaga\SpiralCqrs\QueryBusInterface;
 final readonly class CommentViewAssembler
 {
     public function __construct(
-        private QueryBusInterface $queryBus,
-        private GetUserPublicProfileHandler $getUserPublicProfileHandler,
-        private GetUserPublicProfilesHandler $getUserPublicProfilesHandler,
+        private UserContract $users,
         private CommentLikeRepository $commentLikeRepository,
     ) {}
 
@@ -73,12 +67,7 @@ final readonly class CommentViewAssembler
 
     private function authorView(UserId $userId): AuthorView
     {
-        $profile = $this->queryBus->dispatch(
-            query: new GetUserPublicProfileQuery($userId->value()),
-            handler: $this->getUserPublicProfileHandler->handle(...),
-        );
-
-        return AuthorView::fromProfile($profile);
+        return AuthorView::fromProfile($this->users->profile($userId->value()));
     }
 
     /**
@@ -92,10 +81,7 @@ final readonly class CommentViewAssembler
             ->unique()
             ->all());
 
-        $profiles = $this->queryBus->dispatch(
-            query: new GetUserPublicProfilesQuery($userIds),
-            handler: $this->getUserPublicProfilesHandler->handle(...),
-        );
+        $profiles = $this->users->profilesByIds($userIds);
 
         $authors = [];
 
@@ -107,15 +93,16 @@ final readonly class CommentViewAssembler
     }
 
     /**
-     * Берёт автора из пакетной карты профилей. GetUserPublicProfiles молча опускает отсутствующих,
-     * поэтому отсутствие ключа обрабатываем явно — той же 404, что и одиночный путь
-     * (fromComment -> GetUserPublicProfile), а не неконтролируемым undefined array key -> 500.
+     * Берёт автора из пакетной карты профилей. Пакетное чтение профилей молча опускает
+     * отсутствующих, поэтому отсутствие ключа обрабатываем явно — той же 404, что и одиночный путь
+     * (fromComment -> UserContract::profile), а не неконтролируемым undefined array key -> 500.
+     * Ключ перевода свой: текст совпадает с текстом владельца, но чужими ключами Posts не бросает.
      *
      * @param array<string, AuthorView> $authors
      */
     private function requireAuthor(array $authors, string $userId): AuthorView
     {
-        return $authors[$userId] ?? throw new NotFoundException('app.user.not_found');
+        return $authors[$userId] ?? throw new NotFoundException('app.posts.author_not_found');
     }
 
     /**

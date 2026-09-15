@@ -17,11 +17,16 @@ use App\Modules\Auth\Repository\AuthTokenRepository;
 use App\Modules\Auth\Repository\LoginCodeRepository;
 use App\Modules\Auth\Repository\RegistrationTicketRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
+use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
+use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
+use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Repository\ReservedNicknameRepository;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
@@ -44,6 +49,23 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
             authTokenRepository: $this->authTokenRepository(),
             tokenGenerator: new RandomTokenGenerator(),
             entityManager: $this->entityManager(),
+        );
+    }
+
+    /**
+     * Публичный контракт User для сценариев Auth: собран поверх реальных сценариев модуля, но с
+     * подменённым logger создания — тесты Auth не проверяют журнал соседа.
+     */
+    protected function users(): UserContract
+    {
+        return new UserProvider(
+            commandBus: $this->commandBus(),
+            queryBus: $this->queryBus(),
+            createUserHandler: $this->createUserHandler(),
+            findUserForAuthHandler: $this->findUserForAuthHandler(),
+            checkUsersExistHandler: $this->getContainer()->get(CheckUsersExistHandler::class),
+            getUserPublicProfileHandler: $this->getContainer()->get(GetUserPublicProfileHandler::class),
+            getUserPublicProfilesHandler: $this->getContainer()->get(GetUserPublicProfilesHandler::class),
         );
     }
 

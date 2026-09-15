@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\User\Application;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
+use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
+use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
+use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
+use App\Modules\Media\Infrastructure\Spiral\PublicApi\MediaProvider;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
@@ -21,18 +24,28 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
+use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
+use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
+use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
+use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
+use App\Modules\User\Repository\ReservedNicknameRepository;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
+use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use Cycle\ORM\EntityManagerInterface;
+use GianTiaga\SpiralCqrs\CommandBusInterface;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
+use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
 
 /**
@@ -128,13 +141,49 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
         $fileService->method('publicUrl')->willReturn(self::STUBBED_AVATAR_URL);
 
         return new UserPublicProfileAssembler(
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlHandler: new FindMediaUrlHandler(
-                mediaRepository: $this->getContainer()->get(MediaRepository::class),
-                mediaUrlService: new MediaUrlService(
-                    mediaFileService: $fileService,
-                    mediaConfig: $this->getContainer()->get(MediaConfig::class),
+            media: new MediaProvider(
+                commandBus: $this->getContainer()->get(CommandBusInterface::class),
+                queryBus: $this->getContainer()->get(QueryBusInterface::class),
+                findMediaUrlsHandler: new FindMediaUrlsHandler(
+                    mediaRepository: $this->getContainer()->get(MediaRepository::class),
+                    mediaUrlService: new MediaUrlService(
+                        mediaFileService: $fileService,
+                        mediaConfig: $this->getContainer()->get(MediaConfig::class),
+                    ),
                 ),
+                checkMediaAttachableHandler: $this->getContainer()->get(CheckMediaAttachableHandler::class),
+                makeMediaPermanentHandler: $this->getContainer()->get(MakeMediaPermanentHandler::class),
+            ),
+        );
+    }
+
+    /**
+     * Публичный контракт модуля поверх тех же сценариев, что и одиночные тесты: аватар разрешается
+     * через стаб файлового сервиса, поэтому ссылка предсказуема и к S3 обращения нет.
+     */
+    protected function userProvider(): UserProvider
+    {
+        $assembler = $this->profileHandlerAssembler();
+
+        return new UserProvider(
+            commandBus: $this->getContainer()->get(CommandBusInterface::class),
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            createUserHandler: new CreateUserHandler(
+                userRepository: $this->userRepository(),
+                reservedNicknameRepository: $this->getContainer()->get(ReservedNicknameRepository::class),
+                entityManager: $this->entityManager(),
+                logger: new NullLogger(),
+                localeResolver: $this->getContainer()->get(LocaleResolver::class),
+            ),
+            findUserForAuthHandler: new FindUserForAuthHandler(userRepository: $this->userRepository()),
+            checkUsersExistHandler: new CheckUsersExistHandler(userRepository: $this->userRepository()),
+            getUserPublicProfileHandler: new GetUserPublicProfileHandler(
+                userRepository: $this->userRepository(),
+                assembler: $assembler,
+            ),
+            getUserPublicProfilesHandler: new GetUserPublicProfilesHandler(
+                userRepository: $this->userRepository(),
+                assembler: $assembler,
             ),
         );
     }

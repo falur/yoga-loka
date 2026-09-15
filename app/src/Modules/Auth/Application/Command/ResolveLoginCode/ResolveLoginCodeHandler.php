@@ -14,13 +14,11 @@ use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Repository\LoginCodeRepository;
-use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
-use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthQuery;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
  * Транзакционный разбор кода. Коммитит запись (consume или attempts++) и ВОЗВРАЩАЕТ исход;
@@ -36,8 +34,7 @@ final readonly class ResolveLoginCodeHandler
         private SecretHasherContract $secretHasher,
         private TokenGeneratorContract $tokenGenerator,
         private AuthTokenStorageContract $authTokenStorage,
-        private QueryBusInterface $queryBus,
-        private FindUserForAuthHandler $findUserForAuthHandler,
+        private UserContract $users,
         private EntityManagerInterface $entityManager,
     ) {}
 
@@ -84,23 +81,20 @@ final readonly class ResolveLoginCodeHandler
         \DateTimeImmutable $now,
         SessionDevice $device,
     ): LoginCodeResolution {
-        $userAuthView = $this->queryBus->dispatch(
-            query: new FindUserForAuthQuery(email: $email->value()),
-            handler: $this->findUserForAuthHandler->handle(...),
-        );
+        $signIn = $this->users->findForSignIn($email->value());
 
-        if ($userAuthView === null) {
+        if ($signIn === null) {
             return $this->issueRegistrationTicket(email: $email, now: $now);
         }
 
-        if (!$userAuthView->canSignIn) {
+        if (!$signIn->canSignIn) {
             $this->entityManager->run();
 
             return LoginCodeResolution::failed(LoginCodeOutcome::NotAllowed);
         }
 
         $tokens = $this->authTokenStorage->issuePair(
-            userId: UserId::fromString($userAuthView->userId),
+            userId: UserId::fromString($signIn->userId),
             device: $device,
         );
         $this->entityManager->run();

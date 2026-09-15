@@ -10,20 +10,19 @@ use App\Modules\Auth\Application\Dto\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Repository\RegistrationTicketRepository;
-use App\Modules\User\Application\Command\CreateUser\CreateUserCommand;
-use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\Exception\AuthenticationException;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
-use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Завершение регистрации по талону. CreateUser диспатчится вложенно (#[Transactional] →
- * SAVEPOINT): занятый ник/email бросает ValidationException 422, откатывая SAVEPOINT и внешнюю
- * транзакцию — поэтому талон НЕ гасится и попытку можно повторить.
+ * Завершение регистрации по талону. Создание пользователя идёт через публичный контракт User и
+ * остаётся вложенным диспатчем (#[Transactional] → SAVEPOINT): занятый ник/email бросает
+ * ValidationException 422, откатывая SAVEPOINT и внешнюю транзакцию — поэтому талон НЕ гасится и
+ * попытку можно повторить.
  */
 final readonly class CompleteRegistrationHandler
 {
@@ -31,8 +30,7 @@ final readonly class CompleteRegistrationHandler
         private RegistrationTicketRepository $registrationTicketRepository,
         private SecretHasherContract $secretHasher,
         private AuthTokenStorageContract $authTokenStorage,
-        private CommandBusInterface $commandBus,
-        private CreateUserHandler $createUserHandler,
+        private UserContract $users,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
@@ -53,24 +51,21 @@ final readonly class CompleteRegistrationHandler
         $ticket->consume($now);
         $this->entityManager->persist($ticket);
 
-        $createUserResult = $this->commandBus->dispatch(
-            command: new CreateUserCommand(
-                email: $ticket->email->value(),
-                name: $command->name,
-                nickname: $command->nickname,
-                locale: $command->requestLocale,
-            ),
-            handler: $this->createUserHandler->handle(...),
+        $createdUser = $this->users->createUser(
+            email: $ticket->email->value(),
+            name: $command->name,
+            nickname: $command->nickname,
+            locale: $command->requestLocale,
         );
 
         $tokens = $this->authTokenStorage->issuePair(
-            userId: UserId::fromString($createUserResult->userId),
+            userId: UserId::fromString($createdUser->userId),
             device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
         );
         $this->entityManager->run();
 
         $this->logger->info(message: 'Регистрация завершена.', context: [
-            'userId' => $createUserResult->userId,
+            'userId' => $createdUser->userId,
             'email' => $ticket->email->value(),
         ]);
 

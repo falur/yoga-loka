@@ -9,8 +9,8 @@ use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
-use App\Shared\Infrastructure\Cycle\WhenSelect;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\WhenSelect;
 use Cycle\Database\Injection\Parameter;
 
 /**

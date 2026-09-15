@@ -7,7 +7,7 @@ namespace App\Modules\Posts\Repository;
 use App\Modules\Posts\Domain\Collection\CommentMentionCollection;
 use App\Modules\Posts\Domain\Entity\CommentMention;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<CommentMention>

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Infrastructure\Cycle;
+namespace App\Shared\Infrastructure\Persistence\Cycle;
 
 use Cycle\ORM\Reference\ReferenceInterface;
 use Cycle\ORM\Relation\ActiveRelationInterface;

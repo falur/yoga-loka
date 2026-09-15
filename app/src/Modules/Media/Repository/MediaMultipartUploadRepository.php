@@ -6,7 +6,7 @@ namespace App\Modules\Media\Repository;
 
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<MediaMultipartUpload>

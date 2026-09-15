@@ -8,7 +8,7 @@ use App\Modules\Posts\Domain\Collection\PostMentionCollection;
 use App\Modules\Posts\Domain\Entity\PostMention;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<PostMention>

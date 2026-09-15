@@ -8,7 +8,7 @@ use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Modules\Access\Domain\ValueObject\UserRoleId;
 use App\Modules\Access\Repository\UserRoleRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
+use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\ORM\Parser\Typecast;

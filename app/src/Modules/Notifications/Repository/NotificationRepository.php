@@ -9,7 +9,7 @@ use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<Notification>

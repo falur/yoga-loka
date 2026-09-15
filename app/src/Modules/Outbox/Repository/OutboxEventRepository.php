@@ -9,7 +9,7 @@ use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

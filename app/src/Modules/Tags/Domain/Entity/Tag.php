@@ -6,10 +6,10 @@ namespace App\Modules\Tags\Domain\Entity;
 
 use App\Modules\Tags\Domain\ValueObject\TagText;
 use App\Modules\Tags\Repository\TagRepository;
-use App\Shared\Domain\Trait\HasTimestamps;
-use App\Shared\Domain\ValueObject\TagId;
+use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
+use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
+use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\ORM\Parser\Typecast;

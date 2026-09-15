@@ -7,8 +7,8 @@ namespace App\Modules\Posts\Repository;
 use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Shared\Domain\ValueObject\TagId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Modules\Tags\Domain\ValueObject\TagId;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

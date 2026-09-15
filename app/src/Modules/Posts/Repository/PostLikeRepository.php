@@ -8,7 +8,7 @@ use App\Modules\Posts\Domain\Collection\PostLikeCollection;
 use App\Modules\Posts\Domain\Entity\PostLike;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

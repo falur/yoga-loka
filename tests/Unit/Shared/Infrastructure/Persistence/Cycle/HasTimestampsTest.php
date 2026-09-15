@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Domain\Trait;
+namespace Tests\Unit\Shared\Infrastructure\Persistence\Cycle;
 
-use App\Shared\Domain\Trait\HasTimestamps;
+use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use PHPUnit\Framework\TestCase;
 
 final class HasTimestampsTest extends TestCase

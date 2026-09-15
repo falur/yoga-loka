@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Infrastructure\Cycle;
+namespace Tests\Unit\Shared\Infrastructure\Persistence\Cycle;
 
-use App\Shared\Infrastructure\Cycle\ColumnValueTypecast;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
+use App\Shared\Infrastructure\Persistence\Cycle\ColumnValueTypecast;
+use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use PHPUnit\Framework\TestCase;
 use Spiral\Core\Attribute\Singleton;
 

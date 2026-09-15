@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Kernel\Shared\Infrastructure\Cycle;
+namespace Tests\Kernel\Shared\Infrastructure\Persistence\Cycle;
 
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaType;
@@ -13,7 +13,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\LazyGhostMapper;
+use App\Shared\Infrastructure\Persistence\Cycle\LazyGhostMapper;
 use Cycle\ORM\ORMInterface;
 use Tests\TestCase;
 

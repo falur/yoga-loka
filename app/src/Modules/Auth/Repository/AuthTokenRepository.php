@@ -9,7 +9,7 @@ use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Database\DatabaseDateTimeFormat;
+use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
 use Cycle\ORM\Select\Repository;
 
 /**

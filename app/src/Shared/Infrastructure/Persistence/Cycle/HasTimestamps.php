@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Domain\Trait;
+namespace App\Shared\Infrastructure\Persistence\Cycle;
 
 use Cycle\Annotated\Annotation\Column;
 

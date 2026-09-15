@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Infrastructure\Cycle;
+namespace Tests\Unit\Shared\Infrastructure\Persistence\Cycle;
 
-use App\Shared\Infrastructure\Cycle\LazyGhostMapper;
+use App\Shared\Infrastructure\Persistence\Cycle\LazyGhostMapper;
 use Cycle\ORM\SchemaInterface;
 use PHPUnit\Framework\TestCase;
 

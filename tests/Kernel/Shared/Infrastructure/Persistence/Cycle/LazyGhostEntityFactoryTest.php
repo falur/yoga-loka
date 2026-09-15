@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Kernel\Shared\Infrastructure\Cycle;
+namespace Tests\Kernel\Shared\Infrastructure\Persistence\Cycle;
 
 use App\Modules\Media\Domain\Collection\MediaImageConversionCollection;
 use App\Modules\Media\Domain\Entity\Media;
@@ -14,7 +14,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\LazyGhostEntityFactory;
+use App\Shared\Infrastructure\Persistence\Cycle\LazyGhostEntityFactory;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\Reference\Reference;
 use Cycle\ORM\RelationMap;

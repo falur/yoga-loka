@@ -8,7 +8,7 @@ use App\Modules\Posts\Domain\Collection\CommentLikeCollection;
 use App\Modules\Posts\Domain\Entity\CommentLike;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\Entity;
 
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
-use App\Shared\Domain\Trait\HasTimestamps;
+use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadId;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
-use App\Modules\Media\Infrastructure\Cycle\MediaMultipartPartCollectionTypecast;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaMultipartPartCollectionTypecast;
+use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;

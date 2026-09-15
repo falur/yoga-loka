@@ -8,7 +8,7 @@ use App\Modules\Media\Domain\Collection\MediaCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

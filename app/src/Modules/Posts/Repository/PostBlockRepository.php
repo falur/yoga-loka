@@ -7,7 +7,7 @@ namespace App\Modules\Posts\Repository;
 use App\Modules\Posts\Domain\Entity\PostBlock;
 use App\Modules\Posts\Domain\ValueObject\PostBlockId;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<PostBlock>

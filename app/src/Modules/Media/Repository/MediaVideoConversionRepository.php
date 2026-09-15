@@ -8,7 +8,7 @@ use App\Modules\Media\Domain\Collection\MediaVideoConversionCollection;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
  * @extends AbstractRepository<MediaVideoConversion>

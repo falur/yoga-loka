@@ -7,7 +7,7 @@ namespace App\Modules\Posts\Repository;
 use App\Modules\Posts\Domain\Collection\PostMediaCollection;
 use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

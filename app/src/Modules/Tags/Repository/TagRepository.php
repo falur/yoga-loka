@@ -7,8 +7,8 @@ namespace App\Modules\Tags\Repository;
 use App\Modules\Tags\Domain\Collection\TagCollection;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
-use App\Shared\Domain\ValueObject\TagId;
-use App\Shared\Infrastructure\Cycle\AbstractRepository;
+use App\Modules\Tags\Domain\ValueObject\TagId;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**

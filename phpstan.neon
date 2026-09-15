@@ -7,7 +7,7 @@ parameters:
     level: max
     # Интерфейс-маркер санкционированной массовой записи: пакет правил не знает классов
     # приложения, поэтому имя маркера объявляет сам проект.
-    setBasedWriteMarkerInterface: 'App\Shared\Infrastructure\Database\SetBasedWrite'
+    setBasedWriteMarkerInterface: 'App\Shared\Infrastructure\Persistence\Cycle\SetBasedWrite'
     tmpDir: runtime/phpstan
     paths:
         - app/src
@@ -32,7 +32,7 @@ parameters:
             identifier: gianTiaga.phpstanStrictRules.namedArgumentsRequired
             message: '#Calls with two or more ordinary arguments must use named arguments\.#'
             paths:
-                - app/src/Modules/Auth/Presentation/Http/Middleware/AuthContextAttributeMiddleware.php
+                - app/src/Modules/Auth/Infrastructure/Spiral/Http/Middleware/AuthContextAttributeMiddleware.php
         # Cycle объявляет ключи RelationMap::getRelations() как non-empty-string, но PHP
         # приводит числовое имя связи к int. Проверка \is_string() защищает от этого случая
         # и покрыта тестом LazyGhostEntityFactoryTest::testExtractRelationsSkipsNonStringRelationName.
@@ -40,4 +40,4 @@ parameters:
             identifier: function.alreadyNarrowedType
             message: '#Call to function is_string\(\) with non-empty-string will always evaluate to true\.#'
             paths:
-                - app/src/Shared/Infrastructure/Cycle/LazyGhostEntityFactory.php
+                - app/src/Shared/Infrastructure/Persistence/Cycle/LazyGhostEntityFactory.php

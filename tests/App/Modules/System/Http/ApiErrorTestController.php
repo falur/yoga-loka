@@ -7,8 +7,8 @@ namespace Tests\App\Modules\System\Http;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\Exception\ValidationException;
-use App\Modules\System\Presentation\Http\Enum\HealthStatus;
-use App\Modules\System\Presentation\Http\Resource\HealthResource;
+use App\Modules\System\Infrastructure\Spiral\Http\Enum\HealthStatus;
+use App\Modules\System\Infrastructure\Spiral\Http\Resource\HealthResource;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 
 final class ApiErrorTestController

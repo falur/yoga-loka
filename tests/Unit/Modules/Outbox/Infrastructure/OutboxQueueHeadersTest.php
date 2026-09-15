@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Outbox\Infrastructure;
 
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueHeaders;
+use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueHeaders;
 use PHPUnit\Framework\TestCase;
 
 final class OutboxQueueHeadersTest extends TestCase

@@ -11,7 +11,7 @@ use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Enum\MediaStatus;
-use App\Modules\Media\Presentation\Job\ProcessMediaJob;
+use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
 use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;

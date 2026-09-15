@@ -11,7 +11,7 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
-use App\Modules\Notifications\Infrastructure\Registry\NotificationTypeRegistry;
+use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
 use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Application\Message\StoredOutboxEventId;

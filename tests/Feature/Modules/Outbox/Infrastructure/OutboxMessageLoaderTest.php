@@ -15,7 +15,7 @@ use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Modules\Outbox\Infrastructure\Message\OutboxMessageLoader;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\OutboxMessageLoader;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use CuyZ\Valinor\Mapper\MappingError;
 use Cycle\ORM\EntityManagerInterface;

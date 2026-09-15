@@ -7,7 +7,7 @@ namespace Tests\Feature\Modules\Outbox\Infrastructure\Fixture;
 use App\Modules\Outbox\Application\Command\ProcessDebugLogMessage\ProcessOutboxDebugLogMessageHandler;
 use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
 use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
-use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Core\CoreInterface;
 

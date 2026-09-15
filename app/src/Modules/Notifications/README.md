@@ -401,7 +401,7 @@ realtime - публикация в Centrifugo.
 
 ### Bootloader
 
-`NotificationsBootloader` уже зарегистрирован в `App\Shared\Infrastructure\Framework\Kernel`
+`NotificationsBootloader` уже зарегистрирован в `App\Shared\Infrastructure\Spiral\Kernel`
 **после** Outbox-бутлоадеров (его `boot()` регистрирует пары «сообщение → Job» через
 `OutboxJobRegistryContract`). Он биндит:
 

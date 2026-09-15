@@ -6,9 +6,9 @@ namespace Tests\Unit\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
-use App\Modules\Media\Infrastructure\Exception\MediaImageProcessorException;
-use App\Modules\Media\Infrastructure\FileService\ImagickMediaImageProcessor;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Imagick\MediaImageProcessorException;
+use App\Modules\Media\Infrastructure\Imagick\ImagickMediaImageProcessor;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

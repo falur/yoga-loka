@@ -9,7 +9,7 @@ use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueHeaders;
+use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueHeaders;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
 use Cycle\ORM\EntityManagerInterface;
 

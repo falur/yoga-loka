@@ -14,9 +14,9 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Modules\Media\Infrastructure\FileService\ConfiguredS3ClientProvider;
-use App\Modules\Media\Infrastructure\FileService\S3MediaFileService;
-use App\Shared\Infrastructure\Configuration\Storage\StorageConfig;
+use App\Modules\Media\Infrastructure\Storage\ConfiguredS3ClientProvider;
+use App\Modules\Media\Infrastructure\Storage\S3MediaFileService;
+use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageConfig;
 use GuzzleHttp\Client;
 use Tests\TestCase;
 

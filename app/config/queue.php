@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Presentation\Job\SendLoginCodeJob;
-use App\Modules\Media\Presentation\Job\ProcessMediaJob;
-use App\Modules\Notifications\Presentation\Job\DispatchNotificationJob;
-use App\Modules\Notifications\Presentation\Job\PublishRealtimeNotificationJob;
-use App\Modules\Notifications\Presentation\Job\SendPushNotificationJob;
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
-use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
+use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
+use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
+use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificationJob;
+use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
+use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
+use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
+use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;
 use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
@@ -131,7 +131,7 @@ return [
          * @link https://spiral.dev/docs/queue-jobs#job-handler-registry
          */
         'handlers' => [
-            // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
+            // 'ping' => \App\Modules\System\Infrastructure\Spiral\Job\Ping::class
             OutboxDebugLogJob::class => OutboxDebugLogJob::class,
             ProcessMediaJob::class => ProcessMediaJob::class,
             SendLoginCodeJob::class => SendLoginCodeJob::class,
@@ -148,7 +148,7 @@ return [
          */
         'serializers' => [
             // 'ping' => 'json',
-            // \App\Modules\System\Presentation\Job\Ping::class => 'json',
+            // \App\Modules\System\Infrastructure\Spiral\Job\Ping::class => 'json',
             OutboxDebugLogJob::class => OutboxQueueSerializer::class,
             ProcessMediaJob::class => OutboxQueueSerializer::class,
             SendLoginCodeJob::class => OutboxQueueSerializer::class,

@@ -6,7 +6,7 @@ namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
 use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
 use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
-use App\Modules\Media\Infrastructure\FileService\FfmpegMediaAudioProcessor;
+use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 
 /**
  * Подменяет реальный вызов ffmpeg (runEncoding) в аудио-процессоре: либо бросает заданный сбой,

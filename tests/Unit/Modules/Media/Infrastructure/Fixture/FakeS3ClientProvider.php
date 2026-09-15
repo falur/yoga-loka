@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
-use App\Modules\Media\Infrastructure\FileService\S3ClientProvider;
-use App\Shared\Infrastructure\Configuration\Storage\StorageServerConfig;
+use App\Modules\Media\Infrastructure\Storage\S3ClientProvider;
+use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageServerConfig;
 use Aws\S3\S3Client;
 
 final readonly class FakeS3ClientProvider implements S3ClientProvider

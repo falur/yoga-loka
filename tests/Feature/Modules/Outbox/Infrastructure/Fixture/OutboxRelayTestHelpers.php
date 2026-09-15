@@ -9,7 +9,7 @@ use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Repository\OutboxEventRepository;
-use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
 use Cycle\ORM\EntityManagerInterface;
 use Spiral\Queue\Config\QueueConfig;

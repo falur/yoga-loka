@@ -18,7 +18,7 @@ use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\Enum\NotificationSettingStatus;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
-use App\Modules\Notifications\Infrastructure\Registry\NotificationTypeRegistry;
+use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Notifications\Repository\NotificationRepository;
 use App\Modules\Notifications\Repository\NotificationSettingRepository;
 use App\Modules\Outbox\Application\Message\OutboxMessage;

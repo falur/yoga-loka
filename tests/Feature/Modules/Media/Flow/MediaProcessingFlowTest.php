@@ -21,7 +21,7 @@ use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use Symfony\Component\Process\Process;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;

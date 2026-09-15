@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Auth\Infrastructure;
 
-use App\Modules\Auth\Infrastructure\Mail\SpiralLoginCodeMailer;
+use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use Spiral\Mailer\MailerInterface;
 use Spiral\Mailer\Message;
 use Spiral\Views\ViewsInterface;

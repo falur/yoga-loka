@@ -6,7 +6,7 @@ namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
 use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
 use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
-use App\Modules\Media\Infrastructure\FileService\FfmpegMediaVideoProcessor;
+use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaVideoProcessor;
 
 /**
  * Подменяет реальный вызов ffmpeg (runEncoding) в видео-процессоре: либо бросает заданный сбой

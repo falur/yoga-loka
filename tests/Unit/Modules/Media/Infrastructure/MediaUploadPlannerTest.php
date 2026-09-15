@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
-use App\Modules\Media\Infrastructure\FileService\MediaUploadPlanner;
+use App\Modules\Media\Infrastructure\Storage\MediaUploadPlanner;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

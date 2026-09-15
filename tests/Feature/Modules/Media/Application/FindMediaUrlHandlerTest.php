@@ -17,10 +17,10 @@ use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
-use App\Modules\Media\Infrastructure\FileService\MediaUrlService;
+use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 
 final class FindMediaUrlHandlerTest extends MediaApplicationTestCase
 {

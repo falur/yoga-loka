@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
-use App\Modules\Media\Infrastructure\FileService\AbstractFfmpegMediaProcessor;
+use App\Modules\Media\Infrastructure\Ffmpeg\AbstractFfmpegMediaProcessor;
 
 /**
  * Открывает защищённый runFfmpeg() общего процессора и подменяет реальный запуск процесса:

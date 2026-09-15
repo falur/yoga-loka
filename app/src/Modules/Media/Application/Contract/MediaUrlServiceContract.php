@@ -17,7 +17,7 @@ use App\Modules\Media\Domain\Entity\Media;
  * getUrls — полный набор (оригинал, если не удалён, и все конверсии). Потребитель отдаёт набор целиком
  * (лента Posts, аватар профиля), а тот, кому нужна одна ссылка (уведомления, пуш), берёт original.
  *
- * Реализация — App\Modules\Media\Infrastructure\FileService\MediaUrlService.
+ * Реализация — App\Modules\Media\Infrastructure\Storage\MediaUrlService.
  */
 interface MediaUrlServiceContract
 {

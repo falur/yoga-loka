@@ -12,7 +12,7 @@ use App\Modules\Media\Application\Message\MediaUploaded;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
-use App\Modules\Outbox\Infrastructure\Message\ValinorOutboxMessageSerializer;
+use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class MediaUploadedSerializationTest extends TestCase

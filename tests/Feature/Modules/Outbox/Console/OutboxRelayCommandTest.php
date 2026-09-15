@@ -9,7 +9,7 @@ use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
 use App\Modules\Outbox\Application\Message\OutboxDebugLogMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
-use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;

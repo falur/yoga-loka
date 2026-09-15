@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use PHPUnit\Framework\TestCase;
 use Tests\Unit\Modules\Media\Infrastructure\Fixture\WaveformExposingAudioProcessor;
 

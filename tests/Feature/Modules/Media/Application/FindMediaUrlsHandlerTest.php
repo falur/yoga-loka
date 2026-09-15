@@ -8,9 +8,9 @@ use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsQuery;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
-use App\Modules\Media\Infrastructure\FileService\MediaUrlService;
+use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Configuration\Media\MediaConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 
 /**
  * Пакетное разрешение URL нескольких медиа: результат ключуется по id медиа, недоступные (не

@@ -12,7 +12,7 @@ use App\Modules\Auth\Domain\Entity\RegistrationTicket;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
-use App\Modules\Auth\Infrastructure\Auth\RandomTokenGenerator;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
 use App\Shared\Domain\Exception\AuthenticationException;
 use Tests\Feature\Modules\Auth\Application\AuthApplicationTestCase;
 

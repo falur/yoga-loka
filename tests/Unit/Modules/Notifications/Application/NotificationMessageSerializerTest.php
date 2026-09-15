@@ -7,7 +7,7 @@ namespace Tests\Unit\Modules\Notifications\Application;
 use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
 use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
 use App\Modules\Notifications\Application\Message\NotificationRequested;
-use App\Modules\Outbox\Infrastructure\Message\ValinorOutboxMessageSerializer;
+use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class NotificationMessageSerializerTest extends TestCase

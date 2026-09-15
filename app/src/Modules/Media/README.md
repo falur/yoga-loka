@@ -56,7 +56,7 @@
   image/video/audio для рендера на клиенте, `type` — конкретный профиль; постер видео имеет
   `kind = image`), `MediaUrlsResult{ original: MediaUrlResult?, conversions: MediaConversionUrlCollection }`
   (полный набор ссылок медиа) — наружу не отдаётся доменная Entity. URL строит `MediaUrlService`
-  за контрактом `MediaUrlServiceContract` (реализация в `Infrastructure/FileService` читает
+  за контрактом `MediaUrlServiceContract` (реализация в `Infrastructure/Storage` читает
   `MediaConfig` напрямую; public — прямой URL, private — presigned), один резолвер на запрос.
 
 ## Поток загрузки
@@ -108,7 +108,7 @@
 транскодирования → временная/`RetryException`; битый/неподдерживаемый вход, нештатный код выхода →
 постоянная); причина повтора в `RetryException` выбирается по типу (ошибка процессора ≠ ошибка
 хранилища). Классификацию сырого `AwsException`/исключений php-ffmpeg делает Infrastructure
-(`S3MediaFileService` / ffmpeg-процессоры → контрактные исключения), поэтому `Presentation/Job` не
+(`S3MediaFileService` / ffmpeg-процессоры → контрактные исключения), поэтому `Infrastructure/Spiral/Job` не
 импортирует `Aws\*`/`FFMpeg\*` и не знает про реализации хранилища и обработки. Текст ошибки —
 из предопределённого набора безопасных сообщений; сырой текст AWS не прокидывается (VO
 `MediaProcessingError` отклоняет пути и слово `etag`). Сама запись ошибки на Media обёрнута
@@ -169,7 +169,7 @@ PHPDoc-типы `list<...Spec>` обязательны для восстанов
 
 ## Инфраструктура и конфиг
 
-- `app/config/media.php` + `MediaConfig` (`Shared/Infrastructure/Configuration/Media`): staging-TTL,
+- `app/config/media.php` + `MediaConfig` (`Shared/Infrastructure/Spiral/Configuration/Media`): staging-TTL,
   порог и размер части multipart, драйвер обработки изображений, срок presigned-ссылки скачивания по
   умолчанию (`presignedTtlSeconds` — env `MEDIA_PRESIGNED_TTL_SECONDS`; нижнюю границу `≥ 1` держит
   `MediaPresignedTtl`, верхнюю `≤ 604800` — лимит подписи S3 — проверяет `MediaConfig` при старте только
@@ -181,10 +181,10 @@ PHPDoc-типы `list<...Spec>` обязательны для восстанов
   (`FindMediaUrlQuery.presignedTtlSeconds`). Ключи `MEDIA_*` — в `.env.sample` и `phpunit.xml`.
   Application модуля `*Config` не читает: `RequestMediaUploadHandler` получает решения пайплайна
   загрузки (срок staging-хранения, нужен ли multipart, размер и число частей) через
-  `MediaUploadPlannerContract`; реализация `MediaUploadPlanner` (`Infrastructure/FileService`) читает
+  `MediaUploadPlannerContract`; реализация `MediaUploadPlanner` (`Infrastructure/Storage`) читает
   `MediaConfig` через конструктор и биндится `const BINDINGS` — как `MediaUrlService`. Срок
   presigned-ссылки скачивания по умолчанию читает сама реализация `MediaUrlService` из
-  `Infrastructure/FileService` (прямая инъекция `MediaConfig`), а Application зависит от контракта
+  `Infrastructure/Storage` (прямая инъекция `MediaConfig`), а Application зависит от контракта
   `MediaUrlServiceContract` — это технический сервис с поведением, поэтому он живёт в `Infrastructure`
   (см. `docs/arch.md`, «Правила зависимостей»).
 - presigned/multipart и серверные S3-операции — `S3MediaFileService` поверх `Aws\S3\S3Client`

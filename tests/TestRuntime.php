@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use App\Shared\Infrastructure\Framework\DirectoryAlias;
+use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 
 /**
  * Единый источник путей тестового runtime для базового режима и worker-ов ParaTest.

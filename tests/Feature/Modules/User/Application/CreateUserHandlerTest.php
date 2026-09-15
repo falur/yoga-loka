@@ -19,7 +19,7 @@ use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
 use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\System\Http;
 
-use App\Shared\Infrastructure\Framework\Bootloader\AppBootloader;
-use App\Shared\Infrastructure\Framework\Bootloader\RoutesBootloader;
-use App\Shared\Infrastructure\Framework\Middleware\LocaleMiddleware;
+use App\Shared\Infrastructure\Spiral\Bootloader\AppBootloader;
+use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
+use App\Shared\Infrastructure\Spiral\Http\Middleware\LocaleMiddleware;
 use Spiral\Filters\ErrorsRendererInterface;
 use Spiral\Http\Middleware\ErrorHandlerMiddleware;
 use Tests\TestCase;

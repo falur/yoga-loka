@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\App\Bootloader;
 
-use App\Shared\Infrastructure\Framework\Bootloader\RoutesBootloader as AppRoutesBootloader;
+use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader as AppRoutesBootloader;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Router\Loader\Configurator\RoutingConfigurator;
 use Tests\App\Modules\System\Http\ApiErrorTestController;

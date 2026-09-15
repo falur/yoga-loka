@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\System\Http;
 
-use App\Shared\Infrastructure\Configuration\Locale\LocaleConfig;
+use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
 use Spiral\Translator\TranslatorInterface;
 use Tests\TestCase;
 use GianTiaga\SpiralOpenApi\Response\Enum\ContentType;

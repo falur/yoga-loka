@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\System\Console;
 
-use App\Shared\Infrastructure\Framework\DirectoryAlias;
+use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;
 use Tests\TestCase;
 

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Shared\Infrastructure\Framework\DirectoryAlias;
-use App\Shared\Infrastructure\Framework\Kernel;
+use App\Shared\Infrastructure\Spiral\DirectoryAlias;
+use App\Shared\Infrastructure\Spiral\Kernel;
 use Spiral\Core\Container;
 use Spiral\Core\Options;
 

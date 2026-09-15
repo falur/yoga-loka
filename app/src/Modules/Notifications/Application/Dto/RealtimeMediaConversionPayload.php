@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Shared\Application\View\MediaConversionView;
+use App\Modules\Media\Application\View\MediaConversionView;
 
 /**
  * Одна конверсия аватара в realtime-payload (Centrifugo): вид и тип-профиль (строковые значения enum),

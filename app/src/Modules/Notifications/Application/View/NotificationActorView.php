@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\View;
 
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 
 /**
  * Автор-инициатор уведомления в read-model: id, имя и аватар одним значением MediaView (оригинал + все

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Shared\Application\View\MediaConversionView;
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaConversionView;
+use App\Modules\Media\Application\View\MediaView;
 
 /**
  * Аватар автора в realtime-payload (Centrifugo): оригинал и все конверсии одним объектом — та же форма

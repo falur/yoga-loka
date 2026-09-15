@@ -8,7 +8,7 @@ use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
 use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
 use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Domain\Entity\User;
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**

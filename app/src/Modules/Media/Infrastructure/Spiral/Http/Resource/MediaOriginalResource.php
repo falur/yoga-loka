@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Presentation\Http\Resource;
+namespace App\Modules\Media\Infrastructure\Spiral\Http\Resource;
 
-use App\Shared\Application\View\MediaOriginalView;
+use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
+use App\Modules\Media\Application\View\MediaOriginalView;
 
 /**
  * Оригинал медиа в ответе API: ссылка и срок её действия (для presigned-ссылки private-медиа,

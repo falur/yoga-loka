@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Presentation\Http\Resource;
+namespace App\Modules\Media\Infrastructure\Spiral\Http\Resource;
 
-use App\Shared\Application\View\MediaConversionView;
-use App\Shared\Application\View\MediaView;
+use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
+use App\Modules\Media\Application\View\MediaConversionView;
+use App\Modules\Media\Application\View\MediaView;
 
 /**
  * Медиа с преобразованиями в ответе API: оригинал (ссылка + срок) и все его конверсии одним

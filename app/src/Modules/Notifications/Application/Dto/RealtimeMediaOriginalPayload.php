@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Shared\Application\View\MediaOriginalView;
+use App\Modules\Media\Application\View\MediaOriginalView;
 
 /**
  * Оригинал аватара в realtime-payload (Centrifugo): ссылка и срок её действия (ATOM-строка для

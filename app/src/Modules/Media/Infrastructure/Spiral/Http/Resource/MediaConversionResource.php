@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Presentation\Http\Resource;
+namespace App\Modules\Media\Infrastructure\Spiral\Http\Resource;
 
+use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionKind;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
-use App\Shared\Application\View\MediaConversionView;
+use App\Modules\Media\Application\View\MediaConversionView;
 
 /**
  * Одна конверсия медиа в ответе API: вид (image/video/audio) и тип-профиль — enum-ами (в JSON

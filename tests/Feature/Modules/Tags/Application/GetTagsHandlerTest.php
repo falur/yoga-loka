@@ -8,7 +8,7 @@ use App\Modules\Tags\Application\Query\GetTags\GetTagsHandler;
 use App\Modules\Tags\Application\Query\GetTags\GetTagsQuery;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
-use App\Shared\Domain\ValueObject\TagId;
+use App\Modules\Tags\Domain\ValueObject\TagId;
 use Tests\Feature\Modules\Tags\TagsApplicationTestCase;
 
 final class GetTagsHandlerTest extends TagsApplicationTestCase

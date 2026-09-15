@@ -24,7 +24,7 @@ use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfile
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\QueryBusInterface;

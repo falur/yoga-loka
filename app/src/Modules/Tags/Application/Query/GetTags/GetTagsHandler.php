@@ -7,7 +7,7 @@ namespace App\Modules\Tags\Application\Query\GetTags;
 use App\Modules\Tags\Application\Dto\TagTextCollection;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Repository\TagRepository;
-use App\Shared\Domain\ValueObject\TagId;
+use App\Modules\Tags\Domain\ValueObject\TagId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
 /**

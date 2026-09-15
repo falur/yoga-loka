@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Application\View;
+namespace App\Modules\Media\Application\View;
 
 /**
  * Общий read-model «медиа с преобразованиями»: оригинал (ссылка + срок) и все его конверсии одним

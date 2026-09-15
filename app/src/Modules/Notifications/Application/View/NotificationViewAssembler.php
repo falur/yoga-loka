@@ -10,7 +10,7 @@ use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsQuery;
 use App\Modules\Notifications\Domain\Collection\NotificationCollection;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**

@@ -22,7 +22,7 @@ use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
-use App\Shared\Domain\ValueObject\TagId;
+use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;

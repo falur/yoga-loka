@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Application\View;
 
 use App\Modules\User\Application\Dto\UserPublicProfileView;
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 
 /**
  * Автор записи/комментария в read-model: снимок публичного профиля (id, имя и аватар с

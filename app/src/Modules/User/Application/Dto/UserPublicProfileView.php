@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Application\Dto;
 
-use App\Shared\Application\View\MediaView;
+use App\Modules\Media\Application\View\MediaView;
 use App\Shared\Domain\Enum\Locale;
 
 /**

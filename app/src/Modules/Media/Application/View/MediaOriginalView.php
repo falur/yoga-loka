@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Application\View;
+namespace App\Modules\Media\Application\View;
 
 /**
  * Оригинал медиа в read-model: ссылка и срок её действия (для presigned-ссылки private-медиа,

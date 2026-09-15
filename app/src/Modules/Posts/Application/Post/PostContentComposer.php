@@ -23,7 +23,7 @@ use App\Modules\Posts\Repository\PostMentionRepository;
 use App\Modules\Tags\Application\Command\ResolveTags\ResolveTagsCommand;
 use App\Modules\Tags\Application\Command\ResolveTags\ResolveTagsHandler;
 use App\Modules\User\Application\Dto\UserPublicProfileCollection;
-use App\Shared\Domain\ValueObject\TagId;
+use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;

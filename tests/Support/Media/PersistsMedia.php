@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Tests\Support\Media;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
+use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
+use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
+use App\Modules\Media\Infrastructure\Spiral\PublicApi\MediaProvider;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
@@ -25,11 +28,13 @@ use App\Modules\Media\Repository\MediaRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use Cycle\ORM\EntityManagerInterface;
+use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
- * Сидинг медиа и сборка FindMediaUrlHandler со стабом файлового сервиса (URL предсказуем, без S3) —
- * общая основа feature-тестов, которым нужно резолвить URL медиа (например, аватары авторов уведомлений).
- * Требует DatabaseTestCase-контекста ($this->getContainer(), $this->createStub()).
+ * Сидинг медиа и сборка публичного контракта Media со стабом файлового сервиса (URL предсказуем, без
+ * S3) — общая основа feature-тестов, которым нужно резолвить URL медиа (например, аватары авторов
+ * уведомлений). Требует DatabaseTestCase-контекста ($this->getContainer(), $this->createStub()).
  */
 trait PersistsMedia
 {
@@ -83,25 +88,21 @@ trait PersistsMedia
     }
 
     /**
-     * FindMediaUrlHandler с реальным репозиторием из контейнера и стабом файлового сервиса: public URL
-     * предсказуем (STUBBED_MEDIA_URL), обращения к S3 нет.
+     * Публичный контракт Media поверх реального пакетного сценария с реальным репозиторием из
+     * контейнера и стабом файлового сервиса: public URL предсказуем (STUBBED_MEDIA_URL), обращения к
+     * S3 нет.
      */
-    protected function stubbedFindMediaUrlHandler(): FindMediaUrlHandler
+    protected function stubbedMediaContract(): MediaContract
     {
-        return new FindMediaUrlHandler(
-            mediaRepository: $this->getContainer()->get(MediaRepository::class),
-            mediaUrlService: $this->stubbedMediaUrlService(),
-        );
-    }
-
-    /**
-     * Пакетный аналог со стабом файлового сервиса — для NotificationViewAssembler.
-     */
-    protected function stubbedFindMediaUrlsHandler(): FindMediaUrlsHandler
-    {
-        return new FindMediaUrlsHandler(
-            mediaRepository: $this->getContainer()->get(MediaRepository::class),
-            mediaUrlService: $this->stubbedMediaUrlService(),
+        return new MediaProvider(
+            commandBus: $this->getContainer()->get(CommandBusInterface::class),
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            findMediaUrlsHandler: new FindMediaUrlsHandler(
+                mediaRepository: $this->getContainer()->get(MediaRepository::class),
+                mediaUrlService: $this->stubbedMediaUrlService(),
+            ),
+            checkMediaAttachableHandler: $this->getContainer()->get(CheckMediaAttachableHandler::class),
+            makeMediaPermanentHandler: $this->getContainer()->get(MakeMediaPermanentHandler::class),
         );
     }
 

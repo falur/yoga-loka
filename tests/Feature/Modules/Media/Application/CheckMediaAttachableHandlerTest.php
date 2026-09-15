@@ -25,11 +25,36 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $result = $this->handler()->handle(new CheckMediaAttachableQuery(
-            mediaId: $media->id->value(),
+            mediaIds: [$media->id->value()],
             ownerUserId: $owner->value(),
         ));
 
-        self::assertSame($media->id->value(), $result->mediaId);
+        self::assertSame([$media->id->value()], $result->mediaIds);
+    }
+
+    public function testAllowsSeveralReadyMediaInGivenOrder(): void
+    {
+        $owner = UserId::generate();
+        $first = $this->readyMediaOwnedBy($owner);
+        $second = $this->readyMediaOwnedBy($owner);
+        $this->persist($first, $second);
+
+        $result = $this->handler()->handle(new CheckMediaAttachableQuery(
+            mediaIds: [$second->id->value(), $first->id->value()],
+            ownerUserId: $owner->value(),
+        ));
+
+        self::assertSame([$second->id->value(), $first->id->value()], $result->mediaIds);
+    }
+
+    public function testAllowsEmptySet(): void
+    {
+        $result = $this->handler()->handle(new CheckMediaAttachableQuery(
+            mediaIds: [],
+            ownerUserId: UserId::generate()->value(),
+        ));
+
+        self::assertSame([], $result->mediaIds);
     }
 
     public function testRejectsMissingMedia(): void
@@ -37,7 +62,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $this->expectException(NotFoundException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
-            mediaId: UserId::generate()->value(),
+            mediaIds: [UserId::generate()->value()],
             ownerUserId: UserId::generate()->value(),
         ));
     }
@@ -50,8 +75,27 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $this->expectException(ForbiddenException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
-            mediaId: $media->id->value(),
+            mediaIds: [$media->id->value()],
             ownerUserId: UserId::generate()->value(),
+        ));
+    }
+
+    public function testRejectsUnsuitableMediaInTheMiddleOfSet(): void
+    {
+        // Набор обходится в порядке передачи, поэтому ошибку даёт первое непригодное медиа — ровно
+        // как поштучный цикл до пакетной проверки.
+        $owner = UserId::generate();
+        $first = $this->readyMediaOwnedBy($owner);
+        $foreign = $this->readyMediaOwnedBy(UserId::generate());
+        $last = $this->readyMediaOwnedBy($owner);
+        $this->persist($first, $foreign, $last);
+
+        $this->expectException(ForbiddenException::class);
+        $this->expectExceptionMessage('app.media.access_denied');
+
+        $this->handler()->handle(new CheckMediaAttachableQuery(
+            mediaIds: [$first->id->value(), $foreign->id->value(), $last->id->value()],
+            ownerUserId: $owner->value(),
         ));
     }
 
@@ -64,7 +108,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $this->expectException(ValidationException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
-            mediaId: $media->id->value(),
+            mediaIds: [$media->id->value()],
             ownerUserId: $owner->value(),
         ));
     }
@@ -82,7 +126,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $this->expectExceptionMessage('app.media.not_ready');
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
-            mediaId: $media->id->value(),
+            mediaIds: [$media->id->value()],
             ownerUserId: $owner->value(),
         ));
     }

@@ -14,6 +14,7 @@ use App\Modules\Posts\Domain\ValueObject\PostMediaId;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
 use App\Modules\Posts\Domain\ValueObject\PostMentionId;
 use App\Modules\Posts\Domain\ValueObject\PostTagId;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 use PHPUnit\Framework\TestCase;
@@ -35,6 +36,7 @@ final class PostsIdentifierTest extends TestCase
             CommentLikeId::class,
             CommentMentionId::class,
             PostMediaReference::class,
+            PostTagReference::class,
         ];
 
         foreach ($idClasses as $idClass) {

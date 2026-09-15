@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Post;
 
-use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentCommand;
-use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
-use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
-use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableQuery;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Posts\Application\Notification\PostNotificationAction;
 use App\Modules\Posts\Application\Notification\PostNotificationActionTarget;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
@@ -19,15 +16,12 @@ use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\MediaPosition;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Modules\Posts\Repository\PostMentionRepository;
-use App\Modules\Tags\Application\Command\ResolveTags\ResolveTagsCommand;
-use App\Modules\Tags\Application\Command\ResolveTags\ResolveTagsHandler;
-use App\Modules\User\Application\Dto\UserPublicProfileCollection;
-use App\Modules\Tags\Domain\ValueObject\TagId;
+use App\Modules\Tags\Public\Contract\TagsContract;
+use App\Modules\User\Public\Dto\UserProfileDtoCollection;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
-use GianTiaga\SpiralCqrs\CommandBusInterface;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
  * Общая сборка содержимого записи для сценариев создания и репоста: разрешение тегов, вложение
@@ -39,11 +33,8 @@ use GianTiaga\SpiralCqrs\QueryBusInterface;
 final readonly class PostContentComposer
 {
     public function __construct(
-        private CommandBusInterface $commandBus,
-        private QueryBusInterface $queryBus,
-        private ResolveTagsHandler $resolveTagsHandler,
-        private CheckMediaAttachableHandler $checkMediaAttachableHandler,
-        private MakeMediaPermanentHandler $makeMediaPermanentHandler,
+        private TagsContract $tags,
+        private MediaContract $mediaContract,
         private MentionRecipientResolver $mentionRecipientResolver,
         private PostNotifier $postNotifier,
         private PostMentionRepository $postMentionRepository,
@@ -61,32 +52,32 @@ final readonly class PostContentComposer
             return [];
         }
 
-        return $this->commandBus->dispatch(
-            command: new ResolveTagsCommand(texts: $texts, creatorUserId: $creatorUserId),
-            handler: $this->resolveTagsHandler->handle(...),
-        )->tagIds;
+        return $this->tags->resolve(texts: $texts, creatorUserId: $creatorUserId)->tagIds;
     }
 
     /**
-     * Проверяет каждое медиа (существование, владелец, готовность), переводит в permanent и
-     * сохраняет строки вложения. Дубликаты в списке схлопываются (уникальный индекс
-     * (post_id, media_id)). Порядок вложений — позиция по порядку в списке.
+     * Проверяет весь набор медиа (существование, владелец, готовность), переводит его в permanent и
+     * сохраняет строки вложения. К Media идут ровно два вызова на запись, а не по два на вложение;
+     * набор передаётся в порядке вложений, поэтому непригодное медиа даёт ту же ошибку, что и раньше.
+     * Дубликаты в списке схлопываются (уникальный индекс (post_id, media_id)). Порядок вложений —
+     * позиция по порядку в списке. Пустой набор к соседу не ходит.
      *
      * @param list<string> $mediaIds
      */
     public function attachMedia(Post $post, array $mediaIds, string $ownerUserId): void
     {
+        $uniqueIds = \array_values(\array_unique($mediaIds));
+
+        if ($uniqueIds === []) {
+            return;
+        }
+
+        $this->mediaContract->ensureAttachable(mediaIds: $uniqueIds, ownerUserId: $ownerUserId);
+        $this->mediaContract->makePermanent(mediaIds: $uniqueIds, ownerUserId: $ownerUserId);
+
         $position = 0;
 
-        foreach (\array_values(\array_unique($mediaIds)) as $mediaId) {
-            $this->queryBus->dispatch(
-                query: new CheckMediaAttachableQuery(mediaId: $mediaId, ownerUserId: $ownerUserId),
-                handler: $this->checkMediaAttachableHandler->handle(...),
-            );
-            $this->commandBus->dispatch(
-                command: new MakeMediaPermanentCommand(userId: $ownerUserId, mediaId: $mediaId),
-                handler: $this->makeMediaPermanentHandler->handle(...),
-            );
+        foreach ($uniqueIds as $mediaId) {
             $this->entityManager->persist(PostMedia::create(
                 post: $post,
                 mediaId: PostMediaReference::fromString($mediaId),
@@ -102,7 +93,10 @@ final readonly class PostContentComposer
     public function attachTags(Post $post, array $tagIds): void
     {
         foreach ($tagIds as $tagId) {
-            $this->entityManager->persist(PostTag::create(postId: $post->id, tagId: TagId::fromString($tagId)));
+            $this->entityManager->persist(PostTag::create(
+                postId: $post->id,
+                tagId: PostTagReference::fromString($tagId),
+            ));
         }
     }
 
@@ -172,7 +166,7 @@ final readonly class PostContentComposer
         );
     }
 
-    private function notifyMentions(Post $post, UserPublicProfileCollection $recipients, string $actorUserId): void
+    private function notifyMentions(Post $post, UserProfileDtoCollection $recipients, string $actorUserId): void
     {
         $actor = $this->mentionRecipientResolver->profile($actorUserId);
 

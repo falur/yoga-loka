@@ -20,9 +20,9 @@ use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
-use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
@@ -69,7 +69,7 @@ final class JoinEntityTest extends TestCase
     public function testPostTagCreate(): void
     {
         $postId = PostId::generate();
-        $tagId = TagId::generate();
+        $tagId = PostTagReference::generate();
         $postTag = PostTag::create(postId: $postId, tagId: $tagId);
 
         self::assertTrue($postId->equals($postTag->postId));

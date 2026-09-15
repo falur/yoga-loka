@@ -6,9 +6,9 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostTagId;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Modules\Posts\Repository\PostTagRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
-use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -30,10 +30,10 @@ final class PostTag
     #[Column(type: 'uuid', name: 'post_id', typecast: PostId::class)]
     public private(set) PostId $postId;
 
-    #[Column(type: 'uuid', name: 'tag_id', typecast: TagId::class)]
-    public private(set) TagId $tagId;
+    #[Column(type: 'uuid', name: 'tag_id', typecast: PostTagReference::class)]
+    public private(set) PostTagReference $tagId;
 
-    public static function create(PostId $postId, TagId $tagId): self
+    public static function create(PostId $postId, PostTagReference $tagId): self
     {
         $postTag = new self();
         $postTag->id = PostTagId::generate();

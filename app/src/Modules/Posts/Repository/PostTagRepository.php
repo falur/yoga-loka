@@ -7,7 +7,7 @@ namespace App\Modules\Posts\Repository;
 use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Tags\Domain\ValueObject\TagId;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
@@ -44,7 +44,7 @@ final class PostTagRepository extends AbstractRepository
         );
     }
 
-    public function findByTagId(TagId $tagId): PostTagCollection
+    public function findByTagId(PostTagReference $tagId): PostTagCollection
     {
         return new PostTagCollection(
             $this->select()

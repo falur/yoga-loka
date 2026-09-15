@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\View;
 
-use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
+use App\Modules\Media\Public\Contract\MediaContract;
+use App\Modules\Media\Public\Dto\MediaDtoCollection;
 use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Collection\PostCollection;
 use App\Modules\Posts\Domain\Collection\PostMediaCollection;
@@ -17,38 +18,30 @@ use App\Modules\Posts\Repository\PostLikeRepository;
 use App\Modules\Posts\Repository\PostMediaRepository;
 use App\Modules\Posts\Repository\PostRepository;
 use App\Modules\Posts\Repository\PostTagRepository;
-use App\Modules\Tags\Application\Dto\TagTextCollection;
-use App\Modules\Tags\Application\Query\GetTags\GetTagsHandler;
-use App\Modules\Tags\Application\Query\GetTags\GetTagsQuery;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
-use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
-use App\Modules\Media\Application\View\MediaView;
+use App\Modules\Tags\Public\Contract\TagsContract;
+use App\Modules\Tags\Public\Dto\TagDtoCollection;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
  * Собирает read-model PostView из доменной записи, обогащая её данными смежных модулей: автор —
- * через User, URL медиа — через Media, тексты тегов — через Tags; флаг likedByMe и счётчики — из
- * своего модуля. Для репоста доглубляет исходную запись на один уровень (без её собственного
- * оригинала), если она видна зрителю.
+ * через User, ссылки медиа — через публичный контракт Media, метки — через публичный контракт Tags;
+ * флаг likedByMe и счётчики — из своего модуля. Для репоста доглубляет исходную запись на один
+ * уровень (без её собственного оригинала), если она видна зрителю.
  *
  * В листингах пакетно собираются выборки из БД: авторы, флаги likedByMe, медиа и теги берутся одним
- * запросом на страницу (без N+1 на уровне БД). Вложения и их сущности Media (вместе с конверсиями)
- * грузятся пакетно в PostMediaRepository (eager media.*), поэтому набор URL (оригинал + конверсии)
- * строится в памяти из уже загруженной сущности через MediaUrlService::getUrls — отдельного запроса в
- * базу на вложение нет.
+ * запросом на страницу (без N+1 на уровне БД). Ссылки вложений разрешаются так же, как метки:
+ * идентификаторы вложений всего ответа — включая вложения оригиналов репостов — собираются в один
+ * набор и уходят в Media одним вызовом MediaContract::urlsByIds, поэтому число обращений к соседу не
+ * зависит от числа вложений и записей.
  */
 final readonly class PostViewAssembler
 {
     public function __construct(
-        private QueryBusInterface $queryBus,
-        private GetUserPublicProfileHandler $getUserPublicProfileHandler,
-        private GetUserPublicProfilesHandler $getUserPublicProfilesHandler,
-        private MediaUrlServiceContract $mediaUrlService,
-        private GetTagsHandler $getTagsHandler,
+        private UserContract $users,
+        private MediaContract $media,
+        private TagsContract $tags,
         private PostRepository $postRepository,
         private PostMediaRepository $postMediaRepository,
         private PostTagRepository $postTagRepository,
@@ -57,15 +50,28 @@ final readonly class PostViewAssembler
 
     public function fromPost(Post $post, UserId $viewer): PostView
     {
-        $tags = $this->postTagRepository->findByPostId($post->id);
+        $postTags = $this->postTagRepository->findByPostId($post->id);
+        $postMedia = $this->postMediaRepository->findByPostId($post->id);
+        $original = $this->visibleOriginal(post: $post, viewer: $viewer);
+        $originalMedia = $original === null
+            ? new PostMediaCollection()
+            : $this->postMediaRepository->findByPostId($original->id);
+        $mediaUrls = $this->mediaUrls($postMedia, $originalMedia);
 
         return $this->build(
             post: $post,
             author: $this->authorView($post->userId),
             likedByMe: $this->postLikeRepository->existsByPostAndUser(postId: $post->id, userId: $viewer),
-            media: $this->mediaItems($this->postMediaRepository->findByPostId($post->id)),
-            tags: $this->tagViews(tags: $tags, texts: $this->tagTexts($tags)),
-            original: $this->originalView(post: $post, viewer: $viewer),
+            media: $this->mediaItems(postMedia: $postMedia, urls: $mediaUrls),
+            tags: $this->tagViews(postTags: $postTags, tags: $this->tagsByIds($postTags)),
+            original: $original === null
+                ? null
+                : $this->originalView(
+                    original: $original,
+                    viewer: $viewer,
+                    postMedia: $originalMedia,
+                    urls: $mediaUrls,
+                ),
         );
     }
 
@@ -76,15 +82,26 @@ final readonly class PostViewAssembler
         }
 
         $postIds = $this->postIds($posts);
+        $mediaByPost = $this->mediaCollectionsByPost($postIds);
+        $originals = $this->visibleOriginals(posts: $posts, viewer: $viewer);
+        $originalMediaByPost = $originals->isEmpty()
+            ? []
+            : $this->mediaCollectionsByPost($this->postIds($originals));
+        $mediaUrls = $this->mediaUrls(...\array_values($mediaByPost), ...\array_values($originalMediaByPost));
+
         $authors = $this->authorViews($posts);
         $likedPostIds = $this->likedPostIds(posts: $posts, viewer: $viewer);
-        $mediaByPost = $this->mediaCollectionsByPost($postIds);
         $tagsByPost = $this->tagCollectionsByPost($postIds);
-        $tagTexts = $this->tagTexts(...\array_values($tagsByPost));
-        $originals = $this->originalViewsByPost(posts: $posts, viewer: $viewer);
+        $tagDtos = $this->tagsByIds(...\array_values($tagsByPost));
+        $originalViews = $this->originalViews(
+            originals: $originals,
+            viewer: $viewer,
+            mediaByPost: $originalMediaByPost,
+            urls: $mediaUrls,
+        );
 
         return new PostViewCollection(
-            $posts->toBase()->map(function (Post $post) use ($authors, $likedPostIds, $mediaByPost, $tagsByPost, $tagTexts, $originals): PostView {
+            $posts->toBase()->map(function (Post $post) use ($authors, $likedPostIds, $mediaByPost, $mediaUrls, $tagsByPost, $tagDtos, $originalViews): PostView {
                 $postId = $post->id->value();
                 $originalId = $post->original->value();
 
@@ -92,16 +109,19 @@ final readonly class PostViewAssembler
                     post: $post,
                     author: $this->requireAuthor(authors: $authors, userId: $post->userId->value()),
                     likedByMe: isset($likedPostIds[$postId]),
-                    media: $this->mediaItems($mediaByPost[$postId] ?? new PostMediaCollection()),
-                    tags: $this->tagViews(tags: $tagsByPost[$postId] ?? new PostTagCollection(), texts: $tagTexts),
-                    original: $originalId !== null ? ($originals[$originalId] ?? null) : null,
+                    media: $this->mediaItems(
+                        postMedia: $mediaByPost[$postId] ?? new PostMediaCollection(),
+                        urls: $mediaUrls,
+                    ),
+                    tags: $this->tagViews(postTags: $tagsByPost[$postId] ?? new PostTagCollection(), tags: $tagDtos),
+                    original: $originalId !== null ? ($originalViews[$originalId] ?? null) : null,
                 );
             }),
         );
     }
 
     /**
-     * @param list<MediaView> $media
+     * @param list<PostMediaView> $media
      * @param list<TagView> $tags
      */
     private function build(Post $post, AuthorView $author, bool $likedByMe, array $media, array $tags, PostView|null $original): PostView
@@ -128,7 +148,7 @@ final readonly class PostViewAssembler
      * недоступного вложения видимых медиа не осталось, отдаём none — иначе клиент получил бы
      * attachmentType "media" с пустым media и рассогласованный контракт.
      *
-     * @param list<MediaView> $media
+     * @param list<PostMediaView> $media
      */
     private function attachmentType(Post $post, array $media): AttachmentType
     {
@@ -141,12 +161,7 @@ final readonly class PostViewAssembler
 
     private function authorView(UserId $userId): AuthorView
     {
-        $profile = $this->queryBus->dispatch(
-            query: new GetUserPublicProfileQuery($userId->value()),
-            handler: $this->getUserPublicProfileHandler->handle(...),
-        );
-
-        return AuthorView::fromProfile($profile);
+        return AuthorView::fromProfile($this->users->profile($userId->value()));
     }
 
     /**
@@ -160,10 +175,7 @@ final readonly class PostViewAssembler
             ->unique()
             ->all());
 
-        $profiles = $this->queryBus->dispatch(
-            query: new GetUserPublicProfilesQuery($userIds),
-            handler: $this->getUserPublicProfilesHandler->handle(...),
-        );
+        $profiles = $this->users->profilesByIds($userIds);
 
         $authors = [];
 
@@ -175,15 +187,16 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * Берёт автора из пакетной карты профилей. GetUserPublicProfiles молча опускает отсутствующих,
-     * поэтому отсутствие ключа обрабатываем явно — той же 404, что и одиночный путь
-     * (fromPost -> GetUserPublicProfile), а не неконтролируемым undefined array key -> 500.
+     * Берёт автора из пакетной карты профилей. Пакетное чтение профилей молча опускает
+     * отсутствующих, поэтому отсутствие ключа обрабатываем явно — той же 404, что и одиночный путь
+     * (fromPost -> UserContract::profile), а не неконтролируемым undefined array key -> 500.
+     * Ключ перевода свой: текст совпадает с текстом владельца, но чужими ключами Posts не бросает.
      *
      * @param array<string, AuthorView> $authors
      */
     private function requireAuthor(array $authors, string $userId): AuthorView
     {
-        return $authors[$userId] ?? throw new NotFoundException('app.user.not_found');
+        return $authors[$userId] ?? throw new NotFoundException('app.posts.author_not_found');
     }
 
     /**
@@ -241,100 +254,116 @@ final readonly class PostViewAssembler
     }
 
     /**
-     * @return list<MediaView>
+     * Ссылки вложений набора связей одним вызовом Media. Несколько коллекций (по записи в листинге и
+     * по оригиналам репостов) собираются в один батч, чтобы не ходить к соседу на каждое вложение.
+     * Пустой набор к соседу не ходит вовсе.
      */
-    private function mediaItems(PostMediaCollection $media): array
+    private function mediaUrls(PostMediaCollection ...$mediaCollections): MediaDtoCollection
+    {
+        $mediaIds = [];
+
+        foreach ($mediaCollections as $postMediaCollection) {
+            foreach ($postMediaCollection as $postMedia) {
+                $mediaIds[] = $postMedia->mediaId->value();
+            }
+        }
+
+        if ($mediaIds === []) {
+            return new MediaDtoCollection();
+        }
+
+        return $this->media->urlsByIds(\array_values(\array_unique($mediaIds)));
+    }
+
+    /**
+     * @return list<PostMediaView>
+     */
+    private function mediaItems(PostMediaCollection $postMedia, MediaDtoCollection $urls): array
     {
         $items = [];
 
-        foreach ($media as $postMedia) {
-            $item = $this->mediaItem($postMedia);
+        foreach ($postMedia as $item) {
+            $view = $this->mediaItem(postMedia: $item, urls: $urls);
 
-            if ($item === null) {
+            if ($view === null) {
                 continue;
             }
 
-            $items[] = $item;
+            $items[] = $view;
         }
 
         return $items;
     }
 
     /**
-     * Разрешает набор ссылок на медиа записи из УЖЕ загруженной сущности Media (relation
-     * post_media.media грузится eager в PostMediaRepository вместе с конверсиями — без N+1 на вложение).
-     * Построение URL делегируется MediaUrlService без обращения в БД. Из набора отдаётся оригинал
-     * (url + срок) и все готовые конверсии — фронт сам выбирает, что показать.
+     * Берёт ссылки вложения из общего батча Media по идентификатору медиа. Позиция вложения
+     * принадлежит записи, поэтому её добавляет Posts, а не сосед.
      *
-     * Оригинал мог быть удалён (readyOriginalRemoved) — тогда original = null, но конверсии остаются
-     * пригодны к показу, поэтому вложение сохраняется по ним. Исключаем вложение, только когда
-     * показывать вообще нечего: медиа не готово (getUrls -> null) или нет ни оригинала, ни конверсий.
-     * Это не роняет чтение ленты в 500, а деградирует мягко.
+     * Показывать нечего: медиа недоступно (в батче его нет — не найдено или не финализировано) или
+     * у него нет ни оригинала, ни конверсий -> вложение исключается (мягкая деградация, без 500).
+     * Оригинал мог быть удалён (readyOriginalRemoved) — тогда original = null, но по оставшимся
+     * конверсиям вложение показывается.
      */
-    private function mediaItem(PostMedia $postMedia): MediaView|null
+    private function mediaItem(PostMedia $postMedia, MediaDtoCollection $urls): PostMediaView|null
     {
-        $urls = $this->mediaUrlService->getUrls(media: $postMedia->media);
+        $media = $urls->get($postMedia->mediaId->value());
 
-        // Показывать нечего: медиа не готово (getUrls -> null) или нет ни оригинала, ни конверсий ->
-        // вложение исключается (мягкая деградация, без 500). Оригинал мог быть удалён
-        // (readyOriginalRemoved) — тогда original = null, но по оставшимся конверсиям вложение показывается.
-        if ($urls === null || ($urls->original === null && $urls->conversions->isEmpty())) {
+        if ($media === null || ($media->original === null && $media->conversions === [])) {
             return null;
         }
 
-        return $urls->toView(id: $postMedia->mediaId->value(), position: $postMedia->position->value());
+        return new PostMediaView(
+            id: $media->id,
+            position: $postMedia->position->value(),
+            original: $media->original,
+            conversions: $media->conversions,
+        );
     }
 
     /**
-     * Тексты тегов набора связей одним запросом к Tags. Несколько коллекций (по записи в листинге)
-     * собираются в один батч, чтобы не ходить в Tags на каждую запись.
+     * Метки набора связей одним вызовом Tags. Несколько коллекций (по записи в листинге) собираются в
+     * один батч, чтобы не ходить к соседу на каждую запись. Пустой набор к соседу не ходит вовсе.
      */
-    private function tagTexts(PostTagCollection ...$tagCollections): TagTextCollection
+    private function tagsByIds(PostTagCollection ...$tagCollections): TagDtoCollection
     {
         $tagIds = [];
 
-        foreach ($tagCollections as $tags) {
-            foreach ($tags as $postTag) {
+        foreach ($tagCollections as $postTags) {
+            foreach ($postTags as $postTag) {
                 $tagIds[] = $postTag->tagId->value();
             }
         }
 
         if ($tagIds === []) {
-            return new TagTextCollection();
+            return new TagDtoCollection();
         }
 
-        return $this->queryBus->dispatch(
-            query: new GetTagsQuery(\array_values(\array_unique($tagIds))),
-            handler: $this->getTagsHandler->handle(...),
-        );
+        return $this->tags->textsByIds(\array_values(\array_unique($tagIds)));
     }
 
     /**
-     * Строит представления тегов записи из общего батча текстов. В листинге батч содержит теги всех
-     * записей страницы, поэтому теги, не относящиеся к этой записи, отсеиваются по принадлежности.
-     * Принадлежность проверяется по заранее построенному множеству id связей записи за O(1) (вместо
-     * линейного поиска по связям на каждый элемент батча) — это убирает квадратичность на странице с
-     * тег-тяжёлыми записями. Порядок тегов в ответе определяется выборкой текстов из Tags и не
-     * является частью контракта (в post_tags нет колонки позиции — порядок добавления не хранится).
+     * Строит представления меток записи из общего батча. В листинге батч содержит метки всех записей
+     * страницы, поэтому перебираются связи самой записи, а метка берётся из батча по идентификатору
+     * за O(1): так форма и порядок чужого набора на ответ не влияют.
+     *
+     * Метки нет в батче — её не существует у соседа, поэтому связь пропускается (мягкая деградация,
+     * без 500). Порядок меток в ответе частью контракта не является (в post_tags нет колонки позиции
+     * — порядок добавления не хранится).
      *
      * @return list<TagView>
      */
-    private function tagViews(PostTagCollection $tags, TagTextCollection $texts): array
+    private function tagViews(PostTagCollection $postTags, TagDtoCollection $tags): array
     {
-        $postTagIds = [];
-
-        foreach ($tags as $postTag) {
-            $postTagIds[$postTag->tagId->value()] = true;
-        }
-
         $views = [];
 
-        foreach ($texts as $tagId => $text) {
-            if (!isset($postTagIds[$tagId])) {
+        foreach ($postTags as $postTag) {
+            $tag = $tags->get($postTag->tagId->value());
+
+            if ($tag === null) {
                 continue;
             }
 
-            $views[] = new TagView(id: $tagId, text: $text);
+            $views[] = new TagView(id: $tag->id, text: $tag->text);
         }
 
         return $views;
@@ -348,7 +377,11 @@ final readonly class PostViewAssembler
         return $posts->mapToList(static fn(Post $post): PostId => $post->id);
     }
 
-    private function originalView(Post $post, UserId $viewer): PostView|null
+    /**
+     * Исходная запись репоста, если она есть и видна зрителю. Отделена от сборки представления,
+     * потому что её вложения попадают в тот же батч ссылок медиа, что и вложения самой записи.
+     */
+    private function visibleOriginal(Post $post, UserId $viewer): Post|null
     {
         $originalId = $post->original->value();
 
@@ -362,27 +395,33 @@ final readonly class PostViewAssembler
             return null;
         }
 
-        $tags = $this->postTagRepository->findByPostId($original->id);
+        return $original;
+    }
+
+    private function originalView(
+        Post $original,
+        UserId $viewer,
+        PostMediaCollection $postMedia,
+        MediaDtoCollection $urls,
+    ): PostView {
+        $postTags = $this->postTagRepository->findByPostId($original->id);
 
         return $this->build(
             post: $original,
             author: $this->authorView($original->userId),
             likedByMe: $this->postLikeRepository->existsByPostAndUser(postId: $original->id, userId: $viewer),
-            media: $this->mediaItems($this->postMediaRepository->findByPostId($original->id)),
-            tags: $this->tagViews(tags: $tags, texts: $this->tagTexts($tags)),
+            media: $this->mediaItems(postMedia: $postMedia, urls: $urls),
+            tags: $this->tagViews(postTags: $postTags, tags: $this->tagsByIds($postTags)),
             original: null,
         );
     }
 
     /**
-     * Обогащает оригиналы репостов страницы одним пакетом (как и сами записи): один запрос за
-     * оригиналами, их авторами, медиа, тегами и флагами likedByMe. Без этого каждый репост дочитывал
-     * бы свой оригинал по отдельности (N+1 на уровень глубже). Невидимый зрителю оригинал в карту не
+     * Видимые зрителю оригиналы репостов страницы одним запросом. Без этого каждый репост дочитывал
+     * бы свой оригинал по отдельности (N+1 на уровень глубже). Невидимый зрителю оригинал в набор не
      * попадает — у репоста original будет null.
-     *
-     * @return array<string, PostView>
      */
-    private function originalViewsByPost(PostCollection $posts, UserId $viewer): array
+    private function visibleOriginals(PostCollection $posts, UserId $viewer): PostCollection
     {
         $originalIds = [];
 
@@ -395,34 +434,51 @@ final readonly class PostViewAssembler
         }
 
         if ($originalIds === []) {
-            return [];
+            return new PostCollection();
         }
 
-        $originals = $this->postRepository->findByIds(...\array_values($originalIds))->filter(
+        return $this->postRepository->findByIds(...\array_values($originalIds))->filter(
             static fn(Post $original): bool => PostVisibilityPolicy::isVisibleTo(post: $original, viewer: $viewer),
         )->values();
+    }
 
+    /**
+     * Обогащает оригиналы репостов страницы одним пакетом (как и сами записи): их авторы, теги и
+     * флаги likedByMe берутся одним запросом, а ссылки вложений приходят из общего батча всего
+     * ответа.
+     *
+     * @param array<string, PostMediaCollection> $mediaByPost
+     *
+     * @return array<string, PostView>
+     */
+    private function originalViews(
+        PostCollection $originals,
+        UserId $viewer,
+        array $mediaByPost,
+        MediaDtoCollection $urls,
+    ): array {
         if ($originals->isEmpty()) {
             return [];
         }
 
-        $originalPostIds = $this->postIds($originals);
         $authors = $this->authorViews($originals);
         $likedPostIds = $this->likedPostIds(posts: $originals, viewer: $viewer);
-        $mediaByPost = $this->mediaCollectionsByPost($originalPostIds);
-        $tagsByPost = $this->tagCollectionsByPost($originalPostIds);
-        $tagTexts = $this->tagTexts(...\array_values($tagsByPost));
+        $tagsByPost = $this->tagCollectionsByPost($this->postIds($originals));
+        $tagDtos = $this->tagsByIds(...\array_values($tagsByPost));
 
         return $originals->toBase()
-            ->map(function (Post $original) use ($authors, $likedPostIds, $mediaByPost, $tagsByPost, $tagTexts): PostView {
+            ->map(function (Post $original) use ($authors, $likedPostIds, $mediaByPost, $urls, $tagsByPost, $tagDtos): PostView {
                 $originalId = $original->id->value();
 
                 return $this->build(
                     post: $original,
                     author: $this->requireAuthor(authors: $authors, userId: $original->userId->value()),
                     likedByMe: isset($likedPostIds[$originalId]),
-                    media: $this->mediaItems($mediaByPost[$originalId] ?? new PostMediaCollection()),
-                    tags: $this->tagViews(tags: $tagsByPost[$originalId] ?? new PostTagCollection(), texts: $tagTexts),
+                    media: $this->mediaItems(
+                        postMedia: $mediaByPost[$originalId] ?? new PostMediaCollection(),
+                        urls: $urls,
+                    ),
+                    tags: $this->tagViews(postTags: $tagsByPost[$originalId] ?? new PostTagCollection(), tags: $tagDtos),
                     original: null,
                 );
             })

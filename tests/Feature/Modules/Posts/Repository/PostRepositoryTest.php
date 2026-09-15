@@ -22,6 +22,7 @@ use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
@@ -315,7 +316,7 @@ final class PostRepositoryTest extends PostsRepositoryTestCase
         ));
         $this->persist(PostLike::create(postId: $post->id, userId: $user->id));
         $this->persist(PostMention::create(postId: $post->id, userId: $user->id));
-        $this->persist(PostTag::create(postId: $post->id, tagId: $tag->id));
+        $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
         $block = PostBlock::create(postId: $post->id, reason: BlockReason::fromString('Нарушение'), blockedBy: $user->id);
         $this->persist($block);
         $this->persist(Comment::create(

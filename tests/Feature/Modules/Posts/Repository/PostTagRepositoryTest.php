@@ -12,6 +12,7 @@ use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
+use App\Modules\Posts\Domain\ValueObject\PostTagReference;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
@@ -27,11 +28,11 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
         $post = $this->createPostFor($user->id);
         $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
         $this->persist($tag);
-        $this->persist(PostTag::create(postId: $post->id, tagId: $tag->id));
+        $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
         $this->cleanOrmHeap();
 
         self::assertCount(1, $this->postTagRepository()->findByPostId($post->id));
-        self::assertCount(1, $this->postTagRepository()->findByTagId($tag->id));
+        self::assertCount(1, $this->postTagRepository()->findByTagId(PostTagReference::fromString($tag->id->value())));
         self::assertCount(1, $this->postTagRepository()->findByPostIds($post->id));
         self::assertCount(0, $this->postTagRepository()->findByPostIds());
     }
@@ -44,8 +45,8 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
         $secondPost = $this->createPostFor($user->id);
         $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
         $this->persist($tag);
-        $this->persist(PostTag::create(postId: $firstPost->id, tagId: $tag->id));
-        $this->persist(PostTag::create(postId: $secondPost->id, tagId: $tag->id));
+        $this->persist(PostTag::create(postId: $firstPost->id, tagId: PostTagReference::fromString($tag->id->value())));
+        $this->persist(PostTag::create(postId: $secondPost->id, tagId: PostTagReference::fromString($tag->id->value())));
         $this->cleanOrmHeap();
 
         $links = $this->postTagRepository()->findByPostIds($firstPost->id, $secondPost->id);
@@ -64,8 +65,8 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
         $this->persist($firstTag);
         $secondTag = Tag::create(text: TagText::fromString('медитация'), createdBy: $user->id);
         $this->persist($secondTag);
-        $this->persist(PostTag::create(postId: $post->id, tagId: $firstTag->id));
-        $this->persist(PostTag::create(postId: $post->id, tagId: $secondTag->id));
+        $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($firstTag->id->value())));
+        $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($secondTag->id->value())));
         $this->cleanOrmHeap();
 
         $restoredPost = $this->postRepository()->findById($post->id);
@@ -83,8 +84,8 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
         $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
         $this->persist($tag);
 
-        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: $tag->id));
-        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: $tag->id));
+        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
+        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
 
         $this->expectException(\Throwable::class);
 
@@ -98,7 +99,7 @@ final class PostTagRepositoryTest extends PostsRepositoryTestCase
         $post = $this->createPostFor($user->id);
         $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
         $this->persist($tag);
-        $this->persist(PostTag::create(postId: $post->id, tagId: $tag->id));
+        $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
 
         $this->expectException(\Throwable::class);
 

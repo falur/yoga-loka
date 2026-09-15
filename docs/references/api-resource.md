@@ -6,17 +6,17 @@ Resource задаёт форму JSON-ответа и OpenAPI-схемы.
 
 ## Когда применять
 
-Применяй для преобразования Result, View или разрешённой простой сущности в публичный HTTP-ответ.
+Применяй для преобразования Application Result в публичный HTTP-ответ.
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Presentation\Http\Resource;
+namespace App\Modules\User\Infrastructure\Spiral\Http\Resource;
 
 use App\Modules\User\Application\Query\GetUser\GetUserResult;
-use App\Shared\Presentation\Http\Resource\AbstractResource;
+use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 final readonly class UserResource extends AbstractResource
 {
@@ -37,11 +37,11 @@ final readonly class UserResource extends AbstractResource
 
 ## Что повторять
 
-- Класс `final readonly` наследует общий `AbstractResource`.
+- Класс `final readonly` наследует общий `AbstractResource` и лежит в `Infrastructure/Spiral/Http/Resource`.
 - Поля точно отражают JSON-контракт.
 - Фабрика только преобразует данные и не делает запросов.
 - `jsonSerialize()` вручную не объявляется.
 
 ## Допустимые варианты
 
-Resource может строиться из View или Entity, если обогащение не требуется. Дата остаётся `DateTimeImmutable` до общей сериализации.
+Resource строится только из Result своего сценария: доменная Entity и Cycle Entity до HTTP не доходят, иначе в JSON попадёт любое поле, добавленное в агрегат позже. Переиспользуемую часть ответа Resource берёт из соответствующего класса `Application/Result`. Дата остаётся `DateTimeImmutable` до общей сериализации.

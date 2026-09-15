@@ -13,12 +13,12 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Presentation\Http\Controller;
+namespace App\Modules\User\Infrastructure\Spiral\Http\Controller;
 
 use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\User\Application\Command\RenameUser\RenameUserCommand;
 use App\Modules\User\Application\Command\RenameUser\RenameUserHandler;
-use App\Modules\User\Presentation\Http\Filter\RenameUserFilter;
+use App\Modules\User\Infrastructure\Spiral\Http\Filter\RenameUserFilter;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use Spiral\Router\Annotation\Route;
@@ -56,6 +56,7 @@ final readonly class UserController
 - Метод создаёт один Command или Query и вызывает шину.
 - Возврат имеет конкретный Response-класс.
 - Требование доступа объявлено публичным атрибутом рядом с маршрутом.
+- Класс лежит в `Infrastructure/Spiral/Http/Controller`: контроллер — входной адаптер Spiral, отдельного слоя `Presentation` нет.
 - В контроллере нет запросов к БД, доменных ветвлений и `try-catch`.
 
 ## Допустимые варианты

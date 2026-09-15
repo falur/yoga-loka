@@ -32,9 +32,10 @@ final readonly class PostData
     ) {}
 
     /**
-     * Единственное место, где ряд выборки превращается в объект.
+     * Единственное место, где ряд выборки превращается в объект. Ключ ряда — имя поля
+     * Cycle Entity, а не имя колонки: `authorId`, а не `author_id`.
      *
-     * @param array<string, scalar|null> $row
+     * @param array<non-empty-string, scalar|null> $row
      * @param list<string> $mediaIds
      */
     public static function fromDatabaseRow(array $row, array $mediaIds): self
@@ -42,7 +43,7 @@ final readonly class PostData
         return new self(
             id: (string) $row['id'],
             name: (string) $row['name'],
-            authorId: (string) $row['author_id'],
+            authorId: (string) $row['authorId'],
             mediaIds: $mediaIds,
         );
     }
@@ -59,4 +60,4 @@ final readonly class PostData
 
 ## Допустимые варианты
 
-Набор передаётся типизированной коллекцией `{Name}DataCollection`. Для страницы создаётся `{Name}PageData` с коллекцией и курсором; он же отдаёт наборы чужих идентификаторов, чтобы handler дочитал их одним вызовом на соседний модуль.
+Набор передаётся типизированной коллекцией `{Name}DataCollection` — см. карточку [Типизированная коллекция](domain-collection.md). Для страницы создаётся `{Name}PageData` с этой коллекцией и курсором следующей страницы; он же отдаёт наборы чужих идентификаторов, чтобы handler дочитал их одним вызовом на соседний модуль. Сам курсор и нарезку страницы считает `CursorSlice::fromOverfetched()` в Reader, а не фабрика Data.

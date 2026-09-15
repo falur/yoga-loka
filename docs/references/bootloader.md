@@ -13,11 +13,11 @@ Bootloader связывает интерфейсы модуля с инфрас�
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Infrastructure\Bootloader;
+namespace App\Modules\User\Infrastructure\Spiral\Bootloader;
 
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Repository\CycleUserRepository;
-use App\Modules\User\Infrastructure\PublicApi\UserSummaryProvider;
+use App\Modules\User\Infrastructure\Spiral\PublicApi\UserSummaryProvider;
 use App\Modules\User\Public\Contract\UserSummaryContract;
 use Spiral\Boot\Bootloader\Bootloader;
 
@@ -33,7 +33,8 @@ final class UserBootloader extends Bootloader
 ## Что повторять
 
 - Интерфейс указывает на реализацию своего модуля.
-- Публичный интерфейс связан с адаптером из `Infrastructure/PublicApi`.
+- Bootloader лежит в `Infrastructure/Spiral/Bootloader`: все прямые зависимости модуля от Spiral собраны под `Infrastructure/Spiral`.
+- Публичный интерфейс связан с адаптером из `Infrastructure/Spiral/PublicApi`.
 - Пути к конфигурации, миграциям и переводам берутся из папки этого модуля.
 - Соседние модули не регистрируются и не раскрываются напрямую.
 - Bootloader не содержит бизнес-логику.

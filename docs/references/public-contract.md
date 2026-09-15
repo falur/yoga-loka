@@ -44,7 +44,7 @@ final readonly class UserSummaryDto
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Infrastructure\PublicApi;
+namespace App\Modules\User\Infrastructure\Spiral\PublicApi;
 
 use App\Modules\User\Application\Query\GetUser\GetUserHandler;
 use App\Modules\User\Application\Query\GetUser\GetUserQuery;
@@ -79,7 +79,7 @@ final readonly class UserSummaryProvider implements UserSummaryContract
 
 - Интерфейс находится в `Public/Contract`.
 - Интерфейс называется по возможности модуля и заканчивается на `Contract`.
-- Реализация заканчивается на `Provider` и находится в `Infrastructure/PublicApi`.
+- Реализация заканчивается на `Provider` и находится в `Infrastructure/Spiral/PublicApi`: это входной адаптер наравне с `Http`, `Console`, `Job` и `Temporal`.
 - Сигнатура использует только скаляры и типы из `Public`.
 - DTO из `Public` не импортирует Domain или Application; преобразование выполняет Provider.
 - Доменная сущность, Repository, Handler и HTTP Resource наружу не выходят.

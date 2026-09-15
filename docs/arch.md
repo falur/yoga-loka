@@ -176,7 +176,8 @@ Reader реализует объявленный в `Application/Contract` по�
 
 ```text
 Domain         -> PHP, свой Domain, Shared/Domain
-Public         -> PHP, свой Public, нейтральные контракты собственных Composer-пакетов
+Public         -> PHP, свой Public, Public других модулей, Shared/Domain,
+                  нейтральные контракты собственных Composer-пакетов
 Application    -> свой Domain, свои Application/Contract, Public других модулей
 Infrastructure -> свой Domain, свой Application, свой Public, Shared/Infrastructure,
                   библиотека своей явно названной границы

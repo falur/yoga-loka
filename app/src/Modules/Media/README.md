@@ -1,30 +1,68 @@
 # Модуль Media
 
-`Media` — переиспользуемый Application-API загрузки и обработки файлов. У модуля **нет
-собственного HTTP**: точку входа с настройками держит модуль-потребитель (например, будущий
-`User` для аватара), а `Media` предоставляет только свои сценарии через
-`Application`-слой. Ограничения каждой загрузки потребитель передаёт спецификацией прямо в
-вызов — они не зашиты в общий конфиг и не отдаются клиенту.
+`Media` — переиспользуемый модуль загрузки и обработки файлов. У модуля **нет собственного HTTP**:
+точку входа с настройками держит модуль-потребитель (например, будущий `User` для аватара).
+Ограничения каждой загрузки потребитель передаёт спецификацией прямо в вызов — они не зашиты в общий
+конфиг и не отдаются клиенту.
 
 > `Media` не знает про аватар или конкретное применение. Он умеет только: запросить загрузку,
 > подтвердить её, асинхронно обработать, отдать URL, проверить и удалить.
 
-## Публичный Application-API
+## Публичный контракт для соседей
 
-Другие модули обращаются только к `Application` (Command/Query), не к `Repository`,
-`Infrastructure` или таблицам.
+Синхронная дверь в модуль — `Public/Contract/MediaContract`. Он объявляет возможность модуля, а не
+его внутренний сценарий; реализация — входной адаптер `Infrastructure/Spiral/PublicApi/MediaProvider`,
+который раскладывает вызов в сценарий Application и переводит его Result в публичные DTO.
+
+| Операция | Результат |
+|---|---|
+| `urlsByIds(list<string> $mediaIds)` | `MediaDtoCollection` — набор медиа с преобразованиями, ключ — идентификатор медиа |
+| `ensureAttachable(list<string> $mediaIds, string $ownerUserId)` | `void` — за `CheckMediaAttachable`; непригодное медиа отказывает всей операции исключением |
+| `makePermanent(list<string> $mediaIds, string $ownerUserId)` | `void` — за `MakeMediaPermanent`; вызывается после `ensureAttachable()` в той же транзакции соседа |
+
+Все операции пакетные по построению: набор идентификаторов на один ответ или на одну запись, а не
+вызов на каждое медиа. Так `Posts` вкладывает медиа в запись — двумя вызовами на запись, а не двумя на
+вложение.
+
+Чтение ссылок мягкое: недоступное медиа (не найдено, не финализировано) просто отсутствует в наборе,
+поэтому сосед трактует отсутствие идентификатора как «медиа недоступно» и ставит своё значение по
+умолчанию без try-catch. Срок presigned-ссылки контракт не принимает — значение по умолчанию держит
+конфигурация Media.
+
+Вложение строгое: набор обходится в порядке передачи, и первое непригодное медиа отказывает всей
+операции типизированным исключением (`app.media.not_found` 404, `app.media.access_denied` 403,
+`app.media.not_ready` 422, `app.media.cannot_make_permanent` 422). Возвращать нечего: результат —
+отсутствие исключения, а сами медиа сосед уже знает по переданным идентификаторам.
+
+Публичные DTO (`Public/Dto`):
+
+- `MediaDto{ id, original: MediaOriginalDto?, conversions: list<MediaConversionDto> }` — медиа с
+  преобразованиями. Позиции здесь нет: позиция вложения принадлежит записи, а не медиа, поэтому её
+  держит собственное представление вложения у потребителя.
+- `MediaOriginalDto{ url, expiresAt? }` — оригинал; `null` у `MediaDto.original`, если оригинал удалён.
+- `MediaConversionDto{ kind, type, url, expiresAt? }` — одна конверсия; `kind` — публичный enum
+  `MediaConversionKind` (вид для рендера: image/video/audio; постер видео имеет вид image), `type` —
+  публичный enum профиля. Публичные enum — дубликаты доменных (домен не вправе зависеть от `Public`),
+  совпадение наборов держит unit-проверка `MediaConversionTypeEnumParityTest`.
+
+## Сценарии Application
+
+Сценарии модуля вызывают его собственные входные адаптеры; соседям видна только `Public`-поверхность
+выше. Ниже перечислены сценарии целиком — их доступность соседям расширяется контрактом по мере
+надобности.
 
 | Сценарий | Тип | Результат |
 |---|---|---|
 | `RequestMediaUpload(userId, MediaUploadSpec, MediaFileMeta)` | Command | `RequestMediaUploadResult` |
-| `CompleteMediaUpload(userId, mediaId, MediaConversionPlan, parts?)` | Command `#[Transactional]` | `MediaResult` |
-| `ProcessMedia(mediaId, MediaConversionPlan)` | Command (через Job) | `void` |
+| `CompleteMediaUpload(userId, mediaId, MediaConversionPlanDto, parts?)` | Command `#[Transactional]` | `MediaResult` |
+| `ProcessMedia(mediaId, MediaConversionPlanDto)` | Command (через Job) | `void` |
 | `RecordMediaProcessingFailure(mediaId, error, isTransient)` | Command | `void` |
 | `DeleteMedia(userId, mediaId)` | Command | `void` |
-| `MakeMediaPermanent(userId, mediaId)` | Command | `MediaResult` |
+| `MakeMediaPermanent(userId, list mediaIds)` | Command | `MakeMediaPermanentResult` — идентификаторы набора в порядке передачи. Набор обходится по порядку (первое непригодное медиа → ошибка), изменения фиксируются одной записью после обхода. За ним стоит публичный `MediaContract::makePermanent` |
 | `RemoveMediaOriginal(userId, mediaId)` | Command | `MediaResult` (удаляет оригинал из целевого бакета, статус → `readyOriginalRemoved`; конверсии сохраняются; требует ≥1 конверсии, иначе 422; идемпотентна на уже удалённом оригинале) |
-| `FindMediaUrl(mediaId, presignedTtlSeconds?)` | Query | `MediaUrlsResult` или `null` (полный набор: `original` — оригинал, `null` если он удалён в `readyOriginalRemoved`; `conversions` — все конверсии, каждая со своим типом; вызывающий выбирает нужное по типу, не зная заранее, какие конверсии есть. Медиа нет или не финализировано → `null` (для best-effort показа), но невалидный переданный срок (например, явный `0`) бросает `InvalidDomainValueException`, а не возвращает `null`. Для public — прямые URL без срока (`presignedTtlSeconds` игнорируется и не валидируется), для private — presigned со сроком: по умолчанию из конфига, вызывающий может переопределить `presignedTtlSeconds` (`< 1` → ошибка; верхнюю границу `≤ 604800` на override код не проверяет — её держит только значение по умолчанию из конфига, а слишком большой срок хранилище отклонит при запросе). Потребитель, которому нужен только оригинал (аватар профиля), берёт `original` из набора; лента `Posts` строит оригинал напрямую из уже загруженной сущности через `MediaUrlService::getUrls`) |
+| `FindMediaUrls(list mediaIds, presignedTtlSeconds?)` | Query | `MediaUrlsResultCollection` — ключ id медиа; недоступные медиа (нет или не финализировано) в набор не попадают — это best-effort показ, а не ошибка. Для каждого попавшего медиа отдаётся полный набор: `original` — оригинал, `null` если он удалён в `readyOriginalRemoved`; `conversions` — все конверсии, каждая со своим типом; вызывающий выбирает нужное по типу, не зная заранее, какие конверсии есть. Невалидный переданный срок (например, явный `0`) бросает `InvalidDomainValueException`, а не пропускает медиа. Для public — прямые URL без срока (`presignedTtlSeconds` игнорируется и не валидируется), для private — presigned со сроком: по умолчанию из конфига, вызывающий может переопределить `presignedTtlSeconds` (`< 1` → ошибка; верхнюю границу `≤ 604800` на override код не проверяет — её держит только значение по умолчанию из конфига, а слишком большой срок хранилище отклонит при запросе). За ним стоит публичный `MediaContract::urlsByIds`: так ссылки вложений и аватаров берут и лента `Posts`, и `User`, и `Notifications` |
 | `GetAudioWaveform(mediaId)` | Query | `MediaWaveform` (числа амплитуд аудио-конверсии; не через URL; обслуживается при `ready` и `readyOriginalRemoved`; не финализировано/не аудио/нет конверсии → 404) |
+| `CheckMediaAttachable(list mediaIds, ownerUserId)` | Query | `MediaAttachableResult` — идентификаторы набора в порядке передачи; каждое медиа должно существовать (404), принадлежать владельцу (403) и быть `ready` (422). За ним стоит публичный `MediaContract::ensureAttachable` |
 | `CheckMediaIsImage(mediaId)` | Query | `bool` |
 | `CheckMediaExists(mediaId)` | Query | `bool` |
 
@@ -41,11 +79,18 @@
   presigned-ссылок загрузки (PUT/части), задаёт потребитель под контекст, а не общий конфиг.
 - `MediaFileMeta{ fileName, mimeType, size }` — `fileName` используется только для извлечения
   расширения (не хранится).
-- Профили конверсии на тип — **публичные** примитив-дружественные DTO (идут в полезных данных outbox),
-  объединены в `MediaConversionPlan{ image: list<MediaImageConversionSpec>, video: list<...>, audio: list<...> }`:
-  - `MediaImageConversionSpec{ type, width, height }`
-  - `MediaVideoConversionSpec{ type, width, height, videoBitrate, audioBitrate }`
-  - `MediaAudioConversionSpec{ type, bitrate, sampleRate, waveformPeaks }`
+- Профили конверсии на тип лежат в `Public/Dto` — примитив-дружественные публичные DTO (идут в
+  полезных данных outbox), объединены в
+  `MediaConversionPlanDto{ image: list<MediaImageConversionSpecDto>, video: list<...>, audio: list<...> }`:
+  - `MediaImageConversionSpecDto{ type, width, height }`
+  - `MediaVideoConversionSpecDto{ type, width, height, videoBitrate, audioBitrate }`
+  - `MediaAudioConversionSpecDto{ type, bitrate, sampleRate, waveformPeaks }`
+
+  Поле `type` — публичный enum из `Public/Enum` (`MediaImageConversionType`,
+  `MediaVideoConversionType`, `MediaAudioConversionType`): дубликат одноимённого доменного enum с
+  тем же набором вариантов и значений (домен не вправе зависеть от `Public`). `ProcessMediaHandler`
+  строит доменный вариант по строковому значению; совпадение наборов держит unit-проверка
+  `MediaConversionTypeEnumParityTest`.
 
   Валидируется только список, относящийся к `media.type`; список «не своего» типа должен быть
   пустым (кросс-тип → 422). Для video и audio нужен ровно один профиль; дубли типов в списке image → 422.
@@ -65,13 +110,14 @@
 1. RequestMediaUpload  -> presigned PUT (single) или multipart-ссылки; media = waitingUpload
 2. Клиент PUT-ит байты напрямую в MinIO (бакет media-upload)
 3. CompleteMediaUpload  -> headObject подтверждает объект и размер; media = uploaded;
-                           MediaUploaded кладётся в outbox в той же транзакции   #[Transactional]
+                           MediaUploadedEvent кладётся в outbox в той же транзакции   #[Transactional]
 4. outbox:relay -> ProcessMediaJob -> ProcessMediaCommand
 5. ProcessMedia (без #[Transactional]): S3/ffmpeg/Imagick вне транзакции. Исчерпывающий match по
    media.type: image -> ресайз (Imagick); video -> транскод mp4/H.264+AAC + кадр-постер (ffmpeg);
    audio -> транскод m4a/AAC + волна амплитуд (ffmpeg). Затем перекладка оригинала в целевой бакет
    по visibility и один атомарный persist+run() -> media = ready
-6. FindMediaUrl: отдаёт полный набор ссылок (оригинал + все конверсии). public -> прямые URL
+6. FindMediaUrls: отдаёт полный набор ссылок (оригинал + все конверсии) для набора медиа.
+   public -> прямые URL
    (media-public, anonymous read); private -> presignGet (TTL по умолчанию из конфига,
    переопределяется presignedTtlSeconds запроса). Волна аудио — отдельным GetAudioWaveform (числа, не URL)
 ```
@@ -91,11 +137,11 @@
 конверсии при этом не трогаются и продолжают резолвиться. Команда требует у медиа хотя бы одну
 конверсию (иначе 422 `no_conversions_to_keep`), поэтому удалить оригинал у `Document` или у медиа с
 пустым планом конверсий нельзя, а после удаления всегда остаётся доступный контент. Семантика запросов
-после удаления оригинала: `FindMediaUrl` обслуживает `readyOriginalRemoved` — возвращает
+после удаления оригинала: `FindMediaUrls` обслуживает `readyOriginalRemoved` — возвращает
 `MediaUrlsResult` с `original = null` и доступными конверсиями (отдельного 404 на удалённый оригинал
 нет); потребитель решает по `original`: вложение в `Posts` исчезает, аватар в `User` берёт значение по
 умолчанию. `GetAudioWaveform` тоже обслуживает `readyOriginalRemoved`; `CheckMediaAttachable`
-осознанно остаётся строгим (только `ready` → иначе 422).
+осознанно остаётся строгим (только `ready` → иначе 422) для каждого медиа набора.
 Защита финализированного состояния: дубль/повтор `ProcessMedia` после удаления оригинала — ранний no-op
 (`isFinalized()`), а поздняя запись ошибки обработки на `readyOriginalRemoved` — тоже no-op (медиа не
 понижается в `processingFailed`). При ошибке обработки
@@ -118,7 +164,7 @@
 
 ## Транзакционная дисциплина S3
 
-- `CompleteMediaUpload` — `#[Transactional]`: переход `uploaded` и запись `MediaUploaded` в
+- `CompleteMediaUpload` — `#[Transactional]`: переход `uploaded` и запись `MediaUploadedEvent` в
   outbox происходят в одной транзакции. Компромисс: для multipart-ветки внешние S3-операции
   (`completeMultipartUpload`, `headObject`) выполняются под открытой транзакцией БД. Это
   осознанный компромисс — повтор `complete` идемпотентен (`NoSuchUpload` → подтверждение через
@@ -139,7 +185,7 @@
   другим набором конверсий, ранее залитые и больше не запрашиваемые конверсии в S3 не удаляются
   (осиротевшие объекты). В текущем контракте такого повтора не возникает.
 - Оригинал И конверсии живут в одном бакете по `visibility` (`media-public`/`media-private`),
-  чтобы `FindMediaUrl` резолвил их единообразно и не было утечки private-медиа.
+  чтобы `FindMediaUrls` резолвил их единообразно и не было утечки private-медиа.
 - `MediaImageConversion` хранит `width`/`height` **из результата процессора**
   (`conversionResult->width`/`height`), а не запрошенные `spec.width`/`spec.height`: в БД должен
   лежать размер реально записанного объекта. Текущий `ImagickMediaImageProcessor` использует
@@ -158,13 +204,14 @@
 - Staging-оригинал из `media-upload` синхронно не удаляется — чистится по expiry (отдельная
   задача).
 
-## Outbox-сообщение
+## Интеграционное событие
 
-`Application/Message/MediaUploaded implements OutboxMessage` — только примитивы/enum
-(`string mediaId`, вложенный `MediaConversionPlan` из `list<...Spec>`), потому что
+`Public/Event/MediaUploadedEvent implements IntegrationEvent` — только примитивы/enum
+(`string mediaId`, вложенный `MediaConversionPlanDto` из `list<...Dto>`), потому что
 `ValinorOutboxMessageSerializer` не регистрирует кастомные конструкторы доменных VO; точные
-PHPDoc-типы `list<...Spec>` обязательны для восстановления вложенного DTO Valinor-ом. Пара `MediaUploaded → ProcessMediaJob`
-регистрируется в `MediaBootloader`; Job — в `app/config/queue.php`
+PHPDoc-типы `list<...Dto>` обязательны для восстановления вложенного DTO Valinor-ом.
+Пара `MediaUploadedEvent → ProcessMediaJob` регистрируется в `MediaBootloader`; там же связан
+публичный контракт `MediaContract → MediaProvider`. Job — в `app/config/queue.php`
 (`registry.handlers` + `registry.serializers = OutboxQueueSerializer`).
 
 ## Инфраструктура и конфиг
@@ -178,7 +225,7 @@ PHPDoc-типы `list<...Spec>` обязательны для восстанов
   env `MEDIA_FFMPEG_BINARY`/`MEDIA_FFPROBE_BINARY`/`MEDIA_FFMPEG_TIMEOUT_SECONDS`/`MEDIA_FFMPEG_THREADS`).
   Срок presigned-ссылок загрузки задаёт потребитель под контекст (`MediaUploadSpec.presignedTtl`); срок
   скачивания берётся из конфига по умолчанию, но вызывающий может переопределить его
-  (`FindMediaUrlQuery.presignedTtlSeconds`). Ключи `MEDIA_*` — в `.env.sample` и `phpunit.xml`.
+  (`FindMediaUrlsQuery.presignedTtlSeconds`). Ключи `MEDIA_*` — в `.env.sample` и `phpunit.xml`.
   Application модуля `*Config` не читает: `RequestMediaUploadHandler` получает решения пайплайна
   загрузки (срок staging-хранения, нужен ли multipart, размер и число частей) через
   `MediaUploadPlannerContract`; реализация `MediaUploadPlanner` (`Infrastructure/Storage`) читает
@@ -213,7 +260,8 @@ PHPDoc-типы `list<...Spec>` обязательны для восстанов
   (новая, backfill не нужен; rollback = drop). Прочие таблицы media не меняются.
 - В образе нужен бинарь `ffmpeg`/`ffprobe` (ставится в `docker/Dockerfile`, самопроверка
   `ffmpeg -version`/`ffprobe -version` при сборке).
-- **Предусловие выката**: смена содержимого `MediaUploaded` (`conversions` → `plan`) несовместима.
+- **Предусловие выката**: смена содержимого `MediaUploadedEvent` (`conversions` → `plan`) и его переезд
+  в `Public/Event` несовместимы со старыми записями outbox.
   Сквозного потребителя в рабочей среде нет, но перед выкатом нужно **слить очередь RabbitMQ и
   outbox**, чтобы не осталось старых сообщений со старым форматом.
 - Осиротевшие объекты при терминальной ошибке: video/audio-процессор грузит результаты в целевой

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Notifications\Http;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
+use App\Modules\Notifications\Public\Contract\NotificationTypeRegistryContract;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
@@ -79,15 +79,17 @@ final class NotificationHttpTest extends DatabaseTestCase
         self::assertSame('42', $action['actionId']);
     }
 
-    public function testListNotificationsExposesActorSnapshotWithAvatarMediaView(): void
+    public function testListNotificationsExposesActorSnapshotWithAvatarMedia(): void
     {
         $userId = UserId::generate();
         $actorId = UserId::generate();
         $media = $this->persistReadyPublicMedia();
+        $this->persistThumbnailConversion($media);
         $this->persistNotification(
             $userId,
             actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $media->id->value()),
         );
+        $this->cleanOrmHeap();
 
         $response = $this->fakeHttp()->getWithAttributes(
             '/api/v1/notifications',
@@ -98,9 +100,21 @@ final class NotificationHttpTest extends DatabaseTestCase
         $actor = $this->json($response)['data'][0]['actor'];
         self::assertSame($actorId->value(), $actor['id']);
         self::assertSame('Иван', $actor['name']);
-        // Аватар автора — полный MediaView (id + оригинал + конверсии), а не строка-ссылка.
+        // Аватар автора — медиа целиком (id + позиция + оригинал + конверсии), а не строка-ссылка.
         self::assertSame($media->id->value(), $actor['avatar']['id']);
+        // Позиция принадлежит записи, а не медиа, поэтому у аватара её нет.
+        self::assertNull($actor['avatar']['position']);
         self::assertSame(self::STUBBED_MEDIA_URL, $actor['avatar']['original']['url']);
+        self::assertNull($actor['avatar']['original']['expiresAt']);
+
+        // Конверсии аватара отдаются тем же составом полей, что и у вложений записи: вид, профиль,
+        // ссылка и срок её действия.
+        self::assertCount(1, $actor['avatar']['conversions']);
+        $conversion = $actor['avatar']['conversions'][0];
+        self::assertSame('image', $conversion['kind']);
+        self::assertSame('thumbnail', $conversion['type']);
+        self::assertSame(self::STUBBED_MEDIA_URL, $conversion['url']);
+        self::assertNull($conversion['expiresAt']);
     }
 
     public function testListNotificationsReturnsNullAvatarWhenActorHasNoAvatarMedia(): void

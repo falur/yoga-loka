@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Notifications\Domain\ValueObject;
 
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActionId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActionType;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationReadState;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
@@ -396,32 +394,5 @@ final class NotificationValueObjectTest extends TestCase
         $this->expectException(InvalidDomainValueException::class);
 
         NotificationReadState::unread()->markedAt();
-    }
-
-    public function testChannelDefaultsReportEnabledChannels(): void
-    {
-        $defaults = NotificationChannelDefaults::of(NotificationChannel::Database, NotificationChannel::Push);
-
-        self::assertTrue($defaults->isEnabled(NotificationChannel::Database));
-        self::assertTrue($defaults->isEnabled(NotificationChannel::Push));
-        self::assertFalse($defaults->isEnabled(NotificationChannel::Realtime));
-        self::assertSame(['database', 'push'], $defaults->jsonSerialize());
-    }
-
-    public function testChannelDefaultsEqualsIgnoresOrder(): void
-    {
-        $defaults = NotificationChannelDefaults::of(NotificationChannel::Database, NotificationChannel::Push);
-
-        self::assertTrue(
-            $defaults->equals(NotificationChannelDefaults::of(NotificationChannel::Push, NotificationChannel::Database)),
-        );
-        self::assertFalse($defaults->equals(NotificationChannelDefaults::of(NotificationChannel::Database)));
-    }
-
-    public function testChannelDefaultsRejectDuplicateChannel(): void
-    {
-        $this->expectException(InvalidDomainValueException::class);
-
-        NotificationChannelDefaults::of(NotificationChannel::Push, NotificationChannel::Push);
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 use App\Shared\Domain\Collection\TypedCollection;
 
 /**

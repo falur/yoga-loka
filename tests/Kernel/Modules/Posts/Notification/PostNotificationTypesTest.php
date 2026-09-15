@@ -4,27 +4,33 @@ declare(strict_types=1);
 
 namespace Tests\Kernel\Modules\Posts\Notification;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
+use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
 use Tests\TestCase;
 
 /**
- * Каждый вид уведомлений модуля Posts реально регистрируется PostsBootloader в реестре и резолвится
+ * Каждый вид уведомлений модуля Posts реально регистрируется PostsBootloader в каталоге и резолвится
  * по коду через get() (а не только присутствует в all()); каналы по умолчанию совпадают с решением плана.
+ *
+ * Проверка смотрит на внутренний каталог Notifications намеренно: публичный
+ * NotificationTypeRegistryContract объявляет только регистрацию, чтение реестра соседям не
+ * публикуется, поэтому увидеть результат регистрации можно лишь изнутри Notifications. Это сквозная
+ * проверка приложения (каталог tests/), а не код модуля Posts, поэтому граница модулей не нарушена.
  */
 final class PostNotificationTypesTest extends TestCase
 {
     public function testAllSevenTypesResolveFromRegistryByCode(): void
     {
-        $registry = $this->getContainer()->get(NotificationTypeRegistryContract::class);
+        $catalog = $this->getContainer()->get(NotificationTypeCatalogContract::class);
 
         self::assertCount(7, PostNotificationType::cases());
 
         foreach (PostNotificationType::cases() as $type) {
-            $resolved = $registry->get($type->code());
+            $resolved = $catalog->get(NotificationTypeCode::fromString($type->code()));
 
-            self::assertTrue($resolved->code()->equals($type->code()));
+            self::assertSame($type->code(), $resolved->code());
         }
     }
 
@@ -38,9 +44,9 @@ final class PostNotificationTypesTest extends TestCase
         ] as $type) {
             $channels = $type->defaultChannels();
 
-            self::assertTrue($channels->isEnabled(NotificationChannel::Database));
-            self::assertTrue($channels->isEnabled(NotificationChannel::Push));
-            self::assertTrue($channels->isEnabled(NotificationChannel::Realtime));
+            self::assertTrue($channels->includes(NotificationChannel::Database));
+            self::assertTrue($channels->includes(NotificationChannel::Push));
+            self::assertTrue($channels->includes(NotificationChannel::Realtime));
         }
     }
 
@@ -53,9 +59,9 @@ final class PostNotificationTypesTest extends TestCase
         ] as $type) {
             $channels = $type->defaultChannels();
 
-            self::assertTrue($channels->isEnabled(NotificationChannel::Database));
-            self::assertTrue($channels->isEnabled(NotificationChannel::Push));
-            self::assertFalse($channels->isEnabled(NotificationChannel::Realtime));
+            self::assertTrue($channels->includes(NotificationChannel::Database));
+            self::assertTrue($channels->includes(NotificationChannel::Push));
+            self::assertFalse($channels->includes(NotificationChannel::Realtime));
         }
     }
 }

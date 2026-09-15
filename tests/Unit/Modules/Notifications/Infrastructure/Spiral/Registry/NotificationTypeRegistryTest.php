@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Spiral\Registry;
 
 use App\Modules\Notifications\Application\Exception\NotificationTypeRegistryException;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use PHPUnit\Framework\TestCase;

@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Notification;
 
-use App\Modules\Notifications\Application\Dto\NotificationContent;
-use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
-use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
-use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
-use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
+use App\Modules\Notifications\Public\Dto\NotificationContentDto;
 use App\Shared\Domain\Enum\Locale;
 use Spiral\Translator\TranslatorInterface;
 
 /**
  * Сборка готового содержимого уведомления для модуля Posts. Текст (заголовок и тело) рендерится в
  * локали получателя по ключам `app.posts.notification.<вид>.{title|body}` домена `posts`; снимок
- * автора (actor) и переход (action) приходят готовыми объектами — билдер только переводит текст и
- * собирает NotificationContent.
+ * автора (actor) и переход (action) приходят готовыми публичными DTO — билдер только переводит
+ * текст и собирает NotificationContentDto.
  */
 final readonly class NotificationContentBuilder
 {
@@ -28,24 +26,24 @@ final readonly class NotificationContentBuilder
 
     public function build(
         PostNotificationType $type,
-        NotificationActor $actor,
-        NotificationAction $action,
+        NotificationActorDto $actor,
+        NotificationActionDto $action,
         Locale $recipientLocale,
-    ): NotificationContent {
-        $parameters = ['actorName' => $actor->presentName()];
+    ): NotificationContentDto {
+        $parameters = ['actorName' => $actor->name];
 
-        return new NotificationContent(
-            type: $type,
-            title: NotificationTitle::fromString($this->translate(
+        return new NotificationContentDto(
+            typeCode: $type->code(),
+            title: $this->translate(
                 key: \sprintf('app.posts.notification.%s.title', $type->notificationKey()),
                 parameters: $parameters,
                 locale: $recipientLocale->value,
-            )),
-            body: NotificationBody::fromString($this->translate(
+            ),
+            body: $this->translate(
                 key: \sprintf('app.posts.notification.%s.body', $type->notificationKey()),
                 parameters: $parameters,
                 locale: $recipientLocale->value,
-            )),
+            ),
             action: $action,
             actor: $actor,
         );

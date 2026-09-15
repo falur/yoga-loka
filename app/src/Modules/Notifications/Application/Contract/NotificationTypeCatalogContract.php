@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Application\Contract;
 
 use App\Modules\Notifications\Application\Dto\NotificationTypeDefinitionCollection;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 
 /**
- * Реестр определений видов уведомлений — единый источник правды о видах и их дефолтных каналах.
- * Модули-источники регистрируют свои определения; ядро только читает.
+ * Внутренний каталог определений видов уведомлений — единый источник правды о видах и их дефолтных
+ * каналах. Регистрацию соседям публикует NotificationTypeRegistryContract из Public; чтение
+ * (перебор видов и поиск по коду) остаётся внутри модуля.
  */
-interface NotificationTypeRegistryContract
+interface NotificationTypeCatalogContract
 {
     public function register(NotificationTypeDefinition ...$definitions): void;
 

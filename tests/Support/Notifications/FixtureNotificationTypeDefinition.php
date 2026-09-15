@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Support\Notifications;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
-use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 
 /**
- * Тестовое определение вида: конкретных видов в проде ещё нет (их дают модули-источники),
- * поэтому поток отправки/рассылки/настроек тестируется через эту фикстуру.
+ * Тестовое определение вида: поток отправки/рассылки/настроек тестируется через эту фикстуру
+ * независимо от видов, которые регистрируют реальные модули-источники.
  */
 final readonly class FixtureNotificationTypeDefinition implements NotificationTypeDefinition
 {
     private function __construct(
-        private NotificationTypeCode $code,
-        private NotificationChannelDefaults $defaultChannels,
+        private string $code,
+        private NotificationChannelCollection $defaultChannels,
     ) {}
 
     public static function withDefaultChannels(
@@ -25,8 +24,8 @@ final readonly class FixtureNotificationTypeDefinition implements NotificationTy
         NotificationChannel ...$channels,
     ): self {
         return new self(
-            code: NotificationTypeCode::fromString($code),
-            defaultChannels: NotificationChannelDefaults::of(...$channels),
+            code: $code,
+            defaultChannels: NotificationChannelCollection::of(...$channels),
         );
     }
 
@@ -40,12 +39,14 @@ final readonly class FixtureNotificationTypeDefinition implements NotificationTy
         );
     }
 
-    public function code(): NotificationTypeCode
+    #[\Override]
+    public function code(): string
     {
         return $this->code;
     }
 
-    public function defaultChannels(): NotificationChannelDefaults
+    #[\Override]
+    public function defaultChannels(): NotificationChannelCollection
     {
         return $this->defaultChannels;
     }

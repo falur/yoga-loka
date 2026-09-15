@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
 use App\Modules\Notifications\Application\Dto\NotificationSettingViewCollection;
 use App\Modules\Notifications\Application\Service\NotificationSettingsViewFactory;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\Enum\NotificationSettingStatus;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 use App\Modules\Notifications\Repository\NotificationSettingRepository;
 use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
@@ -28,7 +28,7 @@ final readonly class UpdateNotificationSettingsHandler
 {
     public function __construct(
         private NotificationSettingRepository $notificationSettingRepository,
-        private NotificationTypeRegistryContract $typeRegistry,
+        private NotificationTypeCatalogContract $typeCatalog,
         private NotificationSettingsViewFactory $settingsViewFactory,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
@@ -84,11 +84,11 @@ final readonly class UpdateNotificationSettingsHandler
 
     private function resolveType(string $type): NotificationTypeCode
     {
-        $definition = $this->typeRegistry->all()->first(
-            static fn(NotificationTypeDefinition $candidate): bool => $candidate->code()->value() === $type,
+        $definition = $this->typeCatalog->all()->first(
+            static fn(NotificationTypeDefinition $candidate): bool => $candidate->code() === $type,
         ) ?? throw new ValidationException('app.notifications.unknown_type');
 
-        return $definition->code();
+        return NotificationTypeCode::fromString($definition->code());
     }
 
     private function status(bool $enabled): NotificationSettingStatus

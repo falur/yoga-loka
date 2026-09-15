@@ -15,7 +15,7 @@ use App\Modules\Notifications\Application\Command\Notification\MarkNotificationR
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\NotificationSettingUpdate;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsCommand;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsHandler;
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
+use App\Modules\Notifications\Public\Contract\NotificationTypeRegistryContract;
 use App\Modules\Notifications\Application\Dto\NotificationSettingView;
 use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetUnreadCountHandler;
 use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetUnreadCountQuery;

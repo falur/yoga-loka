@@ -18,7 +18,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Modules\Notifications\Application\Message\NotificationRequested;
+use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
@@ -39,7 +39,7 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
@@ -65,7 +65,7 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
         parent::setUp();
 
         $this->outboxStore = new RecordingOutboxEventStore();
-        $this->getContainer()->bindSingleton(OutboxEventStoreContract::class, $this->outboxStore);
+        $this->getContainer()->bindSingleton(IntegrationEventStoreContract::class, $this->outboxStore);
 
         $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('publicUrl')->willReturn('https://media.test/object.jpg');
@@ -167,13 +167,13 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
     }
 
     /**
-     * @return list<NotificationRequested>
+     * @return list<NotificationRequestedEvent>
      */
     protected function stagedNotifications(string $type): array
     {
         return \array_values(\array_filter(
             $this->outboxStore->messages,
-            static fn(object $message): bool => $message instanceof NotificationRequested && $message->type === $type,
+            static fn(object $message): bool => $message instanceof NotificationRequestedEvent && $message->type === $type,
         ));
     }
 

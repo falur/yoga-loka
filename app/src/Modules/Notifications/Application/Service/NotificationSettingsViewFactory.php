@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Service;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
 use App\Modules\Notifications\Application\Dto\NotificationSettingView;
 use App\Modules\Notifications\Application\Dto\NotificationSettingViewCollection;
 use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
+use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
 use App\Modules\Notifications\Repository\NotificationSettingRepository;
 use App\Shared\Domain\ValueObject\UserId;
 
@@ -22,7 +24,7 @@ use App\Shared\Domain\ValueObject\UserId;
 final readonly class NotificationSettingsViewFactory
 {
     public function __construct(
-        private NotificationTypeRegistryContract $typeRegistry,
+        private NotificationTypeCatalogContract $typeCatalog,
         private NotificationSettingRepository $notificationSettingRepository,
     ) {}
 
@@ -31,7 +33,7 @@ final readonly class NotificationSettingsViewFactory
         $settings = $this->notificationSettingRepository->findForUser($userId);
         $views = [];
 
-        foreach ($this->typeRegistry->all() as $definition) {
+        foreach ($this->typeCatalog->all() as $definition) {
             foreach (NotificationChannel::cases() as $channel) {
                 $views[] = $this->view(definition: $definition, channel: $channel, settings: $settings);
             }
@@ -45,12 +47,15 @@ final readonly class NotificationSettingsViewFactory
         NotificationChannel $channel,
         NotificationSettingCollection $settings,
     ): NotificationSettingView {
-        $default = $definition->defaultChannels()->isEnabled($channel);
+        // Публичное определение говорит о каналах публичными вариантами, доменные значения строим
+        // здесь по строковому значению варианта.
+        $type = NotificationTypeCode::fromString($definition->code());
+        $default = $definition->defaultChannels()->includes(PublicNotificationChannel::from($channel->value));
         $setting = $settings->first(static fn(NotificationSetting $candidate): bool
-            => $candidate->type->equals($definition->code()) && $candidate->channel === $channel);
+            => $candidate->type->equals($type) && $candidate->channel === $channel);
 
         return new NotificationSettingView(
-            type: $definition->code(),
+            type: $type,
             channel: $channel,
             enabled: $setting !== null ? $setting->isEnabled() : $default,
             default: $default,

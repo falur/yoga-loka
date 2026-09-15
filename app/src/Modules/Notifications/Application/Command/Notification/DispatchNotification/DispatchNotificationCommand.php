@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Notification\DispatchNotification;
 
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 
 /**
  * Команда фоновой рассылки уведомления. Внешняя граница принимает примитивы: outboxId/createdAt —
@@ -20,8 +20,8 @@ final readonly class DispatchNotificationCommand
         public string $type,
         public string $title,
         public string $body,
-        public NotificationActionPayload|null $action,
-        public NotificationActorPayload|null $actor,
+        public NotificationActionDto|null $action,
+        public NotificationActorDto|null $actor,
         public string $createdAt,
     ) {}
 }

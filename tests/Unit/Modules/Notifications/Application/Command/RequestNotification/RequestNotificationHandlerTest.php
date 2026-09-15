@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Notifications\Application;
+namespace Tests\Unit\Modules\Notifications\Application\Command\RequestNotification;
 
-use App\Modules\Notifications\Application\Dto\NotificationContent;
-use App\Modules\Notifications\Application\Message\NotificationRequested;
-use App\Modules\Notifications\Application\NotificationSender;
+use App\Modules\Notifications\Application\Command\RequestNotification\RequestNotificationCommand;
+use App\Modules\Notifications\Application\Command\RequestNotification\RequestNotificationHandler;
 use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
+use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\StoredOutboxEventId;
+use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Tests\Support\Notifications\FixtureNotificationTypeDefinition;
 
-final class NotificationSenderTest extends TestCase
+final class RequestNotificationHandlerTest extends TestCase
 {
     public function testStagesExactlyOneNotificationRequested(): void
     {
@@ -29,24 +29,22 @@ final class NotificationSenderTest extends TestCase
         $avatarMediaId = UserId::generate()->value();
         $captured = null;
 
-        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
         $outboxStore->expects(self::once())
             ->method('add')
-            ->willReturnCallback(static function (OutboxMessage $message) use (&$captured): StoredOutboxEventId {
+            ->willReturnCallback(static function (IntegrationEvent $message) use (&$captured): string {
                 $captured = $message;
 
-                return StoredOutboxEventId::fromString('outbox-1');
+                return 'outbox-1';
             });
 
-        $this->sender($outboxStore)->send(
-            $userId,
-            $this->content(
-                NotificationAction::linkTo('chat', '42'),
-                NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $avatarMediaId),
-            ),
-        );
+        $this->handler($outboxStore)->handle($this->command(
+            recipient: $userId,
+            action: NotificationAction::linkTo('chat', '42'),
+            actor: NotificationActor::of(userId: $actorId, name: 'Иван', avatarMediaId: $avatarMediaId),
+        ));
 
-        self::assertInstanceOf(NotificationRequested::class, $captured);
+        self::assertInstanceOf(NotificationRequestedEvent::class, $captured);
         self::assertSame($userId->value(), $captured->userId);
         self::assertSame('chat.message_received', $captured->type);
         self::assertSame('Новое сообщение', $captured->title);
@@ -64,55 +62,58 @@ final class NotificationSenderTest extends TestCase
     public function testStagesNullActionWhenNoLink(): void
     {
         $captured = null;
-        $outboxStore = $this->createStub(OutboxEventStoreContract::class);
+        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
         $outboxStore->method('add')->willReturnCallback(
-            static function (OutboxMessage $message) use (&$captured): StoredOutboxEventId {
+            static function (IntegrationEvent $message) use (&$captured): string {
                 $captured = $message;
 
-                return StoredOutboxEventId::fromString('outbox-1');
+                return 'outbox-1';
             },
         );
 
-        $this->sender($outboxStore)->send(UserId::generate(), $this->content(NotificationAction::none()));
+        $this->handler($outboxStore)->handle($this->command(action: NotificationAction::none()));
 
-        self::assertInstanceOf(NotificationRequested::class, $captured);
+        self::assertInstanceOf(NotificationRequestedEvent::class, $captured);
         self::assertNull($captured->action);
         self::assertNull($captured->actor);
     }
 
     public function testRejectsUnregisteredTypeWithoutStaging(): void
     {
-        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
         $outboxStore->expects(self::never())->method('add');
 
-        $registry = new NotificationTypeRegistry();
-        $sender = new NotificationSender(
-            typeRegistry: $registry,
-            outboxEventStore: $outboxStore,
+        $handler = new RequestNotificationHandler(
+            typeCatalog: new NotificationTypeRegistry(),
+            integrationEventStore: $outboxStore,
             logger: new NullLogger(),
         );
 
         $this->expectException(\DomainException::class);
 
-        $sender->send(UserId::generate(), $this->content(NotificationAction::none()));
+        $handler->handle($this->command(action: NotificationAction::none()));
     }
 
-    private function sender(OutboxEventStoreContract $outboxStore): NotificationSender
+    private function handler(IntegrationEventStoreContract $outboxStore): RequestNotificationHandler
     {
         $registry = new NotificationTypeRegistry();
         $registry->register(FixtureNotificationTypeDefinition::allChannels('chat.message_received'));
 
-        return new NotificationSender(
-            typeRegistry: $registry,
-            outboxEventStore: $outboxStore,
+        return new RequestNotificationHandler(
+            typeCatalog: $registry,
+            integrationEventStore: $outboxStore,
             logger: new NullLogger(),
         );
     }
 
-    private function content(NotificationAction $action, NotificationActor|null $actor = null): NotificationContent
-    {
-        return new NotificationContent(
-            type: FixtureNotificationTypeDefinition::allChannels('chat.message_received'),
+    private function command(
+        NotificationAction $action,
+        NotificationActor|null $actor = null,
+        UserId|null $recipient = null,
+    ): RequestNotificationCommand {
+        return new RequestNotificationCommand(
+            recipient: $recipient ?? UserId::generate(),
+            type: NotificationTypeCode::fromString('chat.message_received'),
             title: NotificationTitle::fromString('Новое сообщение'),
             body: NotificationBody::fromString('Вам пришло сообщение'),
             action: $action,

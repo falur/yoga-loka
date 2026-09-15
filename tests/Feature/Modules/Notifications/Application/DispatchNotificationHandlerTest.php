@@ -6,12 +6,13 @@ namespace Tests\Feature\Modules\Notifications\Application;
 
 use App\Modules\Notifications\Application\Command\Notification\DispatchNotification\DispatchNotificationCommand;
 use App\Modules\Notifications\Application\Command\Notification\DispatchNotification\DispatchNotificationHandler;
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Application\Exception\NotificationTypeRegistryException;
-use App\Modules\Notifications\Application\Message\NotificationPushRequested;
-use App\Modules\Notifications\Application\Message\NotificationRealtimeRequested;
+use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
+use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
+use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
@@ -21,7 +22,7 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Notifications\Repository\NotificationRepository;
 use App\Modules\Notifications\Repository\NotificationSettingRepository;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\NullLogger;
@@ -40,14 +41,14 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         $store = new RecordingOutboxEventStore();
 
         $this->handler(FixtureNotificationTypeDefinition::allChannels(), $store)->handle(
-            $this->command($outboxId, $userId, action: new NotificationActionPayload('chat', '42')),
+            $this->command($outboxId, $userId, action: new NotificationActionDto('chat', '42')),
         );
 
         $inbox = $this->notificationRepository()->findByOutboxId($outboxId);
         self::assertInstanceOf(Notification::class, $inbox);
         self::assertTrue($inbox->action()->hasLink());
-        self::assertSame(1, $store->countOf(NotificationPushRequested::class));
-        self::assertSame(1, $store->countOf(NotificationRealtimeRequested::class));
+        self::assertSame(1, $store->countOf(NotificationPushRequestedEvent::class));
+        self::assertSame(1, $store->countOf(NotificationRealtimeRequestedEvent::class));
     }
 
     public function testActorIsStoredInInboxAndStagedToPushAndRealtime(): void
@@ -59,7 +60,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         $store = new RecordingOutboxEventStore();
 
         $this->handler(FixtureNotificationTypeDefinition::allChannels(), $store)->handle(
-            $this->command($outboxId, $userId, actor: new NotificationActorPayload(
+            $this->command($outboxId, $userId, actor: new NotificationActorDto(
                 id: $actorId->value(),
                 name: 'Иван',
                 avatarMediaId: $avatarMediaId,
@@ -72,15 +73,15 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         self::assertSame('Иван', $inbox->actor->presentName());
         self::assertSame($avatarMediaId, $inbox->actor->presentAvatarMediaId());
 
-        $push = $this->messageOf($store, NotificationPushRequested::class);
-        self::assertInstanceOf(NotificationPushRequested::class, $push);
+        $push = $this->messageOf($store, NotificationPushRequestedEvent::class);
+        self::assertInstanceOf(NotificationPushRequestedEvent::class, $push);
         self::assertNotNull($push->actor);
         self::assertSame($actorId->value(), $push->actor->id);
         self::assertSame('Иван', $push->actor->name);
         self::assertSame($avatarMediaId, $push->actor->avatarMediaId);
 
-        $realtime = $this->messageOf($store, NotificationRealtimeRequested::class);
-        self::assertInstanceOf(NotificationRealtimeRequested::class, $realtime);
+        $realtime = $this->messageOf($store, NotificationRealtimeRequestedEvent::class);
+        self::assertInstanceOf(NotificationRealtimeRequestedEvent::class, $realtime);
         self::assertNotNull($realtime->actor);
         self::assertSame($actorId->value(), $realtime->actor->id);
         self::assertSame($avatarMediaId, $realtime->actor->avatarMediaId);
@@ -99,8 +100,8 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         );
 
         self::assertInstanceOf(Notification::class, $this->notificationRepository()->findByOutboxId($outboxId));
-        self::assertSame(0, $store->countOf(NotificationPushRequested::class));
-        self::assertSame(1, $store->countOf(NotificationRealtimeRequested::class));
+        self::assertSame(0, $store->countOf(NotificationPushRequestedEvent::class));
+        self::assertSame(1, $store->countOf(NotificationRealtimeRequestedEvent::class));
     }
 
     public function testDefaultsApplyWhenNoSetting(): void
@@ -110,15 +111,15 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         $store = new RecordingOutboxEventStore();
         $definition = FixtureNotificationTypeDefinition::withDefaultChannels(
             self::TYPE,
-            NotificationChannel::Database,
-            NotificationChannel::Push,
+            PublicNotificationChannel::Database,
+            PublicNotificationChannel::Push,
         );
 
         $this->handler($definition, $store)->handle($this->command($outboxId, $userId));
 
         self::assertInstanceOf(Notification::class, $this->notificationRepository()->findByOutboxId($outboxId));
-        self::assertSame(1, $store->countOf(NotificationPushRequested::class));
-        self::assertSame(0, $store->countOf(NotificationRealtimeRequested::class));
+        self::assertSame(1, $store->countOf(NotificationPushRequestedEvent::class));
+        self::assertSame(0, $store->countOf(NotificationRealtimeRequestedEvent::class));
     }
 
     public function testRepeatedDispatchIsNoOpWhenDatabaseEnabled(): void
@@ -141,7 +142,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         $userId = UserId::generate();
         $outboxId = NotificationOutboxId::generate();
         $command = $this->command($outboxId, $userId);
-        $definition = FixtureNotificationTypeDefinition::withDefaultChannels(self::TYPE, NotificationChannel::Push);
+        $definition = FixtureNotificationTypeDefinition::withDefaultChannels(self::TYPE, PublicNotificationChannel::Push);
 
         $firstStore = new RecordingOutboxEventStore();
         $this->handler($definition, $firstStore)->handle($command);
@@ -150,8 +151,8 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         $this->handler($definition, $secondStore)->handle($command);
 
         self::assertNull($this->notificationRepository()->findByOutboxId($outboxId));
-        self::assertSame(1, $firstStore->countOf(NotificationPushRequested::class));
-        self::assertSame(1, $secondStore->countOf(NotificationPushRequested::class));
+        self::assertSame(1, $firstStore->countOf(NotificationPushRequestedEvent::class));
+        self::assertSame(1, $secondStore->countOf(NotificationPushRequestedEvent::class));
     }
 
     public function testInboxKeepsTriggerCreatedAt(): void
@@ -183,8 +184,8 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
     private function command(
         NotificationOutboxId $outboxId,
         UserId $userId,
-        NotificationActionPayload|null $action = null,
-        NotificationActorPayload|null $actor = null,
+        NotificationActionDto|null $action = null,
+        NotificationActorDto|null $actor = null,
         string $createdAt = '2026-06-13T10:00:00+00:00',
     ): DispatchNotificationCommand {
         return new DispatchNotificationCommand(
@@ -216,8 +217,8 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
         return new DispatchNotificationHandler(
             notificationRepository: $this->notificationRepository(),
             notificationSettingRepository: $this->getContainer()->get(NotificationSettingRepository::class),
-            typeRegistry: $registry,
-            outboxEventStore: $store,
+            typeCatalog: $registry,
+            integrationEventStore: $store,
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
@@ -248,7 +249,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
     /**
      * @param class-string $messageClass
      */
-    private function messageOf(RecordingOutboxEventStore $store, string $messageClass): OutboxMessage|null
+    private function messageOf(RecordingOutboxEventStore $store, string $messageClass): IntegrationEvent|null
     {
         foreach ($store->messages as $message) {
             if ($message::class === $messageClass) {

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Notification;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
-use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 
 /**
  * Виды уведомлений модуля Posts (action-сегмент кода вида и каналы по умолчанию). Один enum на все
  * виды модуля: коды и каналы лежат в одном файле и регистрируются одной строкой через cases() в
- * PostsBootloader. Enum реализует контракт NotificationTypeDefinition, поэтому живёт в Application
- * (его использует и Handler сборки контента, Application не должен зависеть от Infrastructure).
+ * PostsBootloader. Enum реализует публичный контракт NotificationTypeDefinition модуля
+ * Notifications, поэтому живёт в Application (его использует и Handler сборки контента, Application
+ * не должен зависеть от Infrastructure).
  */
 enum PostNotificationType: string implements NotificationTypeDefinition
 {
@@ -26,13 +26,13 @@ enum PostNotificationType: string implements NotificationTypeDefinition
     case CommentLike = 'posts.comment_like';
 
     #[\Override]
-    public function code(): NotificationTypeCode
+    public function code(): string
     {
-        return NotificationTypeCode::fromString($this->value);
+        return $this->value;
     }
 
     #[\Override]
-    public function defaultChannels(): NotificationChannelDefaults
+    public function defaultChannels(): NotificationChannelCollection
     {
         // Исчерпывающий match без default: новый case заставит статанализ указать его каналы.
         // Упоминания, комментарии и ответы — инбокс, push и realtime; лайки и репост — инбокс и push.
@@ -40,14 +40,14 @@ enum PostNotificationType: string implements NotificationTypeDefinition
             self::PostMention,
             self::CommentMention,
             self::PostCommented,
-            self::CommentReply => NotificationChannelDefaults::of(
+            self::CommentReply => NotificationChannelCollection::of(
                 NotificationChannel::Database,
                 NotificationChannel::Push,
                 NotificationChannel::Realtime,
             ),
             self::PostLike,
             self::PostRepost,
-            self::CommentLike => NotificationChannelDefaults::of(
+            self::CommentLike => NotificationChannelCollection::of(
                 NotificationChannel::Database,
                 NotificationChannel::Push,
             ),

@@ -4,44 +4,43 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Notification;
 
-use App\Modules\Notifications\Application\Contract\NotificationSenderContract;
-use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
-use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
-use App\Modules\User\Application\Dto\UserPublicProfileView;
-use App\Shared\Domain\ValueObject\UserId;
+use App\Modules\Notifications\Public\Contract\NotificationContract;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
+use App\Modules\User\Public\Dto\UserProfileDto;
 use Psr\Log\LoggerInterface;
 
 /**
  * Стейджит одно уведомление модуля Posts получателю. Самодействие не уведомляет
  * (recipient == actor -> send() не вызывается). Текст рендерится в локали получателя через
- * NotificationContentBuilder, отправка — через NotificationSenderContract (стейджинг в outbox,
- * flush делает вызывающий Handler своим run()). Профиль автора и deep-link перекладываются в снимок
- * NotificationActor и переход NotificationAction здесь, чтобы билдер принимал их цельными объектами.
+ * NotificationContentBuilder, отправка — через публичный контракт Notifications (стейджинг в
+ * outbox, flush делает вызывающий Handler своим run()). Профиль автора и deep-link перекладываются
+ * в публичные DTO автора и перехода здесь, чтобы билдер принимал их цельными объектами.
  */
 final readonly class PostNotifier
 {
     public function __construct(
-        private NotificationSenderContract $notificationSender,
+        private NotificationContract $notifications,
         private NotificationContentBuilder $contentBuilder,
         private LoggerInterface $logger,
     ) {}
 
     public function notify(
         PostNotificationType $type,
-        UserPublicProfileView $actor,
-        UserPublicProfileView $recipient,
+        UserProfileDto $actor,
+        UserProfileDto $recipient,
         PostNotificationAction $action,
     ): void {
         if ($actor->userId === $recipient->userId) {
             return;
         }
 
-        $this->notificationSender->send(
-            recipient: UserId::fromString($recipient->userId),
+        $this->notifications->send(
+            recipientUserId: $recipient->userId,
             content: $this->contentBuilder->build(
                 type: $type,
                 actor: $this->actorSnapshot($actor),
-                action: NotificationAction::linkTo(actionType: $action->target->value, actionId: $action->id),
+                action: new NotificationActionDto(actionType: $action->target->value, actionId: $action->id),
                 recipientLocale: $recipient->locale,
             ),
         );
@@ -53,13 +52,13 @@ final readonly class PostNotifier
         ]);
     }
 
-    private function actorSnapshot(UserPublicProfileView $actor): NotificationActor
+    private function actorSnapshot(UserProfileDto $actor): NotificationActorDto
     {
-        return NotificationActor::of(
-            userId: UserId::fromString($actor->userId),
+        return new NotificationActorDto(
+            id: $actor->userId,
             name: $actor->name,
             // Аватар опционален: нет аватара (avatar = null) -> уведомление несёт автора без аватара,
-            // клиент подставит заглушку сам. Храним id медиа, а не ссылку: полный MediaView (оригинал +
+            // клиент подставит заглушку сам. Храним id медиа, а не ссылку: полное медиа (оригинал +
             // конверсии) потребитель соберёт заново на границе показа, поэтому ссылка не протухнет.
             avatarMediaId: $actor->avatar?->id,
         );

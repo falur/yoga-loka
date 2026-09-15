@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Registry;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
 use App\Modules\Notifications\Application\Dto\NotificationTypeDefinitionCollection;
 use App\Modules\Notifications\Application\Exception\NotificationTypeRegistryException;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 
 /**
  * In-memory реестр определений видов. Stateful (накапливает регистрации модулей-источников за
- * время жизни приложения), поэтому биндится синглтоном в NotificationsBootloader.
+ * время жизни приложения), поэтому биндится синглтоном в NotificationsBootloader. Код вида приходит
+ * из публичного определения строкой и превращается здесь в доменный NotificationTypeCode: формат
+ * `module.action` проверяется один раз, на регистрации.
  */
-final class NotificationTypeRegistry implements NotificationTypeRegistryContract
+final class NotificationTypeRegistry implements NotificationTypeCatalogContract
 {
     /**
      * @var array<string, NotificationTypeDefinition>
@@ -25,13 +27,13 @@ final class NotificationTypeRegistry implements NotificationTypeRegistryContract
     public function register(NotificationTypeDefinition ...$definitions): void
     {
         foreach ($definitions as $definition) {
-            $code = $definition->code()->value();
+            $code = NotificationTypeCode::fromString($definition->code());
 
-            if (isset($this->definitions[$code])) {
-                throw NotificationTypeRegistryException::duplicateType($definition->code());
+            if (isset($this->definitions[$code->value()])) {
+                throw NotificationTypeRegistryException::duplicateType($code);
             }
 
-            $this->definitions[$code] = $definition;
+            $this->definitions[$code->value()] = $definition;
         }
     }
 

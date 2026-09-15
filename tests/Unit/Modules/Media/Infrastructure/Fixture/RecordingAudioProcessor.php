@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 
@@ -36,7 +36,7 @@ final class RecordingAudioProcessor extends FfmpegMediaAudioProcessor
     #[\Override]
     protected function runEncoding(
         string $sourceFile,
-        MediaAudioConversionSpec $spec,
+        MediaAudioConversionSpecDto $spec,
         string $normalizedFile,
     ): MediaAudioProcessingResult {
         if ($this->failure !== null) {

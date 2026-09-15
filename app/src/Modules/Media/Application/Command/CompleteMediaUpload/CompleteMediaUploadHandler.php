@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Command\CompleteMediaUpload;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
-use App\Modules\Media\Application\Dto\MediaImageConversionSpec;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
+use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaResult;
-use App\Modules\Media\Application\Message\MediaUploaded;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaStatus;
@@ -20,7 +20,7 @@ use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaWaveformPeakCount;
 use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use App\Modules\Media\Repository\MediaRepository;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\Exception\ForbiddenException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\Exception\ValidationException;
@@ -37,7 +37,7 @@ final readonly class CompleteMediaUploadHandler
         private MediaRepository $mediaRepository,
         private MediaMultipartUploadRepository $mediaMultipartUploadRepository,
         private MediaFileServiceContract $mediaFileService,
-        private OutboxEventStoreContract $outboxEventStore,
+        private IntegrationEventStoreContract $integrationEventStore,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
@@ -66,7 +66,7 @@ final readonly class CompleteMediaUploadHandler
         $this->assertObjectUploaded($media);
 
         $media->markUploaded();
-        $this->outboxEventStore->add(new MediaUploaded(
+        $this->integrationEventStore->add(new MediaUploadedEvent(
             mediaId: $media->id->value(),
             plan: $command->plan,
         ));
@@ -114,7 +114,7 @@ final readonly class CompleteMediaUploadHandler
      * Application-границе, чтобы невалидная спека не прошла подтверждение и не упала асинхронно в
      * ProcessMedia (после S3-записей и unique-конфликта).
      */
-    private function assertPlanValid(MediaConversionPlan $plan, MediaType $type): void
+    private function assertPlanValid(MediaConversionPlanDto $plan, MediaType $type): void
     {
         match ($type) {
             MediaType::Image => $this->assertImagePlan($plan),
@@ -124,21 +124,21 @@ final readonly class CompleteMediaUploadHandler
         };
     }
 
-    private function assertDocumentPlan(MediaConversionPlan $plan): void
+    private function assertDocumentPlan(MediaConversionPlanDto $plan): void
     {
         if ($plan->image !== [] || $plan->video !== [] || $plan->audio !== []) {
             throw new ValidationException('app.media.conversion_plan_type_mismatch');
         }
     }
 
-    private function assertImagePlan(MediaConversionPlan $plan): void
+    private function assertImagePlan(MediaConversionPlanDto $plan): void
     {
         if ($plan->video !== [] || $plan->audio !== []) {
             throw new ValidationException('app.media.conversion_plan_type_mismatch');
         }
 
         $types = Collection::make($plan->image)->map(
-            static fn(MediaImageConversionSpec $spec): string => $spec->type->value,
+            static fn(MediaImageConversionSpecDto $spec): string => $spec->type->value,
         );
         if ($types->count() !== $types->unique()->count()) {
             throw new ValidationException('app.media.conversion_duplicate_type');
@@ -151,7 +151,7 @@ final readonly class CompleteMediaUploadHandler
         }
     }
 
-    private function assertVideoPlan(MediaConversionPlan $plan): void
+    private function assertVideoPlan(MediaConversionPlanDto $plan): void
     {
         if ($plan->image !== [] || $plan->audio !== []) {
             throw new ValidationException('app.media.conversion_plan_type_mismatch');
@@ -173,7 +173,7 @@ final readonly class CompleteMediaUploadHandler
         }
     }
 
-    private function assertAudioPlan(MediaConversionPlan $plan): void
+    private function assertAudioPlan(MediaConversionPlanDto $plan): void
     {
         if ($plan->image !== [] || $plan->video !== []) {
             throw new ValidationException('app.media.conversion_plan_type_mismatch');

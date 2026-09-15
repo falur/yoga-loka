@@ -6,7 +6,7 @@ namespace App\Modules\Notifications\Application\Dto;
 
 /**
  * Автор-инициатор в push-payload (FCM). FCM data — плоская строковая карта, поэтому аватар здесь одна
- * ссылка (original url) либо null, а не полный MediaView. Ссылку разрешают из id медиа-аватара к моменту
+ * ссылка (original url) либо null, а не полное медиа (MediaDto). Ссылку разрешают из id медиа-аватара к моменту
  * отправки, поэтому она валидна (push доставляется сразу). null на месте этого DTO — «автора нет».
  */
 final readonly class NotificationPushActorPayload

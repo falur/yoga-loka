@@ -11,9 +11,9 @@ use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
-use App\Modules\Notifications\Application\Message\NotificationPushRequested;
-use App\Modules\Notifications\Application\Message\NotificationRealtimeRequested;
-use App\Modules\Notifications\Application\Message\NotificationRequested;
+use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
+use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
+use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
@@ -22,15 +22,13 @@ use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificat
 use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
 use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\NullLogger;
 use Spiral\Queue\Exception\RetryException;
 use Tests\DatabaseTestCase;
@@ -91,15 +89,15 @@ final class DeliveryJobTest extends DatabaseTestCase
     {
         $registry = $this->getContainer()->get(OutboxJobRegistryContract::class);
 
-        self::assertSame(DispatchNotificationJob::class, $registry->jobFor($this->message(NotificationRequested::class)));
-        self::assertSame(SendPushNotificationJob::class, $registry->jobFor($this->message(NotificationPushRequested::class)));
-        self::assertSame(PublishRealtimeNotificationJob::class, $registry->jobFor($this->message(NotificationRealtimeRequested::class)));
+        self::assertSame(DispatchNotificationJob::class, $registry->jobFor($this->message(NotificationRequestedEvent::class)));
+        self::assertSame(SendPushNotificationJob::class, $registry->jobFor($this->message(NotificationPushRequestedEvent::class)));
+        self::assertSame(PublishRealtimeNotificationJob::class, $registry->jobFor($this->message(NotificationRealtimeRequestedEvent::class)));
     }
 
     private function invokePushJob(UserId $userId, SendPushNotificationHandler $handler): void
     {
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new NotificationPushRequested(
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new NotificationPushRequestedEvent(
             userId: $userId->value(),
             type: 'chat.message_received',
             title: 'Новое сообщение',
@@ -110,9 +108,9 @@ final class DeliveryJobTest extends DatabaseTestCase
         ));
 
         $this->getContainer()->get(SendPushNotificationJob::class)->invoke(
-            payload: $this->envelope(NotificationPushRequested::class),
+            payload: $this->envelope(NotificationPushRequestedEvent::class),
             id: 'push-job',
-            outboxMessageLoader: $loader,
+            integrationEventLoader: $loader,
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendPushNotificationHandler: $handler,
             logger: new NullLogger(),
@@ -121,8 +119,8 @@ final class DeliveryJobTest extends DatabaseTestCase
 
     private function invokeRealtimeJob(PublishRealtimeNotificationHandler $handler): void
     {
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new NotificationRealtimeRequested(
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new NotificationRealtimeRequestedEvent(
             userId: UserId::generate()->value(),
             type: 'chat.message_received',
             title: 'Новое сообщение',
@@ -133,9 +131,9 @@ final class DeliveryJobTest extends DatabaseTestCase
         ));
 
         $this->getContainer()->get(PublishRealtimeNotificationJob::class)->invoke(
-            payload: $this->envelope(NotificationRealtimeRequested::class),
+            payload: $this->envelope(NotificationRealtimeRequestedEvent::class),
             id: 'realtime-job',
-            outboxMessageLoader: $loader,
+            integrationEventLoader: $loader,
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             publishRealtimeNotificationHandler: $handler,
             logger: new NullLogger(),
@@ -151,8 +149,7 @@ final class DeliveryJobTest extends DatabaseTestCase
             notificationDeviceTokenRepository: $this->getContainer()->get(NotificationDeviceTokenRepository::class),
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence,
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
+            media: $this->stubbedMediaContract(),
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: new NullLogger(),
         );
@@ -162,8 +159,7 @@ final class DeliveryJobTest extends DatabaseTestCase
     {
         return new PublishRealtimeNotificationHandler(
             centrifugoService: $centrifugoService,
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
+            media: $this->stubbedMediaContract(),
             logger: new NullLogger(),
         );
     }
@@ -180,20 +176,20 @@ final class DeliveryJobTest extends DatabaseTestCase
     }
 
     /**
-     * @param class-string<OutboxMessage> $messageClass
+     * @param class-string<IntegrationEvent> $messageClass
      */
-    private function envelope(string $messageClass): OutboxQueueEnvelope
+    private function envelope(string $messageClass): OutboxEnvelopeDto
     {
-        return new OutboxQueueEnvelope(
-            outboxEventId: OutboxEventId::generate(),
-            outboxEventType: OutboxEventType::fromString($messageClass),
+        return new OutboxEnvelopeDto(
+            outboxEventId: OutboxEventId::generate()->value(),
+            outboxEventType: $messageClass,
         );
     }
 
     /**
-     * @param class-string<OutboxMessage> $messageClass
+     * @param class-string<IntegrationEvent> $messageClass
      */
-    private function message(string $messageClass): OutboxMessage
+    private function message(string $messageClass): IntegrationEvent
     {
         return new $messageClass(
             userId: UserId::generate()->value(),

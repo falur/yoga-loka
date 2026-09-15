@@ -9,7 +9,7 @@ use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploa
 use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaCommand;
 use App\Modules\Media\Application\Command\ProcessMedia\ProcessMediaHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
@@ -18,6 +18,7 @@ use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Public\Enum\MediaImageConversionType as PublicMediaImageConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
@@ -55,7 +56,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         $bytes = $this->jpegBytes();
         $media = $this->uploadedOriginal($bytes, MediaVisibility::Public);
 
-        $this->completeUpload($media, $this->imagePlan($this->imageConversionSpec(MediaImageConversionType::Thumbnail)));
+        $this->completeUpload($media, $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)));
         $publishedCount = $this->relay();
 
         self::assertSame(1, $publishedCount);
@@ -83,7 +84,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         // Идемпотентность повторной обработки: на ready — no-op, без дублей конверсий.
         $this->getContainer()->get(ProcessMediaHandler::class)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            plan: $this->imagePlan($this->imageConversionSpec(MediaImageConversionType::Thumbnail)),
+            plan: $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)),
         ));
         self::assertCount(1, $this->imageConversionRepository()->findByMediaId($media->id));
     }
@@ -103,7 +104,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         // Повторная доставка: ProcessMedia с валидным оригиналом доводит медиа до ready.
         $this->getContainer()->get(ProcessMediaHandler::class)->handle(new ProcessMediaCommand(
             mediaId: $media->id->value(),
-            plan: $this->imagePlan($this->imageConversionSpec(MediaImageConversionType::Thumbnail)),
+            plan: $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)),
         ));
 
         $readyMedia = $this->mediaRepository()->findById($media->id);
@@ -240,7 +241,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
 
         $outboxEventId = $this->completeUpload(
             $media,
-            $this->imagePlan($this->imageConversionSpec(MediaImageConversionType::Thumbnail)),
+            $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)),
         );
         $publishedCount = $this->relay();
 
@@ -284,7 +285,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         return $media;
     }
 
-    private function completeUpload(Media $media, MediaConversionPlan $plan): OutboxEventId
+    private function completeUpload(Media $media, MediaConversionPlanDto $plan): OutboxEventId
     {
         $this->getContainer()->get(CommandBusInterface::class)->dispatch(
             command: new CompleteMediaUploadCommand(

@@ -8,14 +8,14 @@ use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Contract\TokenGeneratorContract;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\UserActorProvider;
 use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
-use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use Spiral\Auth\Transport\HeaderTransport;
 use Spiral\Bootloader\Auth\AuthBootloader as SpiralAuthBootloader;
 use Spiral\Bootloader\Auth\HttpAuthBootloader;
@@ -27,7 +27,7 @@ use Spiral\Views\Bootloader\ViewsBootloader;
  * реализациям. Транспорт (Authorization: Bearer), хранилище токенов (cycle) и actor-provider
  * регистрируются кодом без app/config/auth.php. View-шаблоны модуля (например письмо с кодом
  * входа) лежат в Infrastructure/Spiral/Resources/views и регистрируются под namespace `auth`. Пара
- * LoginCodeRequested → SendLoginCodeJob регистрируется в outbox-реестре.
+ * LoginCodeRequestedEvent → SendLoginCodeJob регистрируется в outbox-реестре.
  */
 final class AuthBootloader extends Bootloader
 {
@@ -65,11 +65,11 @@ final class AuthBootloader extends Bootloader
         $auth->addActorProvider(UserActorProvider::class);
     }
 
-    public function boot(OutboxJobRegistryContract $outboxJobRegistry): void
+    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
     {
-        $outboxJobRegistry->register(
-            outboxMessageClass: LoginCodeRequested::class,
-            outboxJobClass: SendLoginCodeJob::class,
+        $integrationEventRouting->register(
+            integrationEventClass: LoginCodeRequestedEvent::class,
+            jobClass: SendLoginCodeJob::class,
         );
     }
 }

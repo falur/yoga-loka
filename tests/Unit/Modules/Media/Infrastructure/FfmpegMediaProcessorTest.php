@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
@@ -15,6 +15,8 @@ use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType as PublicMediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType as PublicMediaVideoConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
@@ -262,8 +264,8 @@ final class FfmpegMediaProcessorTest extends TestCase
         return $processor->process(
             sourceStorage: MediaStorage::Upload,
             sourcePath: MediaPath::originalUpload(storageKey: $storageKey, extension: 'mp4'),
-            spec: new MediaVideoConversionSpec(
-                type: MediaVideoConversionType::NormalizedMp4H264,
+            spec: new MediaVideoConversionSpecDto(
+                type: PublicMediaVideoConversionType::NormalizedMp4H264,
                 width: 1280,
                 height: 720,
                 videoBitrate: 1_000_000,
@@ -290,8 +292,8 @@ final class FfmpegMediaProcessorTest extends TestCase
         return $processor->process(
             sourceStorage: MediaStorage::Upload,
             sourcePath: MediaPath::originalUpload(storageKey: $storageKey, extension: 'wav'),
-            spec: new MediaAudioConversionSpec(
-                type: MediaAudioConversionType::NormalizedAacM4a,
+            spec: new MediaAudioConversionSpecDto(
+                type: PublicMediaAudioConversionType::NormalizedAacM4a,
                 bitrate: 128_000,
                 sampleRate: 44_100,
                 waveformPeaks: 64,

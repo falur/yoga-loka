@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Media\Infrastructure\Ffmpeg;
 
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Domain\Enum\MediaStorage;
@@ -38,7 +38,7 @@ class FfmpegMediaVideoProcessor extends AbstractFfmpegMediaProcessor implements 
     public function process(
         MediaStorage $sourceStorage,
         MediaPath $sourcePath,
-        MediaVideoConversionSpec $spec,
+        MediaVideoConversionSpecDto $spec,
         MediaStorage $targetStorage,
         MediaPath $normalizedPath,
         MediaPath $posterPath,
@@ -77,7 +77,7 @@ class FfmpegMediaVideoProcessor extends AbstractFfmpegMediaProcessor implements 
 
     private function encode(
         string $sourceFile,
-        MediaVideoConversionSpec $spec,
+        MediaVideoConversionSpecDto $spec,
         string $normalizedFile,
         string $posterFile,
     ): MediaVideoProcessingResult {
@@ -95,7 +95,7 @@ class FfmpegMediaVideoProcessor extends AbstractFfmpegMediaProcessor implements 
 
     protected function runEncoding(
         string $sourceFile,
-        MediaVideoConversionSpec $spec,
+        MediaVideoConversionSpecDto $spec,
         string $normalizedFile,
         string $posterFile,
     ): MediaVideoProcessingResult {

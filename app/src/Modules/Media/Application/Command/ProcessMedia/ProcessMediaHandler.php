@@ -8,15 +8,17 @@ use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
@@ -147,7 +149,7 @@ final readonly class ProcessMediaHandler
      */
     private function buildImageConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
         string $extension,
     ): array {
@@ -160,6 +162,10 @@ final readonly class ProcessMediaHandler
         $conversions = [];
 
         foreach ($plan->image as $spec) {
+            // Публичный вариант плана переводим в доменный по строковому значению: один оператор
+            // без ветвления, набор вариантов держит синхронной unit-проверка совпадения.
+            $type = MediaImageConversionType::from($spec->type->value);
+
             $conversionResult = $this->mediaImageProcessor->resize(
                 originalContents: $originalContents,
                 width: MediaPixelDimension::fromInt($spec->width),
@@ -168,7 +174,7 @@ final readonly class ProcessMediaHandler
             );
             $conversionPath = MediaPath::imageConversion(
                 storageKey: $media->storageKey,
-                type: $spec->type,
+                type: $type,
                 extension: $extension,
             );
             $this->mediaFileService->putObject(
@@ -179,7 +185,7 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия изображения.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $conversionPath->value(),
                 'size' => $conversionResult->size->value(),
             ]);
@@ -188,7 +194,7 @@ final readonly class ProcessMediaHandler
             // а не из spec — устойчиво к смене режима ресайза. См. README.
             $conversions[] = MediaImageConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $conversionPath,
@@ -207,13 +213,14 @@ final readonly class ProcessMediaHandler
      */
     private function buildVideoConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
     ): array {
         $conversions = [];
 
         foreach ($plan->video as $spec) {
-            $normalizedPath = MediaPath::videoConversion(storageKey: $media->storageKey, type: $spec->type, extension: 'mp4');
+            $type = MediaVideoConversionType::from($spec->type->value);
+            $normalizedPath = MediaPath::videoConversion(storageKey: $media->storageKey, type: $type, extension: 'mp4');
             $posterPath = MediaPath::imageConversion(
                 storageKey: $media->storageKey,
                 type: MediaImageConversionType::Poster,
@@ -231,7 +238,7 @@ final readonly class ProcessMediaHandler
 
             $conversions[] = MediaVideoConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $normalizedPath,
@@ -256,7 +263,7 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия видео и постер.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $normalizedPath->value(),
                 'size' => $result->normalizedSize->value(),
             ]);
@@ -270,13 +277,14 @@ final readonly class ProcessMediaHandler
      */
     private function buildAudioConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
     ): array {
         $conversions = [];
 
         foreach ($plan->audio as $spec) {
-            $normalizedPath = MediaPath::audioConversion(storageKey: $media->storageKey, type: $spec->type, extension: 'm4a');
+            $type = MediaAudioConversionType::from($spec->type->value);
+            $normalizedPath = MediaPath::audioConversion(storageKey: $media->storageKey, type: $type, extension: 'm4a');
 
             $result = $this->mediaAudioProcessor->process(
                 sourceStorage: $media->storage,
@@ -288,7 +296,7 @@ final readonly class ProcessMediaHandler
 
             $conversions[] = MediaAudioConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $normalizedPath,
@@ -301,7 +309,7 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия аудио с волной.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $normalizedPath->value(),
                 'size' => $result->normalizedSize->value(),
             ]);

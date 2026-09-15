@@ -9,13 +9,11 @@ use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMed
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
-use App\Modules\Media\Application\Message\MediaUploaded;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -38,8 +36,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), plan: $this->emptyPlan()));
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $job = $this->getContainer()->get(ProcessMediaJob::class);
 
@@ -47,7 +45,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $job->invoke(
                 payload: $this->envelope(),
                 id: 'job-1',
-                outboxMessageLoader: $loader,
+                integrationEventLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($exception),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
@@ -74,8 +72,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $media->id->value(), plan: $this->emptyPlan()));
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $logger = new RecordingMediaLogger();
         $job = $this->getContainer()->get(ProcessMediaJob::class);
@@ -84,7 +82,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $job->invoke(
                 payload: $this->envelope(),
                 id: 'job-1',
-                outboxMessageLoader: $loader,
+                integrationEventLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($exception),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
@@ -106,8 +104,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         // для временного исходного сбоя Job всё равно бросает RetryException.
         $missingMediaId = Uuid::uuid7()->toString();
 
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new MediaUploaded(mediaId: $missingMediaId, plan: $this->emptyPlan()));
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $missingMediaId, plan: $this->emptyPlan()));
 
         $storageError = new \RuntimeException('сырой AWS-сбой');
         $transientException = MediaFileServiceFailedException::transient(
@@ -124,7 +122,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $job->invoke(
                 payload: $this->envelope(),
                 id: 'job-1',
-                outboxMessageLoader: $loader,
+                integrationEventLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($transientException),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
@@ -227,11 +225,11 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         ];
     }
 
-    private function envelope(): OutboxQueueEnvelope
+    private function envelope(): OutboxEnvelopeDto
     {
-        return new OutboxQueueEnvelope(
-            outboxEventId: OutboxEventId::fromString(Uuid::uuid7()->toString()),
-            outboxEventType: OutboxEventType::fromString(MediaUploaded::class),
+        return new OutboxEnvelopeDto(
+            outboxEventId: Uuid::uuid7()->toString(),
+            outboxEventType: MediaUploadedEvent::class,
         );
     }
 }

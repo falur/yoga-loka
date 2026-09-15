@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Application;
 
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
-use App\Modules\Media\Application\Dto\MediaImageConversionSpec;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
-use App\Modules\Media\Application\Message\MediaUploaded;
-use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
-use App\Modules\Media\Domain\Enum\MediaImageConversionType;
-use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
+use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaImageConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType;
 use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
 use PHPUnit\Framework\TestCase;
 
@@ -21,18 +21,18 @@ final class MediaUploadedSerializationTest extends TestCase
     {
         $serializer = new ValinorOutboxMessageSerializer();
 
-        $serialized = $serializer->serialize(new MediaUploaded(
+        $serialized = $serializer->serialize(new MediaUploadedEvent(
             mediaId: '0192f2a0-0000-7000-8000-000000000001',
-            plan: new MediaConversionPlan(
-                image: [new MediaImageConversionSpec(type: MediaImageConversionType::Thumbnail, width: 100, height: 80)],
-                video: [new MediaVideoConversionSpec(
+            plan: new MediaConversionPlanDto(
+                image: [new MediaImageConversionSpecDto(type: MediaImageConversionType::Thumbnail, width: 100, height: 80)],
+                video: [new MediaVideoConversionSpecDto(
                     type: MediaVideoConversionType::NormalizedMp4H264,
                     width: 1280,
                     height: 720,
                     videoBitrate: 1_000_000,
                     audioBitrate: 128_000,
                 )],
-                audio: [new MediaAudioConversionSpec(
+                audio: [new MediaAudioConversionSpecDto(
                     type: MediaAudioConversionType::NormalizedAacM4a,
                     bitrate: 128_000,
                     sampleRate: 44_100,
@@ -42,8 +42,8 @@ final class MediaUploadedSerializationTest extends TestCase
         ));
         $restored = $serializer->deserialize(serializedOutboxMessage: $serialized);
 
-        self::assertSame(MediaUploaded::class, $serialized->type);
-        self::assertInstanceOf(MediaUploaded::class, $restored);
+        self::assertSame(MediaUploadedEvent::class, $serialized->type);
+        self::assertInstanceOf(MediaUploadedEvent::class, $restored);
         self::assertSame('0192f2a0-0000-7000-8000-000000000001', $restored->mediaId);
 
         self::assertCount(1, $restored->plan->image);

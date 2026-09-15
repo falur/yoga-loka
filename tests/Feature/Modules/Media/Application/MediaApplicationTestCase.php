@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Media\Application;
 
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
-use App\Modules\Media\Application\Dto\MediaImageConversionSpec;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
+use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
@@ -19,6 +19,9 @@ use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType as PublicMediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaImageConversionType as PublicMediaImageConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType as PublicMediaVideoConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaExpiration;
@@ -161,21 +164,21 @@ abstract class MediaApplicationTestCase extends TestCase
     }
 
     protected function imageConversionSpec(
-        MediaImageConversionType $type = MediaImageConversionType::Thumbnail,
+        PublicMediaImageConversionType $type = PublicMediaImageConversionType::Thumbnail,
         int $width = 100,
         int $height = 100,
-    ): MediaImageConversionSpec {
-        return new MediaImageConversionSpec(type: $type, width: $width, height: $height);
+    ): MediaImageConversionSpecDto {
+        return new MediaImageConversionSpecDto(type: $type, width: $width, height: $height);
     }
 
     protected function videoConversionSpec(
-        MediaVideoConversionType $type = MediaVideoConversionType::NormalizedMp4H264,
+        PublicMediaVideoConversionType $type = PublicMediaVideoConversionType::NormalizedMp4H264,
         int $width = 1280,
         int $height = 720,
         int $videoBitrate = 1_000_000,
         int $audioBitrate = 128_000,
-    ): MediaVideoConversionSpec {
-        return new MediaVideoConversionSpec(
+    ): MediaVideoConversionSpecDto {
+        return new MediaVideoConversionSpecDto(
             type: $type,
             width: $width,
             height: $height,
@@ -185,12 +188,12 @@ abstract class MediaApplicationTestCase extends TestCase
     }
 
     protected function audioConversionSpec(
-        MediaAudioConversionType $type = MediaAudioConversionType::NormalizedAacM4a,
+        PublicMediaAudioConversionType $type = PublicMediaAudioConversionType::NormalizedAacM4a,
         int $bitrate = 128_000,
         int $sampleRate = 44_100,
         int $waveformPeaks = 64,
-    ): MediaAudioConversionSpec {
-        return new MediaAudioConversionSpec(
+    ): MediaAudioConversionSpecDto {
+        return new MediaAudioConversionSpecDto(
             type: $type,
             bitrate: $bitrate,
             sampleRate: $sampleRate,
@@ -198,24 +201,24 @@ abstract class MediaApplicationTestCase extends TestCase
         );
     }
 
-    protected function emptyPlan(): MediaConversionPlan
+    protected function emptyPlan(): MediaConversionPlanDto
     {
-        return new MediaConversionPlan(image: [], video: [], audio: []);
+        return new MediaConversionPlanDto(image: [], video: [], audio: []);
     }
 
-    protected function imagePlan(MediaImageConversionSpec ...$specs): MediaConversionPlan
+    protected function imagePlan(MediaImageConversionSpecDto ...$specs): MediaConversionPlanDto
     {
-        return new MediaConversionPlan(image: \array_values($specs), video: [], audio: []);
+        return new MediaConversionPlanDto(image: \array_values($specs), video: [], audio: []);
     }
 
-    protected function videoPlan(MediaVideoConversionSpec ...$specs): MediaConversionPlan
+    protected function videoPlan(MediaVideoConversionSpecDto ...$specs): MediaConversionPlanDto
     {
-        return new MediaConversionPlan(image: [], video: \array_values($specs), audio: []);
+        return new MediaConversionPlanDto(image: [], video: \array_values($specs), audio: []);
     }
 
-    protected function audioPlan(MediaAudioConversionSpec ...$specs): MediaConversionPlan
+    protected function audioPlan(MediaAudioConversionSpecDto ...$specs): MediaConversionPlanDto
     {
-        return new MediaConversionPlan(image: [], video: [], audio: \array_values($specs));
+        return new MediaConversionPlanDto(image: [], video: [], audio: \array_values($specs));
     }
 
     protected function entityManager(): EntityManagerInterface

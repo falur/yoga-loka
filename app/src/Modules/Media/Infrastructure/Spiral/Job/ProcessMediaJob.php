@@ -10,16 +10,16 @@ use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMed
 use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMediaProcessingFailureHandler;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
-use App\Modules\Media\Application\Message\MediaUploaded;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Queue\Exception\RetryException;
 use Spiral\Queue\JobHandler;
 
 /**
- * Инфраструктурный Job обработки медиа. Грузит MediaUploaded из outbox и запускает
+ * Инфраструктурный Job обработки медиа. Грузит MediaUploadedEvent из outbox и запускает
  * ProcessMediaCommand. Ошибки обработки ловятся здесь (Job — граница системы, try-catch
  * разрешён): фиксируем безопасную ошибку на Media и классифицируем — временную просим
  * повторить (RetryException, его читает OutboxQueueStatusInterceptor), постоянную пробрасываем
@@ -32,17 +32,17 @@ final class ProcessMediaJob extends JobHandler
     private const string PROCESSING_FAILURE_MESSAGE = 'Не удалось обработать медиа.';
 
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         ProcessMediaHandler $processMediaHandler,
         RecordMediaProcessingFailureHandler $recordMediaProcessingFailureHandler,
         LoggerInterface $logger,
     ): void {
-        $mediaUploaded = $outboxMessageLoader->load(
+        $mediaUploaded = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: MediaUploaded::class,
+            expectedEventClass: MediaUploadedEvent::class,
         );
 
         try {

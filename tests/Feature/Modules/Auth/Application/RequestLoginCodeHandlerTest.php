@@ -6,7 +6,7 @@ namespace Tests\Feature\Modules\Auth\Application;
 
 use App\Modules\Auth\Application\Command\RequestLoginCode\RequestLoginCodeCommand;
 use App\Modules\Auth\Application\Command\RequestLoginCode\RequestLoginCodeHandler;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Domain\Entity\LoginCode;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use Psr\Log\NullLogger;
@@ -22,7 +22,7 @@ final class RequestLoginCodeHandlerTest extends AuthApplicationTestCase
 
         self::assertCount(1, $outbox->messages);
         $message = $outbox->messages[0];
-        self::assertInstanceOf(LoginCodeRequested::class, $message);
+        self::assertInstanceOf(LoginCodeRequestedEvent::class, $message);
         self::assertSame('user@example.com', $message->email);
         self::assertSame('ru', $message->locale);
         self::assertMatchesRegularExpression('/^\d{6}$/', $message->code);
@@ -65,7 +65,7 @@ final class RequestLoginCodeHandlerTest extends AuthApplicationTestCase
         return new RequestLoginCodeHandler(
             loginCodeRepository: $this->loginCodeRepository(),
             secretHasher: $this->secretHasher(),
-            outboxEventStore: $outbox,
+            integrationEventStore: $outbox,
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );

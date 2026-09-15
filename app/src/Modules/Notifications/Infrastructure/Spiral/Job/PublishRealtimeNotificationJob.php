@@ -7,9 +7,9 @@ namespace App\Modules\Notifications\Infrastructure\Spiral\Job;
 use App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotification\PublishRealtimeNotificationCommand;
 use App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotification\PublishRealtimeNotificationHandler;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
-use App\Modules\Notifications\Application\Message\NotificationRealtimeRequested;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Queue\Exception\RetryException;
@@ -23,16 +23,16 @@ use Spiral\Queue\JobHandler;
 final class PublishRealtimeNotificationJob extends JobHandler
 {
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         PublishRealtimeNotificationHandler $publishRealtimeNotificationHandler,
         LoggerInterface $logger,
     ): void {
-        $notificationRealtimeRequested = $outboxMessageLoader->load(
+        $notificationRealtimeRequested = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: NotificationRealtimeRequested::class,
+            expectedEventClass: NotificationRealtimeRequestedEvent::class,
         );
 
         try {
@@ -51,7 +51,7 @@ final class PublishRealtimeNotificationJob extends JobHandler
         } catch (\Throwable $exception) {
             $isTransient = $exception instanceof CentrifugoPublishException && $exception->isTransient();
             $logContext = [
-                'outboxId' => $payload->outboxEventId->value(),
+                'outboxId' => $payload->outboxEventId,
                 'jobId' => $id,
                 'errorClass' => $exception::class,
             ];

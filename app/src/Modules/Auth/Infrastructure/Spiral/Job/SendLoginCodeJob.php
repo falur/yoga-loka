@@ -6,16 +6,16 @@ namespace App\Modules\Auth\Infrastructure\Spiral\Job;
 
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeCommand;
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeHandler;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Queue\Exception\RetryException;
 use Spiral\Queue\JobHandler;
 
 /**
- * Инфраструктурный Job отправки письма с кодом: грузит LoginCodeRequested из outbox и
+ * Инфраструктурный Job отправки письма с кодом: грузит LoginCodeRequestedEvent из outbox и
  * диспатчит SendLoginCodeCommand. Сбой отправки (граница системы) → WARN + RetryException,
  * чтобы письмо было повторено (статусы outbox правит общий queue interceptor).
  */
@@ -24,16 +24,16 @@ final class SendLoginCodeJob extends JobHandler
     private const string MAILER_FAILURE_MESSAGE = 'Не удалось отправить письмо с кодом входа.';
 
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         SendLoginCodeHandler $sendLoginCodeHandler,
         LoggerInterface $logger,
     ): void {
-        $loginCodeRequested = $outboxMessageLoader->load(
+        $loginCodeRequested = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: LoginCodeRequested::class,
+            expectedEventClass: LoginCodeRequestedEvent::class,
         );
 
         try {

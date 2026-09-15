@@ -6,12 +6,10 @@ namespace Tests\Feature\Modules\Auth\Infrastructure\Spiral\Job;
 
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeHandler;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Shared\Domain\Locale\LocaleResolver;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\NullLogger;
@@ -30,7 +28,7 @@ final class SendLoginCodeJobTest extends TestCase
         $this->job()->invoke(
             payload: $this->envelope(),
             id: 'job-1',
-            outboxMessageLoader: $this->loaderReturning(),
+            integrationEventLoader: $this->loaderReturning(),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendLoginCodeHandler: $this->handler($loginCodeMailer),
             logger: new NullLogger(),
@@ -50,17 +48,17 @@ final class SendLoginCodeJobTest extends TestCase
         $this->job()->invoke(
             payload: $this->envelope(),
             id: 'job-1',
-            outboxMessageLoader: $this->loaderReturning(),
+            integrationEventLoader: $this->loaderReturning(),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendLoginCodeHandler: $this->handler($failingMailer),
             logger: new NullLogger(),
         );
     }
 
-    private function loaderReturning(): OutboxMessageLoaderContract
+    private function loaderReturning(): IntegrationEventLoaderContract
     {
-        $loader = $this->createStub(OutboxMessageLoaderContract::class);
-        $loader->method('load')->willReturn(new LoginCodeRequested(
+        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader->method('load')->willReturn(new LoginCodeRequestedEvent(
             email: 'user@example.com',
             code: '123456',
             locale: 'ru',
@@ -83,11 +81,11 @@ final class SendLoginCodeJobTest extends TestCase
         return $this->getContainer()->get(SendLoginCodeJob::class);
     }
 
-    private function envelope(): OutboxQueueEnvelope
+    private function envelope(): OutboxEnvelopeDto
     {
-        return new OutboxQueueEnvelope(
-            outboxEventId: OutboxEventId::fromString(Uuid::uuid7()->toString()),
-            outboxEventType: OutboxEventType::fromString(LoginCodeRequested::class),
+        return new OutboxEnvelopeDto(
+            outboxEventId: Uuid::uuid7()->toString(),
+            outboxEventType: LoginCodeRequestedEvent::class,
         );
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Client;
 
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Application\Dto\RealtimeActorPayload;
 use App\Modules\Notifications\Application\Dto\RealtimeMediaOriginalPayload;
 use App\Modules\Notifications\Application\Dto\RealtimeMediaPayload;
@@ -42,7 +42,7 @@ final class CentrifugoClientTest extends TestCase
                 type: 'chat.message_received',
                 title: 'Новое сообщение',
                 body: 'Вам пришло сообщение',
-                action: new NotificationActionPayload(actionType: 'chat', actionId: '42'),
+                action: new NotificationActionDto(actionType: 'chat', actionId: '42'),
                 actor: new RealtimeActorPayload(
                     id: 'actor-1',
                     name: 'Иван',
@@ -69,7 +69,7 @@ final class CentrifugoClientTest extends TestCase
         self::assertSame('42', $body['data']['action']['actionId']);
         self::assertSame('actor-1', $body['data']['actor']['id']);
         self::assertSame('Иван', $body['data']['actor']['name']);
-        // Аватар автора едет полным MediaView (та же форма, что в HTTP-ответе инбокса), а не одной ссылкой.
+        // Аватар автора едет полным медиа (та же форма, что в HTTP-ответе инбокса), а не одной ссылкой.
         self::assertSame('media-1', $body['data']['actor']['avatar']['id']);
         self::assertSame('https://cdn/a.jpg', $body['data']['actor']['avatar']['original']['url']);
         self::assertNull($body['data']['actor']['avatar']['original']['expiresAt']);

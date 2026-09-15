@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Media\Infrastructure\Ffmpeg;
 
 use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Domain\Enum\MediaStorage;
@@ -42,7 +42,7 @@ class FfmpegMediaAudioProcessor extends AbstractFfmpegMediaProcessor implements 
     public function process(
         MediaStorage $sourceStorage,
         MediaPath $sourcePath,
-        MediaAudioConversionSpec $spec,
+        MediaAudioConversionSpecDto $spec,
         MediaStorage $targetStorage,
         MediaPath $normalizedPath,
     ): MediaAudioProcessingResult {
@@ -67,7 +67,7 @@ class FfmpegMediaAudioProcessor extends AbstractFfmpegMediaProcessor implements 
 
     private function encode(
         string $sourceFile,
-        MediaAudioConversionSpec $spec,
+        MediaAudioConversionSpecDto $spec,
         string $normalizedFile,
     ): MediaAudioProcessingResult {
         try {
@@ -79,7 +79,7 @@ class FfmpegMediaAudioProcessor extends AbstractFfmpegMediaProcessor implements 
 
     protected function runEncoding(
         string $sourceFile,
-        MediaAudioConversionSpec $spec,
+        MediaAudioConversionSpecDto $spec,
         string $normalizedFile,
     ): MediaAudioProcessingResult {
         $ffmpeg = $this->ffmpeg();

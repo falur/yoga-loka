@@ -7,9 +7,9 @@ namespace App\Modules\Notifications\Infrastructure\Spiral\Job;
 use App\Modules\Notifications\Application\Command\Push\SendPushNotification\SendPushNotificationCommand;
 use App\Modules\Notifications\Application\Command\Push\SendPushNotification\SendPushNotificationHandler;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
-use App\Modules\Notifications\Application\Message\NotificationPushRequested;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Queue\Exception\RetryException;
@@ -22,16 +22,16 @@ use Spiral\Queue\JobHandler;
 final class SendPushNotificationJob extends JobHandler
 {
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         SendPushNotificationHandler $sendPushNotificationHandler,
         LoggerInterface $logger,
     ): void {
-        $notificationPushRequested = $outboxMessageLoader->load(
+        $notificationPushRequested = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: NotificationPushRequested::class,
+            expectedEventClass: NotificationPushRequestedEvent::class,
         );
 
         try {
@@ -48,7 +48,7 @@ final class SendPushNotificationJob extends JobHandler
         } catch (\Throwable $exception) {
             $isTransient = $exception instanceof FcmPushFailedException && $exception->isTransient();
             $logContext = [
-                'outboxId' => $payload->outboxEventId->value(),
+                'outboxId' => $payload->outboxEventId,
                 'jobId' => $id,
                 'errorClass' => $exception::class,
             ];

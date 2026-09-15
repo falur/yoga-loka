@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Application\Message;
+namespace App\Modules\Notifications\Public\Event;
 
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
 /**
  * Запрос на realtime-доставку (Centrifugo), который фоновая рассылка стейджит, когда канал realtime
  * включён. Payload — только примитивы (action — nullable DTO, actor — снимок автора либо null).
- * После commit-а relay запускает PublishRealtimeNotificationJob (фаза 6).
+ * После commit-а relay запускает PublishRealtimeNotificationJob.
  */
-final readonly class NotificationRealtimeRequested implements OutboxMessage
+final readonly class NotificationRealtimeRequestedEvent implements IntegrationEvent
 {
     public function __construct(
         public string $userId,
         public string $type,
         public string $title,
         public string $body,
-        public NotificationActionPayload|null $action,
-        public NotificationActorPayload|null $actor,
+        public NotificationActionDto|null $action,
+        public NotificationActorDto|null $actor,
         public string $createdAt,
     ) {}
 }

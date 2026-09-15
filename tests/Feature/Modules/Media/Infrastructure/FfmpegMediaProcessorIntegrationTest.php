@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType as PublicMediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType as PublicMediaVideoConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
@@ -354,10 +356,10 @@ final class FfmpegMediaProcessorIntegrationTest extends TestCase
         parent::tearDown();
     }
 
-    private function videoSpec(): MediaVideoConversionSpec
+    private function videoSpec(): MediaVideoConversionSpecDto
     {
-        return new MediaVideoConversionSpec(
-            type: MediaVideoConversionType::NormalizedMp4H264,
+        return new MediaVideoConversionSpecDto(
+            type: PublicMediaVideoConversionType::NormalizedMp4H264,
             width: 640,
             height: 480,
             videoBitrate: 1_000_000,
@@ -365,10 +367,10 @@ final class FfmpegMediaProcessorIntegrationTest extends TestCase
         );
     }
 
-    private function audioSpec(int $sampleRate = 44_100): MediaAudioConversionSpec
+    private function audioSpec(int $sampleRate = 44_100): MediaAudioConversionSpecDto
     {
-        return new MediaAudioConversionSpec(
-            type: MediaAudioConversionType::NormalizedAacM4a,
+        return new MediaAudioConversionSpecDto(
+            type: PublicMediaAudioConversionType::NormalizedAacM4a,
             bitrate: 128_000,
             sampleRate: $sampleRate,
             waveformPeaks: 64,

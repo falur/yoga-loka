@@ -7,20 +7,20 @@ namespace Tests\Feature\Modules\Media\Application;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadCommand;
 use App\Modules\Media\Application\Command\CompleteMediaUpload\CompleteMediaUploadHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
-use App\Modules\Media\Application\Dto\MediaImageConversionSpec;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
+use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaObjectHead;
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
-use App\Modules\Media\Application\Message\MediaUploaded;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
-use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
-use App\Modules\Media\Domain\Enum\MediaImageConversionType;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaType;
-use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
@@ -28,8 +28,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartNumber;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use App\Modules\Outbox\Application\Message\StoredOutboxEventId;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\Exception\ForbiddenException;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\Exception\ValidationException;
@@ -46,12 +45,12 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $captured = null;
-        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
         $outboxStore->expects(self::once())->method('add')->willReturnCallback(
-            function (MediaUploaded $message) use (&$captured): StoredOutboxEventId {
+            function (MediaUploadedEvent $message) use (&$captured): string {
                 $captured = $message;
 
-                return StoredOutboxEventId::fromString('outbox-1');
+                return 'outbox-1';
             },
         );
 
@@ -66,8 +65,8 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
         self::assertSame(MediaStatus::Uploaded, $media->status);
-        self::assertInstanceOf(MediaUploaded::class, $captured);
-        self::assertInstanceOf(MediaConversionPlan::class, $captured->plan);
+        self::assertInstanceOf(MediaUploadedEvent::class, $captured);
+        self::assertInstanceOf(MediaConversionPlanDto::class, $captured->plan);
         self::assertCount(1, $captured->plan->image);
     }
 
@@ -355,12 +354,12 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $captured = null;
-        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
         $outboxStore->expects(self::once())->method('add')->willReturnCallback(
-            function (MediaUploaded $message) use (&$captured): StoredOutboxEventId {
+            function (MediaUploadedEvent $message) use (&$captured): string {
                 $captured = $message;
 
-                return StoredOutboxEventId::fromString('outbox-1');
+                return 'outbox-1';
             },
         );
 
@@ -373,11 +372,11 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
         self::assertSame(MediaStatus::Uploaded, $media->status);
-        self::assertInstanceOf(MediaUploaded::class, $captured);
+        self::assertInstanceOf(MediaUploadedEvent::class, $captured);
     }
 
     #[DataProvider('nonEmptyDocumentPlanProvider')]
-    public function testRejectsNonEmptyPlanForDocument(MediaConversionPlan $plan): void
+    public function testRejectsNonEmptyPlanForDocument(MediaConversionPlanDto $plan): void
     {
         $userId = UserId::generate();
         $media = $this->createMedia(userId: $userId, type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
@@ -395,19 +394,19 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
     }
 
     /**
-     * @return array<string, array{MediaConversionPlan}>
+     * @return array<string, array{MediaConversionPlanDto}>
      */
     public static function nonEmptyDocumentPlanProvider(): array
     {
         return [
-            'непустой список image' => [new MediaConversionPlan(
-                image: [new MediaImageConversionSpec(type: MediaImageConversionType::Thumbnail, width: 100, height: 100)],
+            'непустой список image' => [new MediaConversionPlanDto(
+                image: [new MediaImageConversionSpecDto(type: MediaImageConversionType::Thumbnail, width: 100, height: 100)],
                 video: [],
                 audio: [],
             )],
-            'непустой список video' => [new MediaConversionPlan(
+            'непустой список video' => [new MediaConversionPlanDto(
                 image: [],
-                video: [new MediaVideoConversionSpec(
+                video: [new MediaVideoConversionSpecDto(
                     type: MediaVideoConversionType::NormalizedMp4H264,
                     width: 1280,
                     height: 720,
@@ -416,10 +415,10 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
                 )],
                 audio: [],
             )],
-            'непустой список audio' => [new MediaConversionPlan(
+            'непустой список audio' => [new MediaConversionPlanDto(
                 image: [],
                 video: [],
-                audio: [new MediaAudioConversionSpec(
+                audio: [new MediaAudioConversionSpecDto(
                     type: MediaAudioConversionType::NormalizedAacM4a,
                     bitrate: 128_000,
                     sampleRate: 44_100,
@@ -556,13 +555,13 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
 
     private function handler(
         MediaFileServiceContract $fileService,
-        OutboxEventStoreContract $outboxStore,
+        IntegrationEventStoreContract $outboxStore,
     ): CompleteMediaUploadHandler {
         return new CompleteMediaUploadHandler(
             mediaRepository: $this->mediaRepository(),
             mediaMultipartUploadRepository: $this->multipartUploadRepository(),
             mediaFileService: $fileService,
-            outboxEventStore: $outboxStore,
+            integrationEventStore: $outboxStore,
             entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
@@ -578,10 +577,10 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         return $fileService;
     }
 
-    private function outboxStore(): OutboxEventStoreContract
+    private function outboxStore(): IntegrationEventStoreContract
     {
-        $outboxStore = $this->createStub(OutboxEventStoreContract::class);
-        $outboxStore->method('add')->willReturn(StoredOutboxEventId::fromString('outbox-1'));
+        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
+        $outboxStore->method('add')->willReturn('outbox-1');
 
         return $outboxStore;
     }

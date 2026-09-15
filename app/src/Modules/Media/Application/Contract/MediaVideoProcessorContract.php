@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Contract;
 
-use App\Modules\Media\Application\Dto\MediaVideoConversionSpec;
+use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
@@ -22,7 +22,7 @@ interface MediaVideoProcessorContract
     public function process(
         MediaStorage $sourceStorage,
         MediaPath $sourcePath,
-        MediaVideoConversionSpec $spec,
+        MediaVideoConversionSpecDto $spec,
         MediaStorage $targetStorage,
         MediaPath $normalizedPath,
         MediaPath $posterPath,

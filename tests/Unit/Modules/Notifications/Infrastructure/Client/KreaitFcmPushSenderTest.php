@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Client;
 
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Application\Dto\NotificationPush;
 use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
@@ -47,7 +47,7 @@ final class KreaitFcmPushSenderTest extends TestCase
             new NotificationPush(
                 title: 'Заголовок',
                 body: 'Текст',
-                action: new NotificationActionPayload(actionType: 'chat', actionId: '42'),
+                action: new NotificationActionDto(actionType: 'chat', actionId: '42'),
                 actor: new NotificationPushActorPayload(id: 'actor-1', name: 'Иван', avatarUrl: 'https://cdn/a.jpg'),
             ),
             ['token-1'],

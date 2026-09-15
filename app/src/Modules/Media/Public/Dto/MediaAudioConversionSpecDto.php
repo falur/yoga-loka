@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Dto;
+namespace App\Modules\Media\Public\Dto;
 
-use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType;
 
 /**
- * Профиль одной конверсии аудио. Примитив-дружественный Application-DTO с публичным
- * конструктором: переиспользуется в outbox-сообщении MediaUploaded (через MediaConversionPlan),
+ * Профиль одной конверсии аудио. Примитив-дружественный публичный DTO с публичным
+ * конструктором: переиспользуется в событии MediaUploadedEvent (через MediaConversionPlanDto),
  * поэтому Valinor должен штатно восстанавливать его из enum+int. Handler сам строит из него
  * доменные VO (MediaBitrate/MediaSampleRate) и целевой путь.
  */
-final readonly class MediaAudioConversionSpec
+final readonly class MediaAudioConversionSpecDto
 {
     public function __construct(
         public MediaAudioConversionType $type,

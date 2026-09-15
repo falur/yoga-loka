@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Command\RequestLoginCode;
 
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Domain\Entity\LoginCode;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Repository\LoginCodeRepository;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -31,7 +31,7 @@ final readonly class RequestLoginCodeHandler
     public function __construct(
         private LoginCodeRepository $loginCodeRepository,
         private SecretHasherContract $secretHasher,
-        private OutboxEventStoreContract $outboxEventStore,
+        private IntegrationEventStoreContract $integrationEventStore,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
@@ -71,7 +71,7 @@ final readonly class RequestLoginCodeHandler
             now: $now,
         );
         $this->entityManager->persist($loginCode);
-        $this->outboxEventStore->add(new LoginCodeRequested(
+        $this->integrationEventStore->add(new LoginCodeRequestedEvent(
             email: $email->value(),
             code: $code,
             locale: $command->requestLocale,

@@ -22,24 +22,10 @@ final class MediaRepository extends AbstractRepository
     }
 
     /**
-     * Медиа вместе со всеми конверсиями (image/video/audio), загруженными одним набором запросов,
-     * чтобы построение URL не дёргало репозитории конверсий по одному. Используется там, где нужен
-     * полный набор ссылок (MediaUrlService::getUrls).
-     */
-    public function findByIdWithConversions(MediaId $mediaId): Media|null
-    {
-        return $this->select()
-            ->wherePK($mediaId->value())
-            ->load('imageConversions')
-            ->load('videoConversions')
-            ->load('audioConversions')
-            ->fetchOne();
-    }
-
-    /**
-     * Набор медиа по списку id вместе со всеми конверсиями, загруженными одним набором запросов —
-     * пакетный аналог findByIdWithConversions для потребителей, которым нужно построить URL сразу для
-     * нескольких медиа (например, аватары авторов на странице инбокса уведомлений) без N+1.
+     * Набор медиа по списку id вместе со всеми конверсиями (image/video/audio), загруженными одним
+     * набором запросов, чтобы построение URL не дёргало репозитории конверсий по одному. Используется
+     * там, где нужен полный набор ссылок сразу для нескольких медиа (например, аватары авторов на
+     * странице инбокса уведомлений) без N+1.
      */
     public function findByIdsWithConversions(MediaId ...$mediaIds): MediaCollection
     {

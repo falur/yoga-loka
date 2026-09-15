@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Modules\Media\Application\View\MediaConversionView;
+use App\Modules\Media\Public\Dto\MediaConversionDto;
 
 /**
  * Одна конверсия аватара в realtime-payload (Centrifugo): вид и тип-профиль (строковые значения enum),
@@ -20,7 +20,7 @@ final readonly class RealtimeMediaConversionPayload implements \JsonSerializable
         private \DateTimeImmutable|null $expiresAt,
     ) {}
 
-    public static function fromView(MediaConversionView $conversion): self
+    public static function fromDto(MediaConversionDto $conversion): self
     {
         return new self(
             kind: $conversion->kind->value,

@@ -6,11 +6,10 @@ namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Resource;
 
 use App\Modules\Notifications\Application\View\NotificationActorView;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
-use App\Modules\Media\Infrastructure\Spiral\Http\Resource\MediaResource;
 
 /**
  * Вложенный ресурс автора-инициатора (снимок профиля). Отдельный DTO, а не inline array-shape, чтобы
- * OpenAPI-парсер не схлопнул union. Несёт id, имя и аватар одним MediaView (оригинал + конверсии) либо
+ * OpenAPI-парсер не схлопнул union. Несёт id, имя и аватар одним медиа (оригинал + конверсии) либо
  * null, если аватара нет — клиент показывает аватар без отдельного запроса к профилю. Создаётся только
  * когда автор есть.
  */
@@ -27,7 +26,7 @@ final readonly class NotificationActorResource extends AbstractResource
         return new self(
             id: $actor->id,
             name: $actor->name,
-            avatar: $actor->avatar === null ? null : MediaResource::fromView($actor->avatar),
+            avatar: $actor->avatar === null ? null : MediaResource::fromDto($actor->avatar),
         );
     }
 }

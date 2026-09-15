@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Modules\Media\Application\View\MediaOriginalView;
+use App\Modules\Media\Public\Dto\MediaOriginalDto;
 
 /**
  * Оригинал аватара в realtime-payload (Centrifugo): ссылка и срок её действия (ATOM-строка для
  * presigned-ссылки private-медиа, иначе null). Форма совпадает с MediaOriginalResource HTTP-ответа,
- * чтобы клиент показывал одно и то же MediaView в списке инбокса и в живом уведомлении.
+ * чтобы клиент показывал одно и то же медиа в списке инбокса и в живом уведомлении.
  */
 final readonly class RealtimeMediaOriginalPayload implements \JsonSerializable
 {
@@ -18,7 +18,7 @@ final readonly class RealtimeMediaOriginalPayload implements \JsonSerializable
         private \DateTimeImmutable|null $expiresAt,
     ) {}
 
-    public static function fromView(MediaOriginalView $original): self
+    public static function fromDto(MediaOriginalDto $original): self
     {
         return new self(url: $original->url, expiresAt: $original->expiresAt);
     }

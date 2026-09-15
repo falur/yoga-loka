@@ -14,7 +14,7 @@ use App\Shared\Domain\ValueObject\UserId;
 /**
  * Cursor-пагинация списка инбокса. Запрашиваем limit+1, чтобы понять, есть ли следующая страница:
  * если строк больше limit — отдаём первые limit и nextCursor = id последней отданной. Снимки авторов
- * обогащаются актуальными аватарами (MediaView) через NotificationViewAssembler одним пакетным
+ * обогащаются актуальными аватарами (MediaDto) через NotificationViewAssembler одним пакетным
  * запросом, без N+1.
  */
 final readonly class ListNotificationsHandler

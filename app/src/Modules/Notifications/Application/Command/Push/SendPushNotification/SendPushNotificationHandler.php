@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Push\SendPushNotification;
 
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Application\Dto\NotificationPush;
 use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
 use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollection;
@@ -17,7 +16,6 @@ use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,8 +29,7 @@ final readonly class SendPushNotificationHandler
         private NotificationDeviceTokenRepository $notificationDeviceTokenRepository,
         private FcmPushSenderContract $fcmPushSender,
         private OnlinePresenceContract $onlinePresence,
-        private QueryBusInterface $queryBus,
-        private FindMediaUrlHandler $findMediaUrlHandler,
+        private MediaContract $media,
         private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
@@ -96,7 +93,7 @@ final readonly class SendPushNotificationHandler
         $this->entityManager->run();
     }
 
-    private function actorPayload(NotificationActorPayload|null $actor): NotificationPushActorPayload|null
+    private function actorPayload(NotificationActorDto|null $actor): NotificationPushActorPayload|null
     {
         if ($actor === null) {
             return null;
@@ -111,7 +108,9 @@ final readonly class SendPushNotificationHandler
 
     /**
      * Аватар автора хранится как id медиа — для push разрешаем его в одну ссылку (original) к моменту
-     * отправки. Медиа недоступно или оригинал удалён -> ссылки нет (null), ключ в data не кладётся.
+     * отправки через публичный контракт Media. Обращение пакетное: набор из одного идентификатора, и
+     * только когда аватар у автора есть. Медиа недоступно или оригинал удалён -> ссылки нет (null),
+     * ключ в data не кладётся.
      */
     private function avatarUrl(string|null $avatarMediaId): string|null
     {
@@ -119,12 +118,7 @@ final readonly class SendPushNotificationHandler
             return null;
         }
 
-        $mediaUrls = $this->queryBus->dispatch(
-            query: new FindMediaUrlQuery(mediaId: $avatarMediaId),
-            handler: $this->findMediaUrlHandler->handle(...),
-        );
-
-        return $mediaUrls?->original?->url;
+        return $this->media->urlsByIds([$avatarMediaId])->get($avatarMediaId)?->original?->url;
     }
 
     /**

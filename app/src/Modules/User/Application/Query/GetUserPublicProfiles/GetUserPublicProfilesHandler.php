@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\User\Application\Query\GetUserPublicProfiles;
 
 use App\Modules\User\Application\Dto\UserPublicProfileCollection;
-use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
-use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -16,6 +14,9 @@ use GianTiaga\SpiralCqrs\Attribute\LogOperation;
  * Публичные профили нескольких пользователей (авторы ленты/комментариев, проверка упоминаний).
  * Несуществующие идентификаторы просто отсутствуют в результате — вызывающий сам сверяет
  * запрошенные и найденные, чтобы при необходимости вернуть 422 на несуществующее упоминание.
+ *
+ * Аватары всего набора ассемблер разрешает одним обращением к Media, поэтому число вызовов соседа не
+ * зависит от числа пользователей в наборе.
  */
 final readonly class GetUserPublicProfilesHandler
 {
@@ -32,10 +33,6 @@ final readonly class GetUserPublicProfilesHandler
             $query->userIds,
         );
 
-        return new UserPublicProfileCollection(
-            $this->userRepository->findByIds(...$userIds)
-                ->toBase()
-                ->map(fn(User $user): UserPublicProfileView => $this->assembler->fromUser($user)),
-        );
+        return $this->assembler->fromUsers($this->userRepository->findByIds(...$userIds));
     }
 }

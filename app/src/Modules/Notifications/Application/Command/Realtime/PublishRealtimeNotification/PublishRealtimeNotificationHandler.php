@@ -4,29 +4,27 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotification;
 
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Application\Dto\RealtimeActorPayload;
 use App\Modules\Notifications\Application\Dto\RealtimeMediaPayload;
 use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Публикует realtime-уведомление в персональный канал получателя `personal:#user_{userId}`. Аватар
- * автора хранится в снимке как id медиа, поэтому здесь он разрешается в полный MediaView через модуль
- * Media (актуальные ссылки к моменту публикации) и кладётся в payload той же формой, что и в HTTP-ответе
- * инбокса.
+ * автора хранится в снимке как id медиа, поэтому здесь он разрешается в полное медиа через публичный
+ * контракт Media (актуальные ссылки к моменту публикации) и кладётся в payload той же формой, что и в
+ * HTTP-ответе инбокса. Обращение к соседу пакетное: набор из одного идентификатора, и только когда
+ * аватар у автора есть.
  */
 final readonly class PublishRealtimeNotificationHandler
 {
     public function __construct(
         private CentrifugoServiceContract $centrifugoService,
-        private QueryBusInterface $queryBus,
-        private FindMediaUrlHandler $findMediaUrlHandler,
+        private MediaContract $media,
         private LoggerInterface $logger,
     ) {}
 
@@ -53,7 +51,7 @@ final readonly class PublishRealtimeNotificationHandler
         ]);
     }
 
-    private function actorPayload(NotificationActorPayload|null $actor): RealtimeActorPayload|null
+    private function actorPayload(NotificationActorDto|null $actor): RealtimeActorPayload|null
     {
         if ($actor === null) {
             return null;
@@ -72,17 +70,14 @@ final readonly class PublishRealtimeNotificationHandler
             return null;
         }
 
-        $mediaUrls = $this->queryBus->dispatch(
-            query: new FindMediaUrlQuery(mediaId: $avatarMediaId),
-            handler: $this->findMediaUrlHandler->handle(...),
-        );
+        $media = $this->media->urlsByIds([$avatarMediaId])->get($avatarMediaId);
 
         // Аватара нет, если медиа недоступно или оригинал удалён: отдаём null «всё или ничего», без
         // конверсий удалённого оригинала. Заглушку рисует клиент.
-        if ($mediaUrls === null || $mediaUrls->original === null) {
+        if ($media === null || $media->original === null) {
             return null;
         }
 
-        return RealtimeMediaPayload::fromView($mediaUrls->toView(id: $avatarMediaId, position: null));
+        return RealtimeMediaPayload::fromDto($media);
     }
 }

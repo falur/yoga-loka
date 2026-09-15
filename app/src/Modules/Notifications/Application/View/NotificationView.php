@@ -6,7 +6,7 @@ namespace App\Modules\Notifications\Application\View;
 
 /**
  * Read-model уведомления инбокса для ответа API. title/body — как сохранено (без перевода), action —
- * переход либо null, actor — снимок автора с аватаром-MediaView либо null. Собирается
+ * переход либо null, actor — снимок автора с аватаром-MediaDto либо null. Собирается
  * NotificationViewAssembler, который обогащает снимок автора актуальным аватаром через модуль Media.
  */
 final readonly class NotificationView

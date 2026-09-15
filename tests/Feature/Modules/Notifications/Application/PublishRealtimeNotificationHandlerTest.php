@@ -9,17 +9,16 @@ use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotification\PublishRealtimeNotificationCommand;
 use App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotification\PublishRealtimeNotificationHandler;
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
 use App\Shared\Domain\ValueObject\UserId;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
 use Tests\Support\Media\PersistsMedia;
 
 /**
- * Аватар автора хранится в снимке как id медиа, поэтому обработчик резолвит его в полный MediaView
+ * Аватар автора хранится в снимке как id медиа, поэтому обработчик резолвит его в полное медиа
  * через модуль Media к моменту публикации и кладёт в realtime-payload той же формой, что и HTTP-инбокс.
  */
 final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
@@ -28,7 +27,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
 
     private string|null $capturedChannel = null;
 
-    public function testPublishesToPersonalChannelResolvingAvatarMediaView(): void
+    public function testPublishesToPersonalChannelResolvingAvatarMedia(): void
     {
         $media = $this->persistReadyPublicMedia();
         $this->persistThumbnailConversion($media);
@@ -38,7 +37,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
         $actorId = UserId::generate();
 
         $payload = $this->publish(
-            new NotificationActorPayload(id: $actorId->value(), name: 'Иван', avatarMediaId: $media->id->value()),
+            new NotificationActorDto(id: $actorId->value(), name: 'Иван', avatarMediaId: $media->id->value()),
         );
 
         self::assertSame('personal:#user_user-1', $this->capturedChannel);
@@ -64,7 +63,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
         $notReady = $this->persistNotReadyMedia();
 
         $payload = $this->publish(
-            new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $notReady->id->value()),
+            new NotificationActorDto(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $notReady->id->value()),
         );
 
         self::assertNotNull($payload->actor);
@@ -76,7 +75,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
         $removed = $this->persistReadyOriginalRemovedMedia();
 
         $payload = $this->publish(
-            new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $removed->id->value()),
+            new NotificationActorDto(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $removed->id->value()),
         );
 
         self::assertNotNull($payload->actor);
@@ -86,7 +85,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
     public function testResolvesAvatarToNullWhenActorHasNoAvatarMedia(): void
     {
         $payload = $this->publish(
-            new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: null),
+            new NotificationActorDto(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: null),
         );
 
         self::assertNotNull($payload->actor);
@@ -100,7 +99,7 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
         self::assertNull($payload->actor);
     }
 
-    private function publish(NotificationActorPayload|null $actor): RealtimeNotificationPayload
+    private function publish(NotificationActorDto|null $actor): RealtimeNotificationPayload
     {
         $capturedPayload = null;
         $centrifugoService = $this->createMock(CentrifugoServiceContract::class);
@@ -113,15 +112,14 @@ final class PublishRealtimeNotificationHandlerTest extends DatabaseTestCase
 
         new PublishRealtimeNotificationHandler(
             centrifugoService: $centrifugoService,
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
+            media: $this->stubbedMediaContract(),
             logger: new NullLogger(),
         )->handle(new PublishRealtimeNotificationCommand(
             userId: 'user-1',
             type: 'chat.message_received',
             title: 'Новое сообщение',
             body: 'Вам пришло сообщение',
-            action: new NotificationActionPayload(actionType: 'chat', actionId: '42'),
+            action: new NotificationActionDto(actionType: 'chat', actionId: '42'),
             actor: $actor,
             createdAt: '2026-06-13T10:00:00+00:00',
         ));

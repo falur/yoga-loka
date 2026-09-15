@@ -11,8 +11,8 @@ use App\Shared\Infrastructure\Persistence\Cycle\ColumnValueTypecast;
 /**
  * Гидрация nullable json-колонки actor в null-object NotificationActor: NULL -> none(),
  * JSON-объект {id, name, avatarMediaId} -> of(UserId, name, avatarMediaId). avatarMediaId в JSON может
- * быть null (у автора нет аватара). Снимок автора хранит id медиа-аватара, а не готовую ссылку: полный
- * MediaView собирается на чтении через модуль Media. Образец — MediaMultipartPartCollectionTypecast.
+ * быть null (у автора нет аватара). Снимок автора хранит id медиа-аватара, а не готовую ссылку: полное
+ * медиа (MediaDto) собирается на чтении через модуль Media. Образец — MediaMultipartPartCollectionTypecast.
  */
 final class NotificationActorTypecast implements ColumnValueTypecast
 {

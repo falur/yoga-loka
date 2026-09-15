@@ -8,8 +8,8 @@ declare(strict_types=1);
  * Технические параметры пайплайна загрузки (staging-TTL для MediaExpiration при создании, порог и
  * размер части multipart, драйвер обработки изображений) и срок presigned-ссылки скачивания по
  * умолчанию. Срок presigned-ссылок загрузки задаёт потребитель через MediaUploadSpec; срок скачивания
- * по умолчанию берётся отсюда, но вызывающий может переопределить его в FindMediaUrlQuery или
- * FindMediaOriginalUrlQuery (оба принимают presignedTtlSeconds).
+ * по умолчанию берётся отсюда, но вызывающий может переопределить его в FindMediaUrlsQuery
+ * (принимает presignedTtlSeconds).
  */
 return [
     // Срок жизни оригинала в staging-бакете до подтверждения (MediaExpiration при create), секунды.

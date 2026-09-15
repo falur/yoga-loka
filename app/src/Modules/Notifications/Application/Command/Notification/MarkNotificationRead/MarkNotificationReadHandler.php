@@ -42,7 +42,7 @@ final readonly class MarkNotificationReadHandler
             'userId' => $command->userId,
         ]);
 
-        // Отдаём обогащённый read-model (аватар автора собирается MediaView на чтении), а не доменную
+        // Отдаём обогащённый read-model (аватар автора собирается в MediaDto на чтении), а не доменную
         // сущность: форма ответа совпадает со списком инбокса.
         return $this->notificationViewAssembler->fromNotification($notification);
     }

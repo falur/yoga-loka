@@ -9,7 +9,7 @@ use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
  * Ресурс уведомления для мобильного клиента. title/body отдаются как сохранено (без перевода),
- * action — вложенный ресурс перехода либо null, actor — вложенный снимок автора с аватаром-MediaView
+ * action — вложенный ресурс перехода либо null, actor — вложенный снимок автора с аватаром-MediaResource
  * либо null (клиент показывает аватар автора без отдельного запроса к профилю).
  */
 final readonly class NotificationResource extends AbstractResource

@@ -10,7 +10,9 @@ use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
 use App\Modules\Media\Application\Contract\MediaUploadPlannerContract;
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
 use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
-use App\Modules\Media\Application\Message\MediaUploaded;
+use App\Modules\Media\Infrastructure\Spiral\PublicApi\MediaProvider;
+use App\Modules\Media\Public\Contract\MediaContract;
+use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Infrastructure\Storage\ConfiguredS3ClientProvider;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaVideoProcessor;
@@ -20,7 +22,7 @@ use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Infrastructure\Storage\S3ClientProvider;
 use App\Modules\Media\Infrastructure\Storage\S3MediaFileService;
 use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
-use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
+use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use Spiral\Boot\Bootloader\Bootloader;
 
 final class MediaBootloader extends Bootloader
@@ -33,13 +35,14 @@ final class MediaBootloader extends Bootloader
         MediaVideoProcessorContract::class => FfmpegMediaVideoProcessor::class,
         MediaAudioProcessorContract::class => FfmpegMediaAudioProcessor::class,
         S3ClientProvider::class => ConfiguredS3ClientProvider::class,
+        MediaContract::class => MediaProvider::class,
     ];
 
-    public function boot(OutboxJobRegistryContract $outboxJobRegistry): void
+    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
     {
-        $outboxJobRegistry->register(
-            outboxMessageClass: MediaUploaded::class,
-            outboxJobClass: ProcessMediaJob::class,
+        $integrationEventRouting->register(
+            integrationEventClass: MediaUploadedEvent::class,
+            jobClass: ProcessMediaJob::class,
         );
     }
 }

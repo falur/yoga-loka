@@ -14,13 +14,12 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Shared\Domain\ValueObject\UserId;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Tests\DatabaseTestCase;
 use Tests\Support\Media\PersistsMedia;
 
 /**
- * Ассемблер обогащает снимок автора актуальным аватаром (MediaView), собирая его на чтении из
- * сохранённого id медиа через модуль Media одним пакетным запросом.
+ * Ассемблер обогащает снимок автора актуальным аватаром (публичное медиа), собирая его на чтении из
+ * сохранённого id медиа через публичный контракт Media одним пакетным запросом.
  */
 final class NotificationViewAssemblerTest extends DatabaseTestCase
 {
@@ -45,7 +44,7 @@ final class NotificationViewAssemblerTest extends DatabaseTestCase
         self::assertCount(6, $views);
         $list = $views->all();
 
-        // 0: аватар резолвится в полный MediaView.
+        // 0: аватар резолвится в полное публичное медиа.
         self::assertNotNull($list[0]->actor);
         self::assertSame($actorId->value(), $list[0]->actor->id);
         self::assertNotNull($list[0]->actor->avatar);
@@ -108,8 +107,7 @@ final class NotificationViewAssemblerTest extends DatabaseTestCase
     private function assembler(): NotificationViewAssembler
     {
         return new NotificationViewAssembler(
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlsHandler: $this->stubbedFindMediaUrlsHandler(),
+            media: $this->stubbedMediaContract(),
         );
     }
 

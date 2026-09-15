@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\User\Application;
 
-use App\Modules\Media\Domain\Enum\MediaConversionKind;
-use App\Modules\Media\Domain\Enum\MediaImageConversionType;
+use App\Modules\Media\Public\Enum\MediaConversionKind;
+use App\Modules\Media\Public\Enum\MediaImageConversionType;
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
 use App\Modules\User\Domain\ValueObject\UserAvatar;

@@ -4,31 +4,27 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\View;
 
-use App\Modules\Media\Application\Dto\MediaUrlsResultCollection;
-use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
-use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsQuery;
+use App\Modules\Media\Public\Contract\MediaContract;
+use App\Modules\Media\Public\Dto\MediaDto;
+use App\Modules\Media\Public\Dto\MediaDtoCollection;
 use App\Modules\Notifications\Domain\Collection\NotificationCollection;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
-use App\Modules\Media\Application\View\MediaView;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 
 /**
- * Собирает read-model уведомлений, обогащая снимок автора актуальным аватаром через модуль Media.
- * Снимок хранит только id медиа-аватара, поэтому полный MediaView (оригинал + конверсии) резолвится
- * здесь на чтении — так ссылка всегда валидна (у private-медиа presigned-ссылки временные) и не
- * выдумывается сервером. Аватары всего набора уведомлений резолвятся одним пакетным FindMediaUrls,
- * чтобы на странице инбокса не было N+1.
+ * Собирает read-model уведомлений, обогащая снимок автора актуальным аватаром через публичный
+ * контракт Media. Снимок хранит только id медиа-аватара, поэтому полное медиа (оригинал + конверсии)
+ * резолвится здесь на чтении — так ссылка всегда валидна (у private-медиа presigned-ссылки временные)
+ * и не выдумывается сервером. Аватары всего набора уведомлений резолвятся одним пакетным вызовом,
+ * чтобы на странице инбокса не было N+1; при пустом наборе идентификаторов к соседу не ходим.
  *
- * Межмодульный Query идёт через QueryBus: шина возвращает ровно тип Handler::handle()
- * (MediaUrlsResultCollection), поэтому контракт «медиа недоступно -> аватара нет» сохраняется без
- * try-catch, а middleware обработчика (в том числе #[LogOperation]) работает.
+ * Контракт возвращает набор без недоступных медиа, поэтому правило «медиа недоступно -> аватара нет»
+ * выражается отсутствием идентификатора в наборе и не требует try-catch.
  */
 final readonly class NotificationViewAssembler
 {
     public function __construct(
-        private QueryBusInterface $queryBus,
-        private FindMediaUrlsHandler $findMediaUrlsHandler,
+        private MediaContract $media,
     ) {}
 
     public function fromNotifications(NotificationCollection $notifications): NotificationViewCollection
@@ -50,18 +46,15 @@ final readonly class NotificationViewAssembler
         );
     }
 
-    private function resolveAvatars(NotificationCollection $notifications): MediaUrlsResultCollection
+    private function resolveAvatars(NotificationCollection $notifications): MediaDtoCollection
     {
         $mediaIds = $this->avatarMediaIds($notifications);
 
         if ($mediaIds === []) {
-            return new MediaUrlsResultCollection();
+            return new MediaDtoCollection();
         }
 
-        return $this->queryBus->dispatch(
-            query: new FindMediaUrlsQuery(mediaIds: $mediaIds),
-            handler: $this->findMediaUrlsHandler->handle(...),
-        );
+        return $this->media->urlsByIds($mediaIds);
     }
 
     /**
@@ -78,7 +71,7 @@ final readonly class NotificationViewAssembler
         ));
     }
 
-    private function view(Notification $notification, MediaUrlsResultCollection $avatars): NotificationView
+    private function view(Notification $notification, MediaDtoCollection $avatars): NotificationView
     {
         $action = $notification->action();
 
@@ -101,7 +94,7 @@ final readonly class NotificationViewAssembler
         );
     }
 
-    private function actorView(NotificationActor $actor, MediaUrlsResultCollection $avatars): NotificationActorView
+    private function actorView(NotificationActor $actor, MediaDtoCollection $avatars): NotificationActorView
     {
         return new NotificationActorView(
             id: $actor->presentId(),
@@ -110,20 +103,20 @@ final readonly class NotificationViewAssembler
         );
     }
 
-    private function avatar(string|null $avatarMediaId, MediaUrlsResultCollection $avatars): MediaView|null
+    private function avatar(string|null $avatarMediaId, MediaDtoCollection $avatars): MediaDto|null
     {
         if ($avatarMediaId === null) {
             return null;
         }
 
-        $mediaUrls = $avatars->get($avatarMediaId);
+        $media = $avatars->get($avatarMediaId);
 
         // Аватара нет, если медиа недоступно или оригинал удалён: отдаём null «всё или ничего», без
         // конверсий удалённого оригинала. Тот же контракт, что у аватара в профиле (User).
-        if ($mediaUrls === null || $mediaUrls->original === null) {
+        if ($media === null || $media->original === null) {
             return null;
         }
 
-        return $mediaUrls->toView(id: $avatarMediaId, position: null);
+        return $media;
     }
 }

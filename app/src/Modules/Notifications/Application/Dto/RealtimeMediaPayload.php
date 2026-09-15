@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Dto;
 
-use App\Modules\Media\Application\View\MediaConversionView;
-use App\Modules\Media\Application\View\MediaView;
+use App\Modules\Media\Public\Dto\MediaConversionDto;
+use App\Modules\Media\Public\Dto\MediaDto;
 
 /**
- * Аватар автора в realtime-payload (Centrifugo): оригинал и все конверсии одним объектом — та же форма
- * MediaView, что в HTTP-ответе инбокса (MediaResource), чтобы клиент показывал одинаковый аватар. id
- * всегда задан (объект есть только за реальной сущностью медиа); position у аватара — null. Вложенные
- * объекты (original, conversions) сериализуются рекурсивно самим json_encode.
+ * Аватар автора в realtime-payload (Centrifugo): оригинал и все конверсии одним объектом — та же
+ * форма, что в HTTP-ответе инбокса (MediaResource), чтобы клиент показывал одинаковый аватар. id
+ * всегда задан (объект есть только за реальным медиа); position у аватара — null, потому что позиция
+ * принадлежит записи, а не медиа. Вложенные объекты (original, conversions) сериализуются рекурсивно
+ * самим json_encode.
  */
 final readonly class RealtimeMediaPayload
 {
@@ -25,15 +26,15 @@ final readonly class RealtimeMediaPayload
         public array $conversions,
     ) {}
 
-    public static function fromView(MediaView $media): self
+    public static function fromDto(MediaDto $media): self
     {
         return new self(
             id: $media->id,
-            position: $media->position,
-            original: $media->original === null ? null : RealtimeMediaOriginalPayload::fromView($media->original),
+            position: null,
+            original: $media->original === null ? null : RealtimeMediaOriginalPayload::fromDto($media->original),
             conversions: \array_map(
-                static fn(MediaConversionView $conversion): RealtimeMediaConversionPayload
-                    => RealtimeMediaConversionPayload::fromView($conversion),
+                static fn(MediaConversionDto $conversion): RealtimeMediaConversionPayload
+                    => RealtimeMediaConversionPayload::fromDto($conversion),
                 $media->conversions,
             ),
         );

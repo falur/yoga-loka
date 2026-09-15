@@ -9,7 +9,7 @@ use App\Modules\Notifications\Application\Command\Push\SendPushNotification\Send
 use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
 use App\Modules\Notifications\Application\Dto\FcmPushResult;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Application\Dto\NotificationPush;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
@@ -17,7 +17,6 @@ use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
 use Tests\Support\Media\PersistsMedia;
@@ -51,7 +50,7 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             title: 'Новое сообщение',
             body: 'Вам пришло сообщение',
             action: null,
-            actor: new NotificationActorPayload(id: $actorId->value(), name: 'Иван', avatarMediaId: $avatarMedia->id->value()),
+            actor: new NotificationActorDto(id: $actorId->value(), name: 'Иван', avatarMediaId: $avatarMedia->id->value()),
         ));
 
         self::assertInstanceOf(NotificationPush::class, $capturedPush);
@@ -81,7 +80,7 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             title: 'Новое сообщение',
             body: 'Вам пришло сообщение',
             action: null,
-            actor: new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $notReadyMedia->id->value()),
+            actor: new NotificationActorDto(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: $notReadyMedia->id->value()),
         ));
 
         self::assertNotNull($capturedPush->actor);
@@ -99,7 +98,7 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             title: 'Новое сообщение',
             body: 'Вам пришло сообщение',
             action: null,
-            actor: new NotificationActorPayload(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: null),
+            actor: new NotificationActorDto(id: UserId::generate()->value(), name: 'Иван', avatarMediaId: null),
         ));
 
         self::assertNotNull($capturedPush->actor);
@@ -212,8 +211,7 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             notificationDeviceTokenRepository: $this->deviceTokenRepository(),
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence ?? $this->offlinePresence(),
-            queryBus: $this->getContainer()->get(QueryBusInterface::class),
-            findMediaUrlHandler: $this->stubbedFindMediaUrlHandler(),
+            media: $this->stubbedMediaContract(),
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: new NullLogger(),
         );

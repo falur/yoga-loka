@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Infrastructure\Spiral\Http\Resource;
+namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
+use App\Modules\Media\Public\Dto\MediaConversionDto;
+use App\Modules\Media\Public\Enum\MediaAudioConversionType;
+use App\Modules\Media\Public\Enum\MediaConversionKind;
+use App\Modules\Media\Public\Enum\MediaImageConversionType;
+use App\Modules\Media\Public\Enum\MediaVideoConversionType;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
-use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
-use App\Modules\Media\Domain\Enum\MediaConversionKind;
-use App\Modules\Media\Domain\Enum\MediaImageConversionType;
-use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
-use App\Modules\Media\Application\View\MediaConversionView;
 
 /**
  * Одна конверсия медиа в ответе API: вид (image/video/audio) и тип-профиль — enum-ами (в JSON
  * сериализуются в свои строковые значения, а в OpenAPI дают закрытый набор), ссылка и срок действия
- * (для presigned-ссылок private-медиа, иначе null). Одна форма для вложений записи и аватара автора —
- * фронт сам решает, какой профиль показать.
+ * (для presigned-ссылок private-медиа, иначе null).
+ *
+ * Собственная копия ресурса медиа: общий ресурс жил бы в чужом модуле и нарушал бы его границу, а
+ * имя схемы OpenAPI строится по короткому имени класса, поэтому имя и поля повторяются дословно.
  */
 final readonly class MediaConversionResource extends AbstractResource
 {
@@ -26,7 +28,7 @@ final readonly class MediaConversionResource extends AbstractResource
         public \DateTimeImmutable|null $expiresAt,
     ) {}
 
-    public static function fromView(MediaConversionView $conversion): self
+    public static function fromDto(MediaConversionDto $conversion): self
     {
         return new self(
             kind: $conversion->kind,

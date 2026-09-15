@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
+use App\Modules\Posts\Application\View\PostMediaView;
 use App\Modules\Posts\Application\View\PostView;
 use App\Modules\Posts\Application\View\TagView;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
-use App\Modules\Media\Application\View\MediaView;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
-use App\Modules\Media\Infrastructure\Spiral\Http\Resource\MediaResource;
 
 final readonly class PostResource extends AbstractResource
 {
@@ -48,7 +47,7 @@ final readonly class PostResource extends AbstractResource
             createdAt: $post->createdAt,
             author: AuthorResource::fromView($post->author),
             media: \array_map(
-                static fn(MediaView $media): MediaResource => MediaResource::fromView($media),
+                static fn(PostMediaView $media): MediaResource => MediaResource::fromView($media),
                 $post->media,
             ),
             tags: \array_map(

@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Application\View;
 
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
-use App\Modules\Media\Application\View\MediaView;
 
 /**
  * Read-model записи для ответа API: сама запись, её счётчики, флаг «оценил я», автор, медиа, теги
@@ -15,7 +14,7 @@ use App\Modules\Media\Application\View\MediaView;
 final readonly class PostView
 {
     /**
-     * @param list<MediaView> $media
+     * @param list<PostMediaView> $media
      * @param list<TagView> $tags
      */
     public function __construct(

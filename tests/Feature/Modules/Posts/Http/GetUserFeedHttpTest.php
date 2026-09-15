@@ -169,6 +169,31 @@ final class GetUserFeedHttpTest extends PostsHttpTestCase
         self::assertContains($secondOriginal->id->value(), $originalIds);
     }
 
+    public function testFeedResolvesAttachmentsOfRepostOriginalsInSameBatch(): void
+    {
+        $author = $this->createUser();
+        $reposter = $this->createUser();
+        $media = $this->createReadyMedia($author->id, MediaVisibility::Public);
+
+        $originalId = $this->json($this->authedJson('POST', '/api/v1/posts', $author->id, [
+            'text' => 'Оригинал с вложением',
+            'mediaIds' => [$media->id->value()],
+        ]))['data']['id'];
+
+        $this->authedJson('POST', \sprintf('/api/v1/posts/%s/repost', $originalId), $reposter->id)->assertOk();
+
+        $response = $this->authedGet(\sprintf('/api/v1/posts/user/%s', $reposter->id->value()), $reposter->id);
+
+        $response->assertOk();
+        $data = $this->json($response)['data'];
+        self::assertCount(1, $data);
+        // Вложения оригиналов репостов страницы входят в тот же набор ссылок, что и вложения записей.
+        self::assertNotNull($data[0]['original']);
+        self::assertCount(1, $data[0]['original']['media']);
+        self::assertSame($media->id->value(), $data[0]['original']['media'][0]['id']);
+        self::assertSame(0, $data[0]['original']['media'][0]['position']);
+    }
+
     public function testFeedReturnsNullOriginalWhenAllRepostOriginalsInvisible(): void
     {
         $author = $this->createUser();

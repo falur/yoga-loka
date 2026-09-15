@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
 use App\Modules\Posts\Application\View\AuthorView;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
-use App\Modules\Media\Infrastructure\Spiral\Http\Resource\MediaResource;
 
 /**
  * Автор записи/комментария в ответе API: идентификатор, имя и аватар с преобразованиями (оригинал +
@@ -26,7 +25,7 @@ final readonly class AuthorResource extends AbstractResource
         return new self(
             userId: $author->userId,
             name: $author->name,
-            avatar: $author->avatar === null ? null : MediaResource::fromView($author->avatar),
+            avatar: $author->avatar === null ? null : MediaResource::fromDto($author->avatar),
         );
     }
 }

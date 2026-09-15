@@ -7,7 +7,12 @@ namespace Tests\Feature\Modules\Posts\Http;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Posts\Domain\Entity\Post;
+use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\Posts\Domain\ValueObject\MediaPosition;
+use App\Modules\Posts\Domain\ValueObject\PostId;
+use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Shared\Domain\ValueObject\UserId;
 
@@ -147,6 +152,66 @@ final class GetPostHttpTest extends PostsHttpTestCase
         self::assertSame('thumbnail', $mediaData['conversions'][0]['type']);
         // Показывать есть что (конверсия), поэтому attachmentType не деградирует в none.
         self::assertSame('media', $data['attachmentType']);
+    }
+
+    public function testAttachmentOfUnavailableMediaIsExcludedWhileOthersRemain(): void
+    {
+        $user = $this->createUser();
+        $readyMedia = $this->createReadyMedia($user->id, MediaVisibility::Public);
+        // Медиа без финализации: контракт Media его не отдаёт вовсе — в наборе ссылок ответа его нет.
+        $notFinalizedMedia = $this->createUploadedMedia($user->id);
+
+        $postId = $this->json($this->authedJson('POST', '/api/v1/posts', $user->id, [
+            'text' => 'Запись с двумя вложениями',
+            'mediaIds' => [$readyMedia->id->value()],
+        ]))['data']['id'];
+
+        // Второе вложение заводим напрямую: проверка вложения не пропустила бы нефинализированное
+        // медиа, а нам нужна именно запись, у которой такое вложение уже лежит в post_media.
+        $post = $this->postRepository()->findById(PostId::fromString($postId));
+        self::assertInstanceOf(Post::class, $post);
+        $this->persist(PostMedia::create(
+            post: $post,
+            mediaId: PostMediaReference::fromString($notFinalizedMedia->id->value()),
+            position: MediaPosition::fromInt(1),
+        ));
+        $this->cleanOrmHeap();
+
+        $data = $this->json($this->authedGet(\sprintf('/api/v1/posts/%s', $postId), $user->id))['data'];
+
+        // Недоступное вложение исключено, доступное осталось со своей позицией — без 500.
+        self::assertCount(1, $data['media']);
+        self::assertSame($readyMedia->id->value(), $data['media'][0]['id']);
+        self::assertSame(0, $data['media'][0]['position']);
+        self::assertSame('media', $data['attachmentType']);
+    }
+
+    public function testRepostResolvesAttachmentsOfItsOriginal(): void
+    {
+        $author = $this->createUser();
+        $reposter = $this->createUser();
+        $media = $this->createReadyMedia($author->id, MediaVisibility::Public);
+
+        $originalId = $this->json($this->authedJson('POST', '/api/v1/posts', $author->id, [
+            'text' => 'Оригинал с вложением',
+            'mediaIds' => [$media->id->value()],
+        ]))['data']['id'];
+
+        $repostId = $this->json($this->authedJson(
+            'POST',
+            \sprintf('/api/v1/posts/%s/repost', $originalId),
+            $reposter->id,
+        ))['data']['id'];
+        $this->cleanOrmHeap();
+
+        $data = $this->json($this->authedGet(\sprintf('/api/v1/posts/%s', $repostId), $reposter->id))['data'];
+
+        // Вложения оригинала репоста разрешаются тем же набором ссылок, что и вложения самой записи.
+        self::assertNotNull($data['original']);
+        self::assertCount(1, $data['original']['media']);
+        self::assertSame($media->id->value(), $data['original']['media'][0]['id']);
+        self::assertSame(0, $data['original']['media'][0]['position']);
+        self::assertSame('https://media.test/object.jpg', $data['original']['media'][0]['original']['url']);
     }
 
     private function makeMediaUnavailable(MediaId $mediaId): void

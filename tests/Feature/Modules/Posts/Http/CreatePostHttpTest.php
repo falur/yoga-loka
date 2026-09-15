@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Posts\Http;
 
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Public\Contract\MediaContract;
+use App\Modules\Media\Public\Dto\MediaDtoCollection;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
@@ -56,6 +58,56 @@ final class CreatePostHttpTest extends PostsHttpTestCase
         self::assertSame('media', $data['attachmentType']);
         self::assertCount(1, $data['media']);
         self::assertSame($media->id->value(), $data['media'][0]['id']);
+    }
+
+    public function testCreatesPostWithSeveralMediaInGivenOrder(): void
+    {
+        $user = $this->createUser();
+        $first = $this->createReadyMedia($user->id, MediaVisibility::Public);
+        $second = $this->createReadyMedia($user->id, MediaVisibility::Public);
+
+        $response = $this->authedJson('POST', '/api/v1/posts', $user->id, [
+            'mediaIds' => [$second->id->value(), $first->id->value()],
+        ]);
+
+        $response->assertOk();
+        $data = $this->json($response)['data'];
+        self::assertSame('media', $data['attachmentType']);
+        self::assertSame(
+            [$second->id->value(), $first->id->value()],
+            \array_column($data['media'], 'id'),
+        );
+    }
+
+    public function testRejectsUnsuitableMediaInTheMiddleOfSet(): void
+    {
+        // Пакетная проверка обходит набор в порядке вложений, поэтому отказ даёт то же медиа и тот же
+        // код, что и поштучный цикл до неё.
+        $user = $this->createUser();
+        $other = $this->createUser();
+        $first = $this->createReadyMedia($user->id, MediaVisibility::Public);
+        $foreign = $this->createReadyMedia($other->id, MediaVisibility::Public);
+        $last = $this->createReadyMedia($user->id, MediaVisibility::Public);
+
+        $this->authedJson('POST', '/api/v1/posts', $user->id, [
+            'mediaIds' => [$first->id->value(), $foreign->id->value(), $last->id->value()],
+        ])->assertStatus(403);
+    }
+
+    public function testDoesNotCallMediaWhenThereAreNoAttachments(): void
+    {
+        $user = $this->createUser();
+
+        $mediaContract = $this->createMock(MediaContract::class);
+        $mediaContract->method('urlsByIds')->willReturn(new MediaDtoCollection());
+        $mediaContract->expects(self::never())->method('ensureAttachable');
+        $mediaContract->expects(self::never())->method('makePermanent');
+        $this->getContainer()->bindSingleton(MediaContract::class, $mediaContract);
+
+        $response = $this->authedJson('POST', '/api/v1/posts', $user->id, ['text' => 'Без вложений']);
+
+        $response->assertOk();
+        self::assertSame('none', $this->json($response)['data']['attachmentType']);
     }
 
     public function testDeduplicatesRepeatedMediaId(): void

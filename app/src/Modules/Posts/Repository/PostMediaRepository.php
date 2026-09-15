@@ -11,10 +11,10 @@ use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**
- * Доступ к вложениям записей. Медиа и его конверсии грузятся eager (media.*Conversions), как
- * предписывает docs/arch.md для ленты Posts. Лента строит полный набор URL вложения
- * (PostViewAssembler -> MediaUrlService::getUrls: оригинал + все конверсии), поэтому eager-load
- * обязателен — без него доступ к конверсиям обернулся бы ленивой подгрузкой N+1.
+ * Доступ к вложениям записей. Медиа и его конверсии пока грузятся eager (media.*Conversions) вместе
+ * со связью на чужую сущность. Сборке ответа они больше не нужны: ссылки вложений лента берёт у
+ * Media пакетно через публичный контракт (PostViewAssembler -> MediaContract::urlsByIds). Связь и
+ * eager-load снимаются отдельной задачей переезда — до этого они остаются как есть.
  *
  * @extends AbstractRepository<PostMedia>
  */

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Media\Infrastructure\Storage;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaObjectHead;
-use App\Modules\Media\Application\Dto\MediaPresignedPart;
-use App\Modules\Media\Application\Dto\MediaPresignedPartCollection;
+use App\Modules\Media\Application\Contract\MediaObjectHead;
+use App\Modules\Media\Application\Contract\MediaPresignedPart;
+use App\Modules\Media\Application\Contract\MediaPresignedPartCollection;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;

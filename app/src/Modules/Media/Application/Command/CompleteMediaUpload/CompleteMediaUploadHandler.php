@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Command\CompleteMediaUpload;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
+use App\Modules\Media\Application\Result\MediaResult;
 use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
 use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaResult;
 use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
 use App\Modules\Media\Domain\Entity\Media;

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
 use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
+use App\Modules\Media\Application\Contract\MediaAudioProcessingResult;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 
 /**

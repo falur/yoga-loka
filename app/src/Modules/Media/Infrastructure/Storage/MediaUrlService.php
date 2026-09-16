@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Infrastructure\Storage;
 
+use App\Modules\Media\Application\Contract\MediaConversionUrl;
+use App\Modules\Media\Application\Contract\MediaConversionUrlCollection;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
-use App\Modules\Media\Application\Dto\MediaConversionUrl;
-use App\Modules\Media\Application\Dto\MediaConversionUrlCollection;
-use App\Modules\Media\Application\Dto\MediaUrlsResult;
+use App\Modules\Media\Application\Contract\MediaUrlsResult;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;

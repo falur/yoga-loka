@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Infrastructure\Imagick;
 
+use App\Modules\Media\Application\Contract\MediaConversionResult;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
-use App\Modules\Media\Application\Dto\MediaConversionResult;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;

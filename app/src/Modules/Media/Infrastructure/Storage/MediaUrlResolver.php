@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Infrastructure\Storage;
 
-use App\Modules\Media\Application\Dto\MediaUrlResult;
+use App\Modules\Media\Application\Contract\MediaUrlResult;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 

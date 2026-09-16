@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Command\RequestMediaUpload;
 
+use App\Modules\Media\Application\Contract\MediaFileMeta;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaUploadPlannerContract;
-use App\Modules\Media\Application\Dto\MediaFileMeta;
-use App\Modules\Media\Application\Dto\RequestMediaUploadResult;
-use App\Modules\Media\Application\Dto\MediaUploadSpec;
-use App\Modules\Media\Application\Service\MediaTypeResolver;
+use App\Modules\Media\Application\Contract\MediaUploadSpec;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
 use App\Modules\Media\Domain\Exception\MediaFileNameWithoutExtensionException;
 use App\Modules\Media\Domain\Exception\MediaFileSizeExceededException;
 use App\Modules\Media\Domain\Exception\MediaMimeTypeNotAllowedException;
 use App\Modules\Media\Domain\Repository\MediaRepository;
+use App\Modules\Media\Domain\Service\MediaTypeResolver;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Shared\Domain\ValueObject\UserId;

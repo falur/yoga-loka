@@ -7,7 +7,7 @@ namespace Tests\Feature\Modules\Media\Application;
 use App\Modules\Media\Application\Command\RemoveMediaOriginal\RemoveMediaOriginalCommand;
 use App\Modules\Media\Application\Command\RemoveMediaOriginal\RemoveMediaOriginalHandler;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Service\MediaConversionsChecker;
+use App\Modules\Media\Application\Command\RemoveMediaOriginal\MediaConversionsChecker;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;

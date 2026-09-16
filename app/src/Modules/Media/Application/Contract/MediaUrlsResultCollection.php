@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Dto;
+namespace App\Modules\Media\Application\Contract;
 
 use App\Shared\Domain\Collection\TypedCollection;
 

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Media\Application;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaConversionUrl;
-use App\Modules\Media\Application\Dto\MediaConversionUrlCollection;
-use App\Modules\Media\Application\Dto\MediaUrlsResult;
+use App\Modules\Media\Application\Contract\MediaConversionUrl;
+use App\Modules\Media\Application\Contract\MediaConversionUrlCollection;
+use App\Modules\Media\Application\Contract\MediaUrlsResult;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsQuery;
 use App\Modules\Media\Domain\Entity\Media;

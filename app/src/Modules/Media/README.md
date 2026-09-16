@@ -72,7 +72,7 @@
 `Domain/Exception`: каждое несёт свой ключ перевода и свой статус (404, 403 или 422), которые на
 границе потребителя превращает в ответ `ApiExceptionInterceptor`.
 
-### Спецификация и DTO (`Application/Dto`)
+### Спецификация запроса и данные портов (`Application/Contract`)
 
 - `MediaUploadSpec{ allowedMimeTypes: MediaMimeTypeCollection, maxSize: MediaFileSize, visibility, presignedTtl: MediaPresignedTtl }`
   — политика загрузки от потребителя. Конверсий здесь нет. `presignedTtl` — срок жизни

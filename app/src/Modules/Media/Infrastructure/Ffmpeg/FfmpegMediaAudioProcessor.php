@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Infrastructure\Ffmpeg;
 
+use App\Modules\Media\Application\Contract\MediaAudioProcessingResult;
 use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
-use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;

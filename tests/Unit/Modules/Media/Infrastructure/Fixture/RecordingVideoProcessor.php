@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure\Fixture;
 
 use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
+use App\Modules\Media\Application\Contract\MediaVideoProcessingResult;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaVideoProcessor;
 
 /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Media\Application;
 
-use App\Modules\Media\Application\Service\MediaTypeResolver;
+use App\Modules\Media\Domain\Service\MediaTypeResolver;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\Exception\MediaUnsupportedFileTypeException;

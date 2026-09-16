@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Dto;
+namespace App\Modules\Media\Application\Contract;
 
 /**
  * URL к медиа или его конверсии. expiresAt = null для прямого публичного URL (media-public),

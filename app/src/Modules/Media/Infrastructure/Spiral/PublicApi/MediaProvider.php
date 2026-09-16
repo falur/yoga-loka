@@ -6,8 +6,8 @@ namespace App\Modules\Media\Infrastructure\Spiral\PublicApi;
 
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentCommand;
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
-use App\Modules\Media\Application\Dto\MediaConversionUrl;
-use App\Modules\Media\Application\Dto\MediaUrlsResult;
+use App\Modules\Media\Application\Contract\MediaConversionUrl;
+use App\Modules\Media\Application\Contract\MediaUrlsResult;
 use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
 use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableQuery;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;

@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Dto;
+namespace App\Modules\Media\Application\Command\RequestMediaUpload;
+
+use App\Modules\Media\Application\Contract\MediaPresignedPartCollection;
 
 /**
  * Результат RequestMediaUpload. Для single заполнен putUrl; для multipart — uploadId и parts.

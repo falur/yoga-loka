@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Service;
+namespace App\Modules\Media\Domain\Service;
 
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Exception\MediaUnsupportedFileTypeException;

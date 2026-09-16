@@ -6,9 +6,9 @@ namespace Tests\Unit\Modules\Media\Infrastructure;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
+use App\Modules\Media\Application\Contract\MediaAudioProcessingResult;
 use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
+use App\Modules\Media\Application\Contract\MediaVideoProcessingResult;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;

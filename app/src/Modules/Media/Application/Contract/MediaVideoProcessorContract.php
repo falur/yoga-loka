@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Contract;
 
 use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaVideoProcessingResult;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 

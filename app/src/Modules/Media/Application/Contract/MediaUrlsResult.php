@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Media\Application\Dto;
+namespace App\Modules\Media\Application\Contract;
 
 /**
  * Полный набор URL медиа: оригинал и все его конверсии. original = null, если оригинал удалён

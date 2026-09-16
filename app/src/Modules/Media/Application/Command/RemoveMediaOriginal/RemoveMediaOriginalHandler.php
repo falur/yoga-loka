@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Command\RemoveMediaOriginal;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaResult;
-use App\Modules\Media\Application\Service\MediaConversionsChecker;
+use App\Modules\Media\Application\Result\MediaResult;
 use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
 use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Modules\Media\Domain\Exception\MediaOriginalNotRemovableException;

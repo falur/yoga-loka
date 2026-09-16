@@ -10,7 +10,7 @@ use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
 use App\Modules\Media\Public\Dto\MediaImageConversionSpecDto;
-use App\Modules\Media\Application\Dto\MediaObjectHead;
+use App\Modules\Media\Application\Contract\MediaObjectHead;
 use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;

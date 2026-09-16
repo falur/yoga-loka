@@ -68,8 +68,8 @@
 
 `userId` потребитель передаёт параметром (строкой). Проверка владельца —
 в Handler-е (`CompleteMediaUpload`/`DeleteMedia`/`MakeMediaPermanent`): несовпадение →
-`ForbiddenException` (403). Ошибки — типизированные доменные исключения
-(`ValidationException` 422, `NotFoundException` 404, `ForbiddenException` 403), которые на
+`MediaAccessDeniedException` (403). Ошибки — доменные исключения модуля из
+`Domain/Exception`: каждое несёт свой ключ перевода и свой статус (404, 403 или 422), которые на
 границе потребителя превращает в ответ `ApiExceptionInterceptor`.
 
 ### Спецификация и DTO (`Application/Dto`)
@@ -115,7 +115,7 @@
 5. ProcessMedia (без #[Transactional]): S3/ffmpeg/Imagick вне транзакции. Исчерпывающий match по
    media.type: image -> ресайз (Imagick); video -> транскод mp4/H.264+AAC + кадр-постер (ffmpeg);
    audio -> транскод m4a/AAC + волна амплитуд (ffmpeg). Затем перекладка оригинала в целевой бакет
-   по visibility и один атомарный persist+run() -> media = ready
+   по visibility и одна атомарная запись агрегата -> media = ready
 6. FindMediaUrls: отдаёт полный набор ссылок (оригинал + все конверсии) для набора медиа.
    public -> прямые URL
    (media-public, anonymous read); private -> presignGet (TTL по умолчанию из конфига,
@@ -158,7 +158,7 @@
 импортирует `Aws\*`/`FFMpeg\*` и не знает про реализации хранилища и обработки. Текст ошибки —
 из предопределённого набора безопасных сообщений; сырой текст AWS не прокидывается (VO
 `MediaProcessingError` отклоняет пути и слово `etag`). Сама запись ошибки на Media обёрнута
-локальным guard: если она падает (медиа конкурентно удалили → `NotFoundException`, короткий сбой
+локальным guard: если она падает (медиа конкурентно удалили → `MediaNotFoundException`, короткий сбой
 БД), вторичный сбой логируется уровнем ERROR и не подменяет исходную причину — Job всё равно
 выбирает повтор/терминальный исход по исходному исключению (временное → `RetryException`).
 
@@ -173,7 +173,8 @@
   по образцу `ProcessMediaHandler`.
 - `ProcessMediaHandler` — **без** `#[Transactional]`: сначала все S3/Imagick-операции вне
   транзакции (чтобы не держать БД и блокировку строки), затем один атомарный
-  `persist(media + conversions); run()` с `markReadyMovedTo`. Операции идемпотентны
+  `MediaRepository::saveWithConversions()` — медиа и все созданные конверсии одной записью
+  агрегата — с `markReadyMovedTo`. Операции идемпотентны
   (детерминированные ключи от `storageKey`): на повторе до коммита конверсий нет → создаём
   заново без конфликта по unique `(media_id, type)`; если медиа уже `ready` — no-op. Для image
   оригинал читается в память только при непустом наборе конверсий; video/audio скачиваются
@@ -194,8 +195,9 @@
   где фактический размер мог бы отличаться от запрошенного. Это осознанное отклонение от буквы плана
   (шаг 6 предписывал `MediaPixelDimension из spec.width/spec.height`).
 - `DeleteMedia` удаляет из S3 не только оригинал, но и объекты конверсий: до `delete($media)`
-  Handler грузит конверсии (`MediaImageConversionRepository`/`MediaVideoConversionRepository`/
-  `MediaAudioConversionRepository`) и удаляет каждый объект по `storage`/`path` (404 идемпотентно
+  Handler грузит конверсии агрегата через `MediaRepository`
+  (`findImageConversionsByMediaId`/`findVideoConversionsByMediaId`/`findAudioConversionsByMediaId`)
+  и удаляет каждый объект по `storage`/`path` (404 идемпотентно
   игнорируется). Постер видео — это `MediaImageConversion` (Poster), он уже в image-цикле, отдельно
   не чистится. Без этого FK `ON DELETE CASCADE` убрал бы строки конверсий, оставив файлы
   осиротевшими в постоянном бакете. На `readyOriginalRemoved`-медиа `DeleteMedia` работает без

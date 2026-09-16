@@ -77,8 +77,8 @@ public function send(string $recipientUserId, NotificationContentDto $content): 
 ```
 
 Вызывается **на каждого получателя**. Внутри: проверяет вид по реестру и стейджит одно
-`NotificationRequestedEvent` в outbox. Свой `EntityManager::run()` не делает — flush выполняет
-Handler источника.
+`NotificationRequestedEvent` в outbox. Своей записи в базу не делает — событие ставится в текущую
+единицу работы, а уносит его туда Handler источника, когда сохраняет свой агрегат.
 
 Содержимое (`NotificationContentDto`) — примитивы и публичные DTO:
 
@@ -239,8 +239,9 @@ Enum из варианта B использует ещё и сборка сод�
 
 ### Шаг 2. Вызвать `send()` из своего Handler-а
 
-`send()` нужно вызывать внутри `#[Transactional]`-Handler-а **до** своего `run()`. Тогда
-бизнес-данные и outbox-событие уведомления коммитятся атомарно.
+`send()` нужно вызывать внутри `#[Transactional]`-Handler-а **до** записи своего агрегата. Тогда
+бизнес-данные и outbox-событие уведомления коммитятся атомарно. `EntityManager` в Handler не
+инъектируется: слой Application про Cycle не знает, хранение скрыто за Domain Repository модуля.
 
 ```php
 final readonly class SendMessageHandler
@@ -248,14 +249,12 @@ final readonly class SendMessageHandler
     public function __construct(
         private MessageRepository $messageRepository,
         private NotificationContract $notifications,
-        private EntityManagerInterface $entityManager,
     ) {}
 
     #[Transactional]
     public function handle(SendMessageCommand $command): void
     {
         $message = Message::create(/* ... */);
-        $this->entityManager->persist($message);
 
         // Текст уже на языке получателя — Notifications его не переводит.
         $this->notifications->send(
@@ -274,7 +273,8 @@ final readonly class SendMessageHandler
             ),
         );
 
-        $this->entityManager->run(); // один flush на бизнес-данные + событие уведомления
+        // Запись агрегата уносит в базу и бизнес-данные, и событие уведомления.
+        $this->messageRepository->save($message);
     }
 }
 ```
@@ -431,6 +431,12 @@ realtime - публикация в Centrifugo.
 **после** Outbox-бутлоадеров (его `boot()` регистрирует пары «сообщение → Job» через
 `OutboxJobRegistryContract`). Он биндит:
 
+- три доменных интерфейса хранения корней агрегатов модуля — `NotificationRepository`,
+  `NotificationSettingRepository` и `NotificationDeviceTokenRepository` — на свои
+  `Cycle*`-реализации из `Infrastructure/Persistence/Cycle/Repository`;
+- `MarkAllNotificationsReadContract` — отдельный порт единственной массовой записи проекта
+  (отметка всех непрочитанных прочитанными одним `UPDATE`) — на `CycleMarkAllNotificationsRead`;
+  порт остаётся отдельным от `NotificationRepository` и репозиторием агрегата не притворяется;
 - публичные `NotificationContract` и `NotificationTypeRegistryContract` — на адаптеры из
   `Infrastructure/Spiral/PublicApi`; внутренний `NotificationTypeCatalogContract` — на реестр видов
   (синглтон);

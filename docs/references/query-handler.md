@@ -15,8 +15,8 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Application\Query\GetUser;
 
+use App\Modules\User\Domain\Exception\UserNotFoundException;
 use App\Modules\User\Domain\Repository\UserRepository;
-use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
 final readonly class GetUserHandler
@@ -28,7 +28,7 @@ final readonly class GetUserHandler
     public function handle(GetUserQuery $query): GetUserResult
     {
         $user = $this->userRepository->findById(UserId::fromString($query->userId))
-            ?? throw new NotFoundException('app.user.not_found');
+            ?? throw new UserNotFoundException();
 
         return new GetUserResult(
             id: $user->id->value(),
@@ -42,6 +42,8 @@ final readonly class GetUserHandler
 
 - На `handle()` нет транзакции записи.
 - Handler не меняет сущность и не сохраняет её.
+- Ожидаемый отказ выражен собственным типом модуля-владельца: ключ перевода и статус лежат внутри
+  типа, а не в месте броска — см. карточку [Доменное исключение](domain-exception.md).
 - Результат имеет точный именованный тип `{Action}Result`; Entity и Data за пределы handler не выходят.
 - Межмодульное обогащение выполняется через `Public` соседнего модуля пакетно.
 

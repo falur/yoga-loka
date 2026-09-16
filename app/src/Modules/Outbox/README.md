@@ -37,8 +37,9 @@ Handler-а:
 
 ```text
 1. Handler меняет бизнес-данные.
-2. Handler вызывает IntegrationEventStoreContract::add().
-3. Handler вызывает EntityManagerInterface::run().
+2. Handler вызывает IntegrationEventStoreContract::add() — событие только ставится в текущую
+   единицу работы и своей записи в базу не делает.
+3. Handler сохраняет свой агрегат методом Domain Repository — эта запись уносит в базу и событие.
 4. Транзакция успешно завершается.
 5. outbox:relay берёт pending-события из outbox_events.
 6. Relay находит Job для класса сообщения.
@@ -64,6 +65,8 @@ app/src/Modules/Outbox/Public/Contract/IntegrationEventRoutingContract.php
 app/src/Modules/Outbox/Public/Dto/OutboxEnvelopeDto.php
 app/src/Modules/Outbox/Application/Command/StoreIntegrationEvent/StoreIntegrationEventHandler.php
 app/src/Modules/Outbox/Application/Query/LoadIntegrationEvent/LoadIntegrationEventHandler.php
+app/src/Modules/Outbox/Domain/Repository/StoredOutboxEventRepository.php
+app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Repository/CycleStoredOutboxEventRepository.php
 app/src/Modules/Outbox/Infrastructure/Spiral/Bootloader/OutboxBootloader.php
 app/src/Modules/Outbox/Infrastructure/Relay/OutboxRelay.php
 app/src/Modules/Outbox/Infrastructure/Spiral/Queue/OutboxQueueStatusInterceptor.php
@@ -357,7 +360,8 @@ SendWelcomeEmailJob::class => OutboxQueueSerializer::class,
 ### 5. Сохранить событие в Handler-е
 
 В бизнес Handler-е добавьте `IntegrationEventStoreContract` через constructor
-injection и сохраните событие до `EntityManagerInterface::run()`.
+injection и поставьте событие до записи своего агрегата. `EntityManager` в Handler не
+инъектируется: слой Application про Cycle не знает, хранение скрыто за Domain Repository модуля.
 
 Пример:
 
@@ -365,7 +369,7 @@ injection и сохраните событие до `EntityManagerInterface::run
 final readonly class RegisterUserHandler
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
+        private UserRepository $userRepository,
         private IntegrationEventStoreContract $integrationEventStore,
     ) {}
 
@@ -374,13 +378,12 @@ final readonly class RegisterUserHandler
     {
         $user = User::create(/* ... */);
 
-        $this->entityManager->persist($user);
         $this->integrationEventStore->add(new WelcomeEmailRequestedEvent(
             userId: $user->id->value(),
             email: $user->email->value(),
         ));
-
-        $this->entityManager->run();
+        // Запись агрегата уносит в базу и поставленное выше событие outbox.
+        $this->userRepository->save($user);
     }
 }
 ```

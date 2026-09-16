@@ -48,7 +48,10 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
 
         // Удалён именно текущий оригинал в целевом бакете (после markReadyMovedTo), не staging.
         self::assertSame([[$originalStorage, $originalPath]], $deleted);
-        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою отдельно
+        // загруженную через Mapper копию, а не переменную $media теста, поэтому статус в БД
+        // проверяется перечитыванием через репозиторий (родная identity map Cycle не наследуется).
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $this->mediaRepository()->findById($media->id)?->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
         self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
@@ -76,7 +79,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
 
         // Удалён именно оригинал видео, а не конверсия/постер.
         self::assertSame([[$originalStorage, $originalPath]], $deleted);
-        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $this->mediaRepository()->findById($media->id)?->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
         self::assertCount(1, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
@@ -106,7 +109,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         // У audio нет image-конверсии — гард обнаруживает конверсию через аудио-репозиторий.
         // Удалён именно оригинал, а не аудио-конверсия.
         self::assertSame([[$originalStorage, $originalPath]], $deleted);
-        self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
+        self::assertSame(MediaStatus::ReadyOriginalRemoved, $this->mediaRepository()->findById($media->id)?->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
         self::assertCount(1, $this->mediaRepository()->findAudioConversionsByMediaId($media->id));

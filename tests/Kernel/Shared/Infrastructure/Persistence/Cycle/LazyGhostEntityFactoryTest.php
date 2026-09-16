@@ -13,6 +13,7 @@ use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaEntity;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\LazyGhostEntityFactory;
 use Cycle\ORM\ORMInterface;
@@ -78,6 +79,40 @@ final class LazyGhostEntityFactoryTest extends TestCase
         $factory->upgrade(relMap: $relMap, entity: $readonly, data: ['locked' => 'new']);
 
         self::assertSame('init', $readonly->locked);
+    }
+
+    /**
+     * Смысл всего механизма: Cycle Entity объявлен final, поэтому связи откладываются в
+     * lazy ghost. Пока ghost не тронут, отложенная ссылка лежит в pendingRefs и запроса нет;
+     * первое же обращение к свойству запускает initializer, который резолвит все отложенные
+     * ссылки и раскладывает их по свойствам. Именно на это поведение опирается MediaMapper,
+     * который сознательно НЕ читает relation-свойства в toDomain().
+     */
+    public function testInitializerResolvesPendingRelationOnFirstPropertyAccess(): void
+    {
+        $factory = new LazyGhostEntityFactory();
+        $relMap = RelationMap::build($this->orm(), 'media');
+
+        $lazyGhost = $factory->create(relMap: $relMap, sourceClass: CycleMediaEntity::class);
+
+        self::assertInstanceOf(CycleMediaEntity::class, $lazyGhost);
+        self::assertTrue((new \ReflectionClass(CycleMediaEntity::class))->isUninitializedLazyObject($lazyGhost));
+
+        // Ссылка с уже заданным значением: resolve() отдаёт его без обращения к БД.
+        $reference = new Reference('media', ['media_id' => MediaStorageKey::generate()->value()]);
+        $reference->setValue([]);
+
+        $factory->upgrade(relMap: $relMap, entity: $lazyGhost, data: ['imageConversions' => $reference]);
+
+        // Отложенная связь не резолвится, пока объект не тронут.
+        self::assertTrue((new \ReflectionClass(CycleMediaEntity::class))->isUninitializedLazyObject($lazyGhost));
+
+        // Первое обращение запускает initializer и раскладывает отложенную связь.
+        $imageConversions = $lazyGhost->imageConversions;
+
+        self::assertInstanceOf(MediaImageConversionCollection::class, $imageConversions);
+        self::assertCount(0, $imageConversions);
+        self::assertFalse((new \ReflectionClass(CycleMediaEntity::class))->isUninitializedLazyObject($lazyGhost));
     }
 
     public function testExtractRelationsSkipsNonStringRelationName(): void

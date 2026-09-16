@@ -74,7 +74,10 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         );
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
-        self::assertSame(MediaStatus::Uploaded, $media->status);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // статус в БД проверяется перечитыванием через репозиторий.
+        self::assertSame(MediaStatus::Uploaded, $this->mediaRepository()->findById($media->id)?->status);
         self::assertInstanceOf(MediaUploadedEvent::class, $captured);
         self::assertInstanceOf(MediaConversionPlanDto::class, $captured->plan);
         self::assertCount(1, $captured->plan->image);
@@ -381,7 +384,10 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         ));
 
         self::assertSame(MediaStatus::Uploaded, $result->status);
-        self::assertSame(MediaStatus::Uploaded, $media->status);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // статус в БД проверяется перечитыванием через репозиторий.
+        self::assertSame(MediaStatus::Uploaded, $this->mediaRepository()->findById($media->id)?->status);
         self::assertInstanceOf(MediaUploadedEvent::class, $captured);
     }
 

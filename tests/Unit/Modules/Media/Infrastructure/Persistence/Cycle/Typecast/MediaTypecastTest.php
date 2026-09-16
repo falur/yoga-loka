@@ -5,52 +5,23 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Media\Infrastructure\Persistence\Cycle\Typecast;
 
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
-use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartNumber;
-use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
-use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaExpirationTypecast;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaMultipartPartCollectionTypecast;
-use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaProcessingErrorTypecast;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaWaveformTypecast;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * MediaExpirationTypecast и MediaProcessingErrorTypecast (первая категория «Правила переноса
+ * значений колонок» — null-bridging простого VO) удалены волной E, логика и тесты перенесены в
+ * MediaMapperTest. MediaMultipartPartCollectionTypecast и MediaWaveformTypecast — составной JSON
+ * (вторая категория), остаются Typecast-ами без изменений.
+ */
 final class MediaTypecastTest extends TestCase
 {
-    public function testExpirationTypecastHandlesNullableDate(): void
-    {
-        $expiresAt = new \DateTimeImmutable('2026-05-22 15:00:00');
-
-        self::assertTrue(MediaExpirationTypecast::castDatabaseValue(null)->isPermanent());
-        self::assertSame($expiresAt, MediaExpirationTypecast::castDatabaseValue($expiresAt)->value());
-        self::assertSame($expiresAt, MediaExpirationTypecast::uncastValue(MediaExpiration::temporaryUntil($expiresAt)));
-    }
-
-    public function testExpirationTypecastConvertsMutableDateAndUncastsNull(): void
-    {
-        $mutableDate = new \DateTime('2026-05-22 15:00:00');
-
-        self::assertEquals(
-            \DateTimeImmutable::createFromInterface($mutableDate),
-            MediaExpirationTypecast::castDatabaseValue($mutableDate)->value(),
-        );
-        self::assertNull(MediaExpirationTypecast::uncastValue(null));
-    }
-
-    public function testProcessingErrorTypecastHandlesNullableString(): void
-    {
-        $processingError = MediaProcessingErrorTypecast::castDatabaseValue('Не удалось обработать файл');
-
-        self::assertFalse($processingError->isEmpty());
-        self::assertTrue(MediaProcessingErrorTypecast::castDatabaseValue(null)->isEmpty());
-        self::assertSame('Не удалось обработать файл', MediaProcessingErrorTypecast::uncastValue($processingError));
-        self::assertNull(MediaProcessingErrorTypecast::uncastValue(MediaProcessingError::none()));
-        self::assertNull(MediaProcessingErrorTypecast::uncastValue(null));
-    }
-
     public function testMultipartPartCollectionTypecastRejectsNonArrayJson(): void
     {
         $this->expectException(\InvalidArgumentException::class);

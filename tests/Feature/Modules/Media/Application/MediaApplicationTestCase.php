@@ -11,6 +11,7 @@ use App\Modules\Media\Public\Dto\MediaVideoConversionSpecDto;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
+use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
 use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
@@ -33,9 +34,20 @@ use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Modules\Media\Domain\Repository\MediaRepository;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaAudioConversionEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaImageConversionEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaMultipartUploadEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaVideoConversionEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaAudioConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaImageConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMultipartUploadMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaVideoConversionMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORMInterface;
+use Cycle\ORM\Select;
 use Tests\TestCase;
 
 abstract class MediaApplicationTestCase extends TestCase
@@ -150,13 +162,83 @@ abstract class MediaApplicationTestCase extends TestCase
         );
     }
 
+    /**
+     * Media и её внутренние сущности (конверсии, multipart-загрузка) — чистые доменные сущности
+     * без Cycle-разметки, поэтому в отличие от прежнего (Cycle-нативного) состояния не могут быть
+     * сохранены через generic persist(): EntityManager не знает их роль. Хелпер переводит каждую
+     * сущность в Cycle Entity через соответствующий Mapper перед постановкой в очередь
+     * EntityManager (приём фазы 2, см. AccessRepositoryTest) — сигнатура persist() не меняется,
+     * поэтому ни один из вызывающих тестов не правится.
+     *
+     * toCycleEntity() ищет существующую строку по PK перед вызовом Mapper (по образцу
+     * PostsRepositoryTestCase::toCycleEntity()): без этого повторный persist() уже сохранённой
+     * (например, изменённой handler-ом и затем перечитанной тестом) сущности создавал бы новый
+     * CycleEntity с тем же PK и падал на дублирующемся первичном ключе вместо UPDATE — родная
+     * identity map Cycle доступна только внутри одного findById(), домен её больше не наследует.
+     */
     protected function persist(object ...$entities): void
     {
         foreach ($entities as $entity) {
-            $this->entityManager()->persist($entity);
+            $this->entityManager()->persist($this->toCycleEntity($entity));
         }
 
         $this->entityManager()->run();
+    }
+
+    private function toCycleEntity(object $entity): object
+    {
+        return match (true) {
+            $entity instanceof Media => $this->getContainer()->get(MediaMapper::class)->toCycleEntity(
+                media: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleMediaEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof MediaImageConversion => $this->getContainer()
+                ->get(MediaImageConversionMapper::class)
+                ->toCycleEntity(
+                    imageConversion: $entity,
+                    cycleEntity: $this->findCycleEntityByClass(CycleMediaImageConversionEntity::class, $entity->id->value()),
+                ),
+            $entity instanceof MediaVideoConversion => $this->getContainer()
+                ->get(MediaVideoConversionMapper::class)
+                ->toCycleEntity(
+                    videoConversion: $entity,
+                    cycleEntity: $this->findCycleEntityByClass(CycleMediaVideoConversionEntity::class, $entity->id->value()),
+                ),
+            $entity instanceof MediaAudioConversion => $this->getContainer()
+                ->get(MediaAudioConversionMapper::class)
+                ->toCycleEntity(
+                    audioConversion: $entity,
+                    cycleEntity: $this->findCycleEntityByClass(CycleMediaAudioConversionEntity::class, $entity->id->value()),
+                ),
+            $entity instanceof MediaMultipartUpload => $this->getContainer()
+                ->get(MediaMultipartUploadMapper::class)
+                ->toCycleEntity(
+                    multipartUpload: $entity,
+                    cycleEntity: $this->findCycleEntityByClass(CycleMediaMultipartUploadEntity::class, $entity->id->value()),
+                ),
+            default => throw new \InvalidArgumentException(\sprintf(
+                'persist() не знает Mapper для сущности %s.',
+                $entity::class,
+            )),
+        };
+    }
+
+    /**
+     * @template TCycleEntity of object
+     *
+     * @param class-string<TCycleEntity> $cycleClass
+     *
+     * @return TCycleEntity|null
+     */
+    private function findCycleEntityByClass(string $cycleClass, string $id): object|null
+    {
+        /** @var ORMInterface $orm */
+        $orm = $this->getContainer()->get(ORMInterface::class);
+
+        /** @var Select<TCycleEntity> $select */
+        $select = new Select($orm, $cycleClass);
+
+        return $select->wherePK($id)->fetchOne();
     }
 
     protected function imageConversionSpec(

@@ -28,9 +28,14 @@ final class RecordMediaProcessingFailureHandlerTest extends MediaApplicationTest
             isTransient: true,
         ));
 
-        self::assertSame(MediaStatus::ProcessingFailed, $media->status);
-        self::assertSame(1, $media->processingAttempts->value());
-        self::assertSame('Не удалось обработать изображение', $media->processingError->value());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою отдельно
+        // загруженную через Mapper копию, а не переменную $media теста, поэтому итоговое
+        // состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertSame(MediaStatus::ProcessingFailed, $reloaded->status);
+        self::assertSame(1, $reloaded->processingAttempts->value());
+        self::assertSame('Не удалось обработать изображение', $reloaded->processingError->value());
     }
 
     public function testKeepsReadyMediaIntact(): void
@@ -51,9 +56,11 @@ final class RecordMediaProcessingFailureHandlerTest extends MediaApplicationTest
             isTransient: true,
         ));
 
-        self::assertSame(MediaStatus::Ready, $media->status);
-        self::assertSame(0, $media->processingAttempts->value());
-        self::assertTrue($media->processingError->isEmpty());
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertSame(MediaStatus::Ready, $reloaded->status);
+        self::assertSame(0, $reloaded->processingAttempts->value());
+        self::assertTrue($reloaded->processingError->isEmpty());
     }
 
     public function testRejectsMissingMedia(): void

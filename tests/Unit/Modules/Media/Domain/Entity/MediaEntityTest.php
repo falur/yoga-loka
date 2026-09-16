@@ -279,7 +279,6 @@ final class MediaEntityTest extends TestCase
 
         self::assertSame(MediaAudioConversionType::NormalizedAacM4a, $audioConversion->type);
         self::assertSame(MediaConversionStatus::Ready, $audioConversion->status);
-        self::assertSame($media, $audioConversion->media);
         self::assertTrue($media->id->equals($audioConversion->mediaId));
         self::assertSame(44_100, $audioConversion->sampleRate->value());
         self::assertSame([0, 64, 128, 255], $audioConversion->waveform->peaks());

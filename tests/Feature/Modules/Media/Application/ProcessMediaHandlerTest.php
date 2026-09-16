@@ -50,8 +50,13 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->imagePlan($this->imageConversionSpec()),
         ));
 
-        self::assertTrue($media->isReady());
-        self::assertSame(MediaStorage::Private, $media->storage);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
+        self::assertSame(MediaStorage::Private, $reloaded->storage);
 
         $conversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
         self::assertCount(1, $conversions);
@@ -92,8 +97,13 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->emptyPlan(),
         ));
 
-        self::assertTrue($media->isReady());
-        self::assertSame(MediaStorage::Public, $media->storage);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
+        self::assertSame(MediaStorage::Public, $reloaded->storage);
         self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
@@ -123,7 +133,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->videoPlan($this->videoConversionSpec()),
         ));
 
-        self::assertTrue($media->isReady());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
 
         $videoConversion = $this->mediaRepository()->findVideoConversionsByMediaId($media->id)->first();
         self::assertNotNull($videoConversion);
@@ -160,7 +175,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->audioPlan($this->audioConversionSpec()),
         ));
 
-        self::assertTrue($media->isReady());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
 
         $audioConversion = $this->mediaRepository()->findAudioConversionsByMediaId($media->id)->first();
         self::assertNotNull($audioConversion);
@@ -194,7 +214,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->videoPlan($this->videoConversionSpec()),
         ));
 
-        self::assertTrue($media->isReady());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
         self::assertCount(1, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
     }
 
@@ -222,7 +247,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->audioPlan($this->audioConversionSpec()),
         ));
 
-        self::assertTrue($media->isReady());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
 
         $audioConversions = $this->mediaRepository()->findAudioConversionsByMediaId($media->id);
         self::assertCount(1, $audioConversions);
@@ -301,12 +331,17 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->emptyPlan(),
         ));
 
-        self::assertTrue($media->isReady());
-        self::assertSame(MediaStorage::Public, $media->storage);
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою
+        // отдельно загруженную через Mapper копию, а не переменную $media теста, поэтому
+        // итоговое состояние проверяется перечитыванием через репозиторий.
+        $reloaded = $this->mediaRepository()->findById($media->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isReady());
+        self::assertSame(MediaStorage::Public, $reloaded->storage);
         // Кейс с подменённым сервисом проверяет ветку без конверсий: смену пути на documents/
         // и хранилище по видимости. Реальную перекладку оригинала в постоянное хранилище держит
         // сквозной MediaProcessingFlowTest::testCompleteThenRelayProcessesDocumentToReady.
-        self::assertStringStartsWith('documents/', $media->path->value());
+        self::assertStringStartsWith('documents/', $reloaded->path->value());
         self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 

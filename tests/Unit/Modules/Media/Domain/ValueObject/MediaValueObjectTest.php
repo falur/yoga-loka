@@ -366,6 +366,11 @@ final class MediaValueObjectTest extends TestCase
         self::assertTrue(MediaExpiration::permanent()->equals(MediaExpiration::permanent()));
         self::assertFalse($expiration->equals(MediaExpiration::permanent()));
         self::assertFalse($expiration->equals(MediaExpiration::temporaryUntil($expiresAt->modify('+1 second'))));
+
+        // Контракт \Stringable: срок хранения печатается в формате ATOM, а у постоянного
+        // медиа срока нет — строкой это пустое значение.
+        self::assertSame($expiresAt->format(\DateTimeInterface::ATOM), (string) $expiration);
+        self::assertSame('', (string) MediaExpiration::permanent());
     }
 
     public function testProcessingErrorSerializesAndRejectsEmpty(): void

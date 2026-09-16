@@ -23,6 +23,8 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaImageConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Shared\Domain\ValueObject\UserId;
@@ -43,7 +45,7 @@ trait PersistsMedia
     protected function persistReadyPublicMedia(): Media
     {
         $media = $this->createReadyPublicMedia();
-        $this->persistMediaEntity($media);
+        $this->persistMedia($media);
 
         return $media;
     }
@@ -51,7 +53,7 @@ trait PersistsMedia
     protected function persistNotReadyMedia(): Media
     {
         $media = $this->createMedia();
-        $this->persistMediaEntity($media);
+        $this->persistMedia($media);
 
         return $media;
     }
@@ -60,7 +62,7 @@ trait PersistsMedia
     {
         $media = $this->createReadyPublicMedia();
         $media->markReadyOriginalRemoved();
-        $this->persistMediaEntity($media);
+        $this->persistMedia($media);
 
         return $media;
     }
@@ -82,7 +84,7 @@ trait PersistsMedia
             width: MediaPixelDimension::fromInt(100),
             height: MediaPixelDimension::fromInt(100),
         );
-        $this->persistMediaEntity($conversion);
+        $this->persistImageConversion($conversion);
 
         return $conversion;
     }
@@ -145,10 +147,25 @@ trait PersistsMedia
         );
     }
 
-    private function persistMediaEntity(object $entity): void
+    /**
+     * Media и MediaImageConversion — чистые доменные сущности без Cycle-разметки, поэтому в отличие
+     * от прежнего (Cycle-нативного) состояния не могут быть сохранены через generic persist():
+     * EntityManager не знает их роль. Хелперы переводят их в Cycle Entity через Mapper перед
+     * постановкой в очередь EntityManager (приём фазы 2, см. AccessRepositoryTest).
+     */
+    private function persistMedia(Media $media): void
     {
         $entityManager = $this->getContainer()->get(EntityManagerInterface::class);
-        $entityManager->persist($entity);
+        $entityManager->persist($this->getContainer()->get(MediaMapper::class)->toCycleEntity($media));
+        $entityManager->run();
+    }
+
+    private function persistImageConversion(MediaImageConversion $imageConversion): void
+    {
+        $entityManager = $this->getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist(
+            $this->getContainer()->get(MediaImageConversionMapper::class)->toCycleEntity($imageConversion),
+        );
         $entityManager->run();
     }
 }

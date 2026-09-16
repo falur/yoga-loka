@@ -5,52 +5,34 @@ declare(strict_types=1);
 namespace App\Modules\Media\Domain\Entity;
 
 use App\Modules\Media\Domain\Collection\MediaMultipartPartCollection;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
+use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadId;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
-use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaMultipartPartCollectionTypecast;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\Annotated\Annotation\Relation\BelongsTo;
-use Cycle\ORM\Parser\Typecast;
+use App\Shared\Domain\Trait\HasTimestamps;
 
-#[Entity(
-    role: 'media_multipart_upload',
-    table: 'media_multipart_uploads',
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
+/**
+ * Внутренняя сущность агрегата Media: не более одной активной на медиа, см. MediaImageConversion.
+ */
 final class MediaMultipartUpload
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: MediaMultipartUploadId::class)]
     public private(set) MediaMultipartUploadId $id;
 
-    #[Column(type: 'uuid', name: 'media_id', typecast: MediaId::class)]
     public private(set) MediaId $mediaId;
 
-    #[Column(type: 'string(1024)', name: 'upload_id', typecast: MediaMultipartUploadIdValue::class)]
     public private(set) MediaMultipartUploadIdValue $uploadId;
 
-    #[Column(type: 'integer', name: 'parts_count', typecast: MediaMultipartPartsCount::class)]
     public private(set) MediaMultipartPartsCount $partsCount;
 
-    #[Column(type: 'bigInteger', name: 'part_size', typecast: MediaMultipartPartSize::class)]
     public private(set) MediaMultipartPartSize $partSize;
 
-    #[Column(type: 'bigInteger', name: 'file_size', typecast: MediaFileSize::class)]
     public private(set) MediaFileSize $fileSize;
 
-    #[Column(type: 'json', typecast: MediaMultipartPartCollectionTypecast::class)]
     public private(set) MediaMultipartPartCollection $parts;
-
-    #[BelongsTo(target: Media::class, innerKey: 'media_id', outerKey: 'id', fkOnDelete: 'CASCADE')]
-    public private(set) Media $media;
 
     public static function create(
         Media $media,
@@ -61,7 +43,6 @@ final class MediaMultipartUpload
     ): self {
         $multipartUpload = new self();
         $multipartUpload->id = MediaMultipartUploadId::generate();
-        $multipartUpload->media = $media;
         $multipartUpload->mediaId = $media->id;
         $multipartUpload->uploadId = $uploadId;
         $multipartUpload->partsCount = $partsCount;
@@ -69,6 +50,31 @@ final class MediaMultipartUpload
         $multipartUpload->fileSize = $fileSize;
         $multipartUpload->parts = new MediaMultipartPartCollection();
         $multipartUpload->initializeTimestamps();
+
+        return $multipartUpload;
+    }
+
+    public static function restore(
+        MediaMultipartUploadId $id,
+        MediaId $mediaId,
+        MediaMultipartUploadIdValue $uploadId,
+        MediaMultipartPartsCount $partsCount,
+        MediaMultipartPartSize $partSize,
+        MediaFileSize $fileSize,
+        MediaMultipartPartCollection $parts,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $multipartUpload = new self();
+        $multipartUpload->id = $id;
+        $multipartUpload->mediaId = $mediaId;
+        $multipartUpload->uploadId = $uploadId;
+        $multipartUpload->partsCount = $partsCount;
+        $multipartUpload->partSize = $partSize;
+        $multipartUpload->fileSize = $fileSize;
+        $multipartUpload->parts = $parts;
+        $multipartUpload->createdAt = $createdAt;
+        $multipartUpload->updatedAt = $updatedAt;
 
         return $multipartUpload;
     }

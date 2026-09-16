@@ -26,7 +26,10 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
             mediaIds: [$media->id->value()],
         ));
 
-        self::assertTrue($media->expiration->isPermanent());
+        // Media — чистая доменная сущность без Cycle-разметки: handler мутировал свою отдельно
+        // загруженную через Mapper копию, а не переменную $media теста, поэтому итоговое
+        // состояние проверяется перечитыванием через репозиторий.
+        self::assertTrue($this->mediaRepository()->findById($media->id)?->expiration->isPermanent());
         self::assertSame([$media->id->value()], $result->mediaIds);
     }
 
@@ -44,8 +47,8 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
             mediaIds: [$first->id->value(), $second->id->value()],
         ));
 
-        self::assertTrue($first->expiration->isPermanent());
-        self::assertTrue($second->expiration->isPermanent());
+        self::assertTrue($this->mediaRepository()->findById($first->id)?->expiration->isPermanent());
+        self::assertTrue($this->mediaRepository()->findById($second->id)?->expiration->isPermanent());
         self::assertSame([$first->id->value(), $second->id->value()], $result->mediaIds);
     }
 

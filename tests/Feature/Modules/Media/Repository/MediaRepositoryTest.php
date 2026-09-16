@@ -21,6 +21,7 @@ use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaBitrate;
 use App\Modules\Media\Domain\ValueObject\MediaDuration;
 use App\Modules\Media\Domain\ValueObject\MediaExpiration;
@@ -37,10 +38,21 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Columns\MediaAudioConversionColumns;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Columns\MediaImageConversionColumns;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Columns\MediaVideoConversionColumns;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaAudioConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaImageConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMultipartUploadMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaVideoConversionMapper;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Modules\Media\Domain\Repository\MediaRepository;
+use Cycle\Database\DatabaseInterface;
 use Cycle\ORM\EntityManagerInterface;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
+use Tests\Feature\Modules\Media\Repository\Fixture\RecordingQueryLogger;
 
 final class MediaRepositoryTest extends DatabaseTestCase
 {
@@ -48,7 +60,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
     {
         $media = $this->createMedia();
 
-        $this->entityManager()->persist($media);
+        $this->persistMedia($media);
         $this->entityManager()->run();
 
         $restoredMedia = $this->mediaRepository()->findById($media->id);
@@ -70,11 +82,11 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $audioConversion = $this->createAudioConversion($media);
         $multipartUpload = $this->createMultipartUpload($media);
 
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($imageConversion);
-        $this->entityManager()->persist($videoConversion);
-        $this->entityManager()->persist($audioConversion);
-        $this->entityManager()->persist($multipartUpload);
+        $this->persistMedia($media);
+        $this->persistImageConversion($imageConversion);
+        $this->persistVideoConversion($videoConversion);
+        $this->persistAudioConversion($audioConversion);
+        $this->persistMultipartUpload($multipartUpload);
         $this->entityManager()->run();
 
         $imageConversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
@@ -97,57 +109,107 @@ final class MediaRepositoryTest extends DatabaseTestCase
         self::assertSame('first', $restoredMultipartUpload->parts->first()->eTag->value());
     }
 
-    public function testLazyGhostMapperRestoresRelationsAndKeepsThemAfterSave(): void
+    /**
+     * findById()/findOne() (в отличие от findByIdsWithConversions()) не грузят конверсии: домен
+     * получает пустые коллекции, а не запускает три лишних SELECT ради поля, которое никто не
+     * читает вне findByIdsWithConversions()-потребителя (MediaUrlService). До разделения Domain/Cycle
+     * Entity доступ к $media->imageConversions лениво резолвился Cycle (LazyGhostMapper) при первом
+     * обращении — после разделения Media больше не Cycle-сущность, и лениво резолвить нечего:
+     * MediaMapper::toDomain() сознательно никогда не читает три relation-поля CycleMediaEntity (ни
+     * напрямую, ни через ReflectionProperty::isInitialized() — эмпирически проверено на
+     * php:8.4-cli, что сам вызов isInitialized() на нетронутом lazy-ghost relation-свойстве
+     * запускает его initializer, то есть не «подсматривает» состояние, а форсирует загрузку).
+     * assertCount(0, ...) сам по себе не отличил бы «не грузил» от «грузил, но конверсий нет»,
+     * поэтому здесь дополнительно проверяется реальный SQL через RecordingQueryLogger, подключённый
+     * к Driver на время вызова.
+     */
+    public function testFindByIdDoesNotQueryConversionTables(): void
     {
         $media = $this->createMedia();
         $imageConversion = $this->createImageConversion($media);
         $videoConversion = $this->createVideoConversion($media);
+        $audioConversion = $this->createAudioConversion($media);
 
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($imageConversion);
-        $this->entityManager()->persist($videoConversion);
+        $this->persistMedia($media);
+        $this->persistImageConversion($imageConversion);
+        $this->persistVideoConversion($videoConversion);
+        $this->persistAudioConversion($audioConversion);
         $this->entityManager()->run();
-        $mediaId = $media->id;
-
         $this->cleanOrmHeap();
 
-        $restoredImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
+        $queryLogger = new RecordingQueryLogger();
+        $driver = $this->loggableDriver();
+        $driver->setLogger($queryLogger);
 
-        self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
-        self::assertInstanceOf(Media::class, $restoredImageConversion->media);
-        self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
-
-        $this->cleanOrmHeap();
-
-        $restoredMedia = $this->mediaRepository()->findById($mediaId);
+        try {
+            $restoredMedia = $this->mediaRepository()->findById($media->id);
+        } finally {
+            $driver->setLogger(new NullLogger());
+        }
 
         self::assertInstanceOf(Media::class, $restoredMedia);
-        self::assertTrue($mediaId->equals($restoredMedia->id));
         self::assertInstanceOf(MediaImageConversionCollection::class, $restoredMedia->imageConversions);
-        self::assertInstanceOf(MediaVideoConversionCollection::class, $restoredMedia->videoConversions);
-        self::assertCount(1, $restoredMedia->imageConversions);
-        self::assertCount(1, $restoredMedia->videoConversions);
-
-        $restoredMedia->markReady();
-        $this->entityManager()->persist($restoredMedia);
-        $this->entityManager()->run();
-        $this->cleanOrmHeap();
-
-        $savedMedia = $this->mediaRepository()->findById($mediaId);
-
-        self::assertInstanceOf(Media::class, $savedMedia);
-        self::assertSame(MediaStatus::Ready, $savedMedia->status);
-        self::assertCount(1, $savedMedia->imageConversions);
-        self::assertCount(1, $savedMedia->videoConversions);
+        self::assertCount(0, $restoredMedia->imageConversions);
+        self::assertCount(0, $restoredMedia->videoConversions);
+        self::assertCount(0, $restoredMedia->audioConversions);
+        self::assertSame(
+            [],
+            $queryLogger->queriesTouching(MediaImageConversionColumns::TABLE),
+            'findById() не должен обращаться к таблице конверсий изображения.',
+        );
+        self::assertSame(
+            [],
+            $queryLogger->queriesTouching(MediaVideoConversionColumns::TABLE),
+            'findById() не должен обращаться к таблице конверсий видео.',
+        );
+        self::assertSame(
+            [],
+            $queryLogger->queriesTouching(MediaAudioConversionColumns::TABLE),
+            'findById() не должен обращаться к таблице конверсий звука.',
+        );
+        self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
-    public function testLazyGhostMapperSavesMediaWithoutReadingRelations(): void
+    /**
+     * Обратная проверка к testFindByIdDoesNotQueryConversionTables(): подтверждает, что сам
+     * механизм RecordingQueryLogger реально видит запросы (иначе отсутствие запросов в предыдущем
+     * тесте могло бы означать не «findById() их не делает», а «логгер ничего не ловит»), и что
+     * findByIdsWithConversions() по-прежнему грузит конверсии одним eager-запросом через .load().
+     */
+    public function testFindByIdsWithConversionsDoesQueryConversionTables(): void
     {
         $media = $this->createMedia();
         $imageConversion = $this->createImageConversion($media);
 
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($imageConversion);
+        $this->persistMedia($media);
+        $this->persistImageConversion($imageConversion);
+        $this->entityManager()->run();
+        $this->cleanOrmHeap();
+
+        $queryLogger = new RecordingQueryLogger();
+        $driver = $this->loggableDriver();
+        $driver->setLogger($queryLogger);
+
+        try {
+            $this->mediaRepository()->findByIdsWithConversions($media->id);
+        } finally {
+            $driver->setLogger(new NullLogger());
+        }
+
+        self::assertNotSame(
+            [],
+            $queryLogger->queriesTouching(MediaImageConversionColumns::TABLE),
+            'findByIdsWithConversions() обязан загрузить конверсии изображения одним запросом.',
+        );
+    }
+
+    public function testSavingMediaAfterFindByIdDoesNotTouchConversions(): void
+    {
+        $media = $this->createMedia();
+        $imageConversion = $this->createImageConversion($media);
+
+        $this->persistMedia($media);
+        $this->persistImageConversion($imageConversion);
         $this->entityManager()->run();
         $mediaId = $media->id;
 
@@ -157,8 +219,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
 
         self::assertInstanceOf(Media::class, $restoredMedia);
         $restoredMedia->markReady();
-        $this->entityManager()->persist($restoredMedia);
-        $this->entityManager()->run();
+        $this->mediaRepository()->save($restoredMedia);
         $this->cleanOrmHeap();
 
         $savedMedia = $this->mediaRepository()->findById($mediaId);
@@ -166,50 +227,21 @@ final class MediaRepositoryTest extends DatabaseTestCase
 
         self::assertInstanceOf(Media::class, $savedMedia);
         self::assertSame(MediaStatus::Ready, $savedMedia->status);
-        self::assertInstanceOf(MediaImageConversionCollection::class, $savedMedia->imageConversions);
-        self::assertCount(1, $savedMedia->imageConversions);
         self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
         self::assertTrue($mediaId->equals($savedImageConversion->mediaId));
-    }
-
-    public function testLazyGhostMapperKeepsBelongsToRelationAfterReadingAndSavingConversion(): void
-    {
-        $media = $this->createMedia();
-        $imageConversion = $this->createImageConversion($media);
-
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($imageConversion);
-        $this->entityManager()->run();
-        $mediaId = $media->id;
-
-        $this->cleanOrmHeap();
-
-        $restoredImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
-        self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
-        self::assertInstanceOf(Media::class, $restoredImageConversion->media);
-        self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
-
-        $this->entityManager()->persist($restoredImageConversion);
-        $this->entityManager()->run();
-        $this->cleanOrmHeap();
-
-        $savedImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
-        self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
-        self::assertInstanceOf(Media::class, $savedImageConversion->media);
-        self::assertTrue($mediaId->equals($savedImageConversion->media->id));
     }
 
     public function testExistsReadyForMediaIdReportsReadyConversionPresence(): void
     {
         $mediaWithConversions = $this->createMedia();
-        $this->entityManager()->persist($mediaWithConversions);
-        $this->entityManager()->persist($this->createImageConversion($mediaWithConversions));
-        $this->entityManager()->persist($this->createVideoConversion($mediaWithConversions));
-        $this->entityManager()->persist($this->createAudioConversion($mediaWithConversions));
+        $this->persistMedia($mediaWithConversions);
+        $this->persistImageConversion($this->createImageConversion($mediaWithConversions));
+        $this->persistVideoConversion($this->createVideoConversion($mediaWithConversions));
+        $this->persistAudioConversion($this->createAudioConversion($mediaWithConversions));
         $this->entityManager()->run();
 
         $mediaWithoutConversions = $this->createMedia();
-        $this->entityManager()->persist($mediaWithoutConversions);
+        $this->persistMedia($mediaWithoutConversions);
         $this->entityManager()->run();
 
         self::assertTrue($this->mediaRepository()->hasReadyImageConversion($mediaWithConversions->id));
@@ -225,14 +257,14 @@ final class MediaRepositoryTest extends DatabaseTestCase
     {
         // Есть только не-Ready конверсии (processing/processingFailed) -> готовой нет, метод даёт false.
         $media = $this->createMedia();
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist(
+        $this->persistMedia($media);
+        $this->persistImageConversion(
             $this->createImageConversion(media: $media, status: MediaConversionStatus::Processing),
         );
-        $this->entityManager()->persist(
+        $this->persistVideoConversion(
             $this->createVideoConversion(media: $media, status: MediaConversionStatus::ProcessingFailed),
         );
-        $this->entityManager()->persist(
+        $this->persistAudioConversion(
             $this->createAudioConversion(media: $media, status: MediaConversionStatus::Processing),
         );
         $this->entityManager()->run();
@@ -248,7 +280,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
             expiration: MediaExpiration::temporaryUntil(new \DateTimeImmutable('-1 hour')),
         );
 
-        $this->entityManager()->persist($media);
+        $this->persistMedia($media);
         $this->entityManager()->run();
 
         $expiredMedia = $this->mediaRepository()->findExpired(new \DateTimeImmutable());
@@ -265,9 +297,10 @@ final class MediaRepositoryTest extends DatabaseTestCase
     {
         $first = $this->createMedia();
         $second = $this->createMedia();
-        $this->entityManager()->persist($first);
-        $this->entityManager()->persist($second);
-        $this->entityManager()->persist($this->createImageConversion($first));
+        $this->persistMedia($first);
+        $this->persistMedia($second);
+        $this->persistImageConversion($this->createImageConversion($first));
+        $this->persistVideoConversion($this->createVideoConversion($first));
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -277,14 +310,17 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $restoredFirst = $media->first(static fn(Media $candidate): bool => $candidate->id->equals($first->id));
         self::assertInstanceOf(Media::class, $restoredFirst);
         self::assertCount(1, $restoredFirst->imageConversions);
+        self::assertCount(1, $restoredFirst->videoConversions);
+        self::assertInstanceOf(MediaImageConversion::class, $restoredFirst->imageConversions->first());
+        self::assertInstanceOf(MediaVideoConversion::class, $restoredFirst->videoConversions->first());
     }
 
     public function testStorageKeyIsUnique(): void
     {
         $storageKey = MediaStorageKey::generate();
 
-        $this->entityManager()->persist($this->createMedia(storageKey: $storageKey));
-        $this->entityManager()->persist($this->createMedia(storageKey: $storageKey));
+        $this->persistMedia($this->createMedia(storageKey: $storageKey));
+        $this->persistMedia($this->createMedia(storageKey: $storageKey));
 
         $this->expectException(\Throwable::class);
 
@@ -299,20 +335,33 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $audioConversion = $this->createAudioConversion($media);
         $multipartUpload = $this->createMultipartUpload($media);
 
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($imageConversion);
-        $this->entityManager()->persist($videoConversion);
-        $this->entityManager()->persist($audioConversion);
-        $this->entityManager()->persist($multipartUpload);
+        $this->persistMedia($media);
+        $this->persistImageConversion($imageConversion);
+        $this->persistVideoConversion($videoConversion);
+        $this->persistAudioConversion($audioConversion);
+        $this->persistMultipartUpload($multipartUpload);
         $this->entityManager()->run();
 
-        $this->entityManager()->delete($media);
-        $this->entityManager()->run();
+        $this->mediaRepository()->delete($media);
 
         self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
         self::assertCount(0, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
         self::assertCount(0, $this->mediaRepository()->findAudioConversionsByMediaId($media->id));
         self::assertNull($this->mediaRepository()->findMultipartUploadByMediaId($media->id));
+    }
+
+    /**
+     * Медиа могло быть удалено параллельным сценарием (например повторной командой удаления)
+     * между чтением и записью: домен больше не несёт разметку Cycle, поэтому репозиторий сам
+     * ищет строку перед удалением и молча выходит, если её уже нет.
+     */
+    public function testDeleteIgnoresMediaMissingInDatabase(): void
+    {
+        $missingMedia = $this->createMedia();
+
+        $this->mediaRepository()->delete($missingMedia);
+
+        self::assertNull($this->mediaRepository()->findById($missingMedia->id));
     }
 
     private function createMedia(
@@ -418,8 +467,64 @@ final class MediaRepositoryTest extends DatabaseTestCase
         return $this->getContainer()->get(EntityManagerInterface::class);
     }
 
+    /**
+     * Cycle\Database\Driver\DriverInterface не объявляет setLogger() в своём контракте (его несёт
+     * конкретный Driver через Psr\Log\LoggerAwareInterface), поэтому проверяем это явно, а не
+     * полагаемся на недекларированный метод интерфейса.
+     */
+    private function loggableDriver(): LoggerAwareInterface
+    {
+        $driver = $this->getContainer()->get(DatabaseInterface::class)->getDriver();
+
+        if (!$driver instanceof LoggerAwareInterface) {
+            self::fail('Driver БД не реализует LoggerAwareInterface — RecordingQueryLogger не может быть подключён.');
+        }
+
+        return $driver;
+    }
+
     private function mediaRepository(): MediaRepository
     {
         return $this->getContainer()->get(MediaRepository::class);
+    }
+
+    /**
+     * Media, MediaImageConversion, MediaVideoConversion, MediaAudioConversion и MediaMultipartUpload —
+     * чистые доменные сущности без Cycle-разметки, поэтому в отличие от прежнего (Cycle-нативного)
+     * состояния не могут быть сохранены через generic persist(): EntityManager не знает их роль.
+     * Хелперы переводят их в Cycle Entity через Mapper перед постановкой в очередь EntityManager,
+     * flush остаётся общим — как до разделения (приём фазы 2, см. AccessRepositoryTest).
+     */
+    private function persistMedia(Media $media): void
+    {
+        $this->entityManager()->persist($this->getContainer()->get(MediaMapper::class)->toCycleEntity($media));
+    }
+
+    private function persistImageConversion(MediaImageConversion $imageConversion): void
+    {
+        $this->entityManager()->persist(
+            $this->getContainer()->get(MediaImageConversionMapper::class)->toCycleEntity($imageConversion),
+        );
+    }
+
+    private function persistVideoConversion(MediaVideoConversion $videoConversion): void
+    {
+        $this->entityManager()->persist(
+            $this->getContainer()->get(MediaVideoConversionMapper::class)->toCycleEntity($videoConversion),
+        );
+    }
+
+    private function persistAudioConversion(MediaAudioConversion $audioConversion): void
+    {
+        $this->entityManager()->persist(
+            $this->getContainer()->get(MediaAudioConversionMapper::class)->toCycleEntity($audioConversion),
+        );
+    }
+
+    private function persistMultipartUpload(MediaMultipartUpload $multipartUpload): void
+    {
+        $this->entityManager()->persist(
+            $this->getContainer()->get(MediaMultipartUploadMapper::class)->toCycleEntity($multipartUpload),
+        );
     }
 }

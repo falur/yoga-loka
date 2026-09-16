@@ -7,7 +7,7 @@ namespace App\Modules\Notifications\Application\Query\Notification\ListNotificat
 use App\Modules\Notifications\Application\View\NotificationViewAssembler;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
-use App\Modules\Notifications\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 

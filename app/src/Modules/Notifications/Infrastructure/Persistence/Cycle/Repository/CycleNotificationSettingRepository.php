@@ -2,20 +2,37 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Repository;
+namespace App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository;
 
 use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
+use Cycle\ORM\EntityManagerInterface;
+use Cycle\ORM\ORM;
+use Cycle\ORM\Select;
 
 /**
  * @extends AbstractRepository<NotificationSetting>
  */
-final class NotificationSettingRepository extends AbstractRepository
+final class CycleNotificationSettingRepository extends AbstractRepository implements NotificationSettingRepository
 {
+    /**
+     * @param Select<NotificationSetting> $select
+     */
+    public function __construct(
+        Select $select,
+        ORM $orm,
+        string $role,
+        private EntityManagerInterface $entityManager,
+    ) {
+        parent::__construct(select: $select, orm: $orm, role: $role);
+    }
+
+    #[\Override]
     public function findForUserAndType(UserId $userId, NotificationTypeCode $type): NotificationSettingCollection
     {
         return new NotificationSettingCollection(
@@ -26,6 +43,7 @@ final class NotificationSettingRepository extends AbstractRepository
         );
     }
 
+    #[\Override]
     public function findForUser(UserId $userId): NotificationSettingCollection
     {
         return new NotificationSettingCollection(
@@ -35,6 +53,7 @@ final class NotificationSettingRepository extends AbstractRepository
         );
     }
 
+    #[\Override]
     public function findOneForUserTypeChannel(
         UserId $userId,
         NotificationTypeCode $type,
@@ -45,5 +64,15 @@ final class NotificationSettingRepository extends AbstractRepository
             'type' => $type->value(),
             'channel' => $channel->value,
         ]);
+    }
+
+    #[\Override]
+    public function saveAll(NotificationSettingCollection $notificationSettings): void
+    {
+        foreach ($notificationSettings as $notificationSetting) {
+            $this->entityManager->persist($notificationSetting);
+        }
+
+        $this->entityManager->run();
     }
 }

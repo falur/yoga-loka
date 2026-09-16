@@ -13,7 +13,7 @@ use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**

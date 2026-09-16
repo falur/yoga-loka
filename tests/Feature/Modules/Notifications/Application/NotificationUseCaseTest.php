@@ -35,10 +35,13 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
-use App\Modules\Notifications\Repository\NotificationRepository;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Exception\NotificationDeviceTokenNotFoundException;
+use App\Modules\Notifications\Domain\Exception\NotificationNotFoundException;
+use App\Modules\Notifications\Domain\Exception\UnknownDevicePlatformException;
+use App\Modules\Notifications\Domain\Exception\UnknownNotificationChannelException;
+use App\Modules\Notifications\Domain\Exception\UnknownNotificationTypeException;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
@@ -78,7 +81,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     {
         $notification = $this->persistNotification(UserId::generate());
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(NotificationNotFoundException::class);
 
         $this->commandBus()->dispatch(
             command: new MarkNotificationReadCommand(
@@ -120,7 +123,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
 
     public function testUpdateNotificationSettingsRejectsUnknownType(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(UnknownNotificationTypeException::class);
 
         $this->updateSettings(
             UserId::generate(),
@@ -130,7 +133,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
 
     public function testUpdateNotificationSettingsRejectsUnknownChannel(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(UnknownNotificationChannelException::class);
 
         $this->updateSettings(
             UserId::generate(),
@@ -153,7 +156,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
 
     public function testRegisterDeviceTokenRejectsUnknownPlatform(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(UnknownDevicePlatformException::class);
 
         $this->commandBus()->dispatch(
             command: new RegisterNotificationDeviceTokenCommand(
@@ -180,7 +183,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
 
     public function testRemoveDeviceTokenRejectsMissingToken(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(NotificationDeviceTokenNotFoundException::class);
 
         $this->commandBus()->dispatch(
             command: new RemoveNotificationDeviceTokenCommand(userId: UserId::generate()->value(), token: 'missing-token'),

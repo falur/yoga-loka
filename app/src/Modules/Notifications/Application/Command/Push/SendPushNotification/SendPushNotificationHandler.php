@@ -12,16 +12,15 @@ use App\Modules\Notifications\Application\Dto\NotificationPush;
 use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
 use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollection;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use Psr\Log\LoggerInterface;
 
 /**
  * Отправляет push на активные токены получателя и удаляет токены, признанные FCM невалидными.
  * Без #[Transactional]: внешний вызов FCM не оборачиваем в транзакцию; удаление токенов
- * фиксируется отдельным run().
+ * фиксируется отдельным прогоном репозитория.
  */
 final readonly class SendPushNotificationHandler
 {
@@ -30,7 +29,6 @@ final readonly class SendPushNotificationHandler
         private FcmPushSenderContract $fcmPushSender,
         private OnlinePresenceContract $onlinePresence,
         private MediaContract $media,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -79,18 +77,21 @@ final readonly class SendPushNotificationHandler
             return;
         }
 
+        $invalidDeviceTokens = new NotificationDeviceTokenCollection();
+
         foreach ($deviceTokens as $deviceToken) {
             if (!\in_array(needle: $deviceToken->token->value(), haystack: $invalidTokenValues, strict: true)) {
                 continue;
             }
 
-            $this->entityManager->delete($deviceToken);
+            $invalidDeviceTokens->push($deviceToken);
             $this->logger->debug(message: 'Удалён невалидный push-токен.', context: [
                 'deviceTokenId' => $deviceToken->id->value(),
             ]);
         }
 
-        $this->entityManager->run();
+        // Весь набор невалидных токенов снимается одним прогоном, как и до появления репозитория.
+        $this->notificationDeviceTokenRepository->deleteAll($invalidDeviceTokens);
     }
 
     private function actorPayload(NotificationActorDto|null $actor): NotificationPushActorPayload|null

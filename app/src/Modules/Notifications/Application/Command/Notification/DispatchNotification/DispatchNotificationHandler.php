@@ -21,11 +21,11 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
 use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
-use App\Modules\Notifications\Repository\NotificationRepository;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Domain\Collection\NotificationCollection;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -42,7 +42,6 @@ final readonly class DispatchNotificationHandler
         private NotificationSettingRepository $notificationSettingRepository,
         private NotificationTypeCatalogContract $typeCatalog,
         private IntegrationEventStoreContract $integrationEventStore,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -65,8 +64,15 @@ final readonly class DispatchNotificationHandler
         $defaults = $this->typeCatalog->get($type)->defaultChannels();
         $settings = $this->notificationSettingRepository->findForUserAndType(userId: $userId, type: $type);
 
+        $notifications = new NotificationCollection();
+
         if ($this->channelEnabled(channel: NotificationChannel::Database, settings: $settings, defaults: $defaults)) {
-            $this->createInbox(command: $command, outboxId: $outboxId, userId: $userId, type: $type);
+            $notifications->push($this->createInbox(
+                command: $command,
+                outboxId: $outboxId,
+                userId: $userId,
+                type: $type,
+            ));
         }
 
         if ($this->channelEnabled(channel: NotificationChannel::Push, settings: $settings, defaults: $defaults)) {
@@ -77,7 +83,10 @@ final readonly class DispatchNotificationHandler
             $this->stageRealtime($command);
         }
 
-        $this->entityManager->run();
+        // Единственный прогон сценария: он уносит в базу и созданный инбокс, и события outbox,
+        // поставленные в ту же запись публичным контрактом Outbox. Инбокса могло и не быть —
+        // прогон нужен и тогда, потому что каналы push и realtime уже застейджены.
+        $this->notificationRepository->saveAll($notifications);
     }
 
     private function channelEnabled(
@@ -108,7 +117,7 @@ final readonly class DispatchNotificationHandler
         NotificationOutboxId $outboxId,
         UserId $userId,
         NotificationTypeCode $type,
-    ): void {
+    ): Notification {
         $notification = Notification::create(
             outboxId: $outboxId,
             userId: $userId,
@@ -119,11 +128,12 @@ final readonly class DispatchNotificationHandler
             actor: $this->actor($command->actor),
             triggeredAt: new \DateTimeImmutable($command->createdAt),
         );
-        $this->entityManager->persist($notification);
 
         $this->logger->debug(message: 'Инбокс уведомления создан.', context: [
             'notificationId' => $notification->id->value(),
         ]);
+
+        return $notification;
     }
 
     private function stagePush(DispatchNotificationCommand $command): void

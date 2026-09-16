@@ -7,10 +7,9 @@ namespace App\Modules\Notifications\Application\Command\DeviceToken\RegisterNoti
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Exception\UnknownDevicePlatformException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -23,7 +22,6 @@ final readonly class RegisterNotificationDeviceTokenHandler
 {
     public function __construct(
         private NotificationDeviceTokenRepository $notificationDeviceTokenRepository,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -34,7 +32,7 @@ final readonly class RegisterNotificationDeviceTokenHandler
         $userId = UserId::fromString($command->userId);
         $token = DeviceToken::fromString($command->token);
         $platform = DevicePlatform::tryFrom($command->platform)
-            ?? throw new ValidationException('app.notifications.unknown_platform');
+            ?? throw new UnknownDevicePlatformException();
 
         $deviceToken = $this->notificationDeviceTokenRepository->findByToken($token);
 
@@ -44,8 +42,7 @@ final readonly class RegisterNotificationDeviceTokenHandler
             $deviceToken->reassignTo(userId: $userId, platform: $platform);
         }
 
-        $this->entityManager->persist($deviceToken);
-        $this->entityManager->run();
+        $this->notificationDeviceTokenRepository->save($deviceToken);
 
         $this->logger->debug(message: 'Push-токен зарегистрирован.', context: [
             'deviceTokenId' => $deviceToken->id->value(),

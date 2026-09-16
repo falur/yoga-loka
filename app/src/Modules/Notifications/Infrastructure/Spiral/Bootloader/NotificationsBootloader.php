@@ -6,7 +6,7 @@ namespace App\Modules\Notifications\Infrastructure\Spiral\Bootloader;
 
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
 use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
-use App\Modules\Notifications\Application\Contract\NotificationBulkWriterContract;
+use App\Modules\Notifications\Application\Contract\MarkAllNotificationsReadContract;
 use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
 use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
@@ -17,7 +17,13 @@ use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoClient;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoOnlinePresence;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoService;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\NotificationBulkWriter;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\CycleMarkAllNotificationsRead;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationDeviceTokenRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationSettingRepository;
 use App\Modules\Notifications\Infrastructure\Client\KreaitFcmPushSender;
 use App\Modules\Notifications\Infrastructure\Spiral\PublicApi\NotificationProvider;
 use App\Modules\Notifications\Infrastructure\Spiral\PublicApi\NotificationTypeRegistryProvider;
@@ -34,10 +40,13 @@ use Kreait\Firebase\Factory;
 use Spiral\Boot\Bootloader\Bootloader;
 
 /**
- * Бутлоадер модуля Notifications. Публичные контракты отправки и регистрации видов связаны с
- * адаптерами из Infrastructure/Spiral/PublicApi. Каталог видов — синглтон (stateful, накапливает
- * регистрации модулей-источников). PSR-18 HTTP-клиент Centrifugo и FCM Messaging создаются лениво (фабрики
- * ниже): реальный service-account FCM нужен только при фактической отправке, не на старте/в тестах
+ * Бутлоадер модуля Notifications. Доменные интерфейсы хранения трёх независимых корней агрегатов
+ * связаны со своими Cycle-реализациями, а массовая отметка уведомлений получателя прочитанными
+ * остаётся отдельным портом Application/Contract со своей set-based реализацией. Публичные
+ * контракты отправки и регистрации видов связаны с адаптерами из Infrastructure/Spiral/PublicApi.
+ * Каталог видов — синглтон (stateful, накапливает регистрации модулей-источников). PSR-18
+ * HTTP-клиент Centrifugo и FCM Messaging создаются лениво (фабрики ниже): реальный
+ * service-account FCM нужен только при фактической отправке, не на старте/в тестах
  * с дублёрами. PSR-18 клиент собирается под Centrifugo внутри фабрики centrifugoClient(), а не
  * биндится на глобальный ClientInterface — модуль не занимает общий интерфейс и не навязывает свою
  * конфигурацию Guzzle другим модулям. Регистрируется в Kernel после Outbox-бутлоадеров, т.к. boot()
@@ -46,9 +55,12 @@ use Spiral\Boot\Bootloader\Bootloader;
 final class NotificationsBootloader extends Bootloader
 {
     protected const BINDINGS = [
+        NotificationRepository::class => CycleNotificationRepository::class,
+        NotificationSettingRepository::class => CycleNotificationSettingRepository::class,
+        NotificationDeviceTokenRepository::class => CycleNotificationDeviceTokenRepository::class,
         NotificationContract::class => NotificationProvider::class,
         NotificationTypeRegistryContract::class => NotificationTypeRegistryProvider::class,
-        NotificationBulkWriterContract::class => NotificationBulkWriter::class,
+        MarkAllNotificationsReadContract::class => CycleMarkAllNotificationsRead::class,
         CentrifugoServiceContract::class => CentrifugoService::class,
         FcmPushSenderContract::class => KreaitFcmPushSender::class,
         OnlinePresenceContract::class => CentrifugoOnlinePresence::class,

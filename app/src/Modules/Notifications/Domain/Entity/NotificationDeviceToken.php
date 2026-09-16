@@ -7,7 +7,7 @@ namespace App\Modules\Notifications\Domain\Entity;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Domain\ValueObject\NotificationDeviceTokenId;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationDeviceTokenRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -21,7 +21,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'notificationDeviceToken',
     table: 'notification_device_tokens',
-    repository: NotificationDeviceTokenRepository::class,
+    repository: CycleNotificationDeviceTokenRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class NotificationDeviceToken

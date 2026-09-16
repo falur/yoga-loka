@@ -18,7 +18,7 @@ use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\Notifica
 use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationActionTypeTypecast;
 use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationActorTypecast;
 use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationReadStateTypecast;
-use App\Modules\Notifications\Repository\NotificationRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -33,7 +33,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'notification',
     table: 'notifications',
-    repository: NotificationRepository::class,
+    repository: CycleNotificationRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Notification

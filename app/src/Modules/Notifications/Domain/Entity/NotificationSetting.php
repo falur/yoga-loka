@@ -9,7 +9,7 @@ use App\Modules\Notifications\Domain\Enum\NotificationSettingStatus;
 use App\Modules\Notifications\Domain\ValueObject\NotificationSettingId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationSettingStatusTypecast;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationSettingRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -24,7 +24,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'notificationSetting',
     table: 'notification_settings',
-    repository: NotificationSettingRepository::class,
+    repository: CycleNotificationSettingRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class NotificationSetting

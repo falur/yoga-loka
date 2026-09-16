@@ -14,7 +14,7 @@ use App\Modules\Notifications\Application\Dto\NotificationPush;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\NullLogger;
@@ -212,7 +212,6 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence ?? $this->offlinePresence(),
             media: $this->stubbedMediaContract(),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: new NullLogger(),
         );
     }

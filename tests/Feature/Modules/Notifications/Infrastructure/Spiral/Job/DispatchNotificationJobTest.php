@@ -12,8 +12,8 @@ use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
-use App\Modules\Notifications\Repository\NotificationRepository;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
@@ -72,15 +72,15 @@ final class DispatchNotificationJobTest extends DatabaseTestCase
         $registry = new NotificationTypeRegistry();
         $registry->register(FixtureNotificationTypeDefinition::allChannels(self::TYPE));
 
-        $failingEntityManager = $this->createStub(EntityManagerInterface::class);
-        $failingEntityManager->method('run')->willThrowException(new \RuntimeException('БД недоступна.'));
+        // Отказ базы на записи сценария: прогон делает репозиторий, поэтому падение имитирует он.
+        $failingNotificationRepository = $this->createStub(NotificationRepository::class);
+        $failingNotificationRepository->method('saveAll')->willThrowException(new \RuntimeException('БД недоступна.'));
 
         $handler = new DispatchNotificationHandler(
-            notificationRepository: $this->notificationRepository(),
+            notificationRepository: $failingNotificationRepository,
             notificationSettingRepository: $this->getContainer()->get(NotificationSettingRepository::class),
             typeCatalog: $registry,
             integrationEventStore: new RecordingOutboxEventStore(),
-            entityManager: $failingEntityManager,
             logger: new NullLogger(),
         );
 

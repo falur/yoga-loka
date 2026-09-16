@@ -20,8 +20,8 @@ use App\Modules\Notifications\Domain\Enum\NotificationSettingStatus;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
-use App\Modules\Notifications\Repository\NotificationRepository;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
@@ -219,7 +219,6 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
             notificationSettingRepository: $this->getContainer()->get(NotificationSettingRepository::class),
             typeCatalog: $registry,
             integrationEventStore: $store,
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

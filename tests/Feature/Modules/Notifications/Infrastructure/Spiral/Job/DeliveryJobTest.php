@@ -20,7 +20,7 @@ use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
@@ -150,7 +150,6 @@ final class DeliveryJobTest extends DatabaseTestCase
             fcmPushSender: $fcmPushSender,
             onlinePresence: $onlinePresence,
             media: $this->stubbedMediaContract(),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: new NullLogger(),
         );
     }

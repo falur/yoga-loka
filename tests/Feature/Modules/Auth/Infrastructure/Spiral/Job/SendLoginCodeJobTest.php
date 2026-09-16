@@ -6,6 +6,7 @@ namespace Tests\Feature\Modules\Auth\Infrastructure\Spiral\Job;
 
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeHandler;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
+use App\Modules\Auth\Application\Contract\TranslatorContract;
 use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
@@ -15,7 +16,6 @@ use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\NullLogger;
 use Ramsey\Uuid\Uuid;
 use Spiral\Queue\Exception\RetryException;
-use Spiral\Translator\TranslatorInterface;
 use Tests\Feature\Modules\Auth\Application\Fixture\RecordingLoginCodeMailer;
 use Tests\TestCase;
 
@@ -71,7 +71,7 @@ final class SendLoginCodeJobTest extends TestCase
     {
         return new SendLoginCodeHandler(
             loginCodeMailer: $loginCodeMailer,
-            translator: $this->getContainer()->get(TranslatorInterface::class),
+            translator: $this->getContainer()->get(TranslatorContract::class),
             localeResolver: $this->getContainer()->get(LocaleResolver::class),
         );
     }

@@ -15,6 +15,7 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\AuthTokenMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use Illuminate\Support\Collection;
 use Psr\Log\NullLogger;
@@ -86,8 +87,9 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
             device: $device,
             now: $now->sub(new \DateInterval('PT2H')),
         );
-        $this->entityManager()->persist($expiredAccess);
-        $this->entityManager()->persist($liveRefresh);
+        $authTokenMapper = new AuthTokenMapper();
+        $this->entityManager()->persist($authTokenMapper->toCycleEntity($expiredAccess));
+        $this->entityManager()->persist($authTokenMapper->toCycleEntity($liveRefresh));
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 

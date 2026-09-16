@@ -18,10 +18,14 @@ use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\LoginCodeMapper;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\RegistrationTicketMapper;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\SpiralTokenStorage;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
@@ -495,7 +499,7 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
         );
         $user->confirmEmail();
 
-        $this->entityManager()->persist($user);
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
         $this->entityManager()->run();
     }
 
@@ -514,7 +518,7 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
             $loginCode->registerFailedAttempt($now);
         }
 
-        $this->entityManager()->persist($loginCode);
+        $this->entityManager()->persist((new LoginCodeMapper())->toCycleEntity($loginCode));
         $this->entityManager()->run();
     }
 
@@ -529,7 +533,7 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
             now: $now,
         );
 
-        $this->entityManager()->persist($ticket);
+        $this->entityManager()->persist((new RegistrationTicketMapper())->toCycleEntity($ticket));
         $this->entityManager()->run();
     }
 
@@ -554,7 +558,7 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
 
     private function sessionIdOf(string $accessToken): string
     {
-        $token = $this->getContainer()->get(AuthTokenStorageContract::class)->load($accessToken);
+        $token = $this->getContainer()->get(SpiralTokenStorage::class)->load($accessToken);
         self::assertInstanceOf(TokenInterface::class, $token);
 
         return $token->getPayload()['sessionID'];

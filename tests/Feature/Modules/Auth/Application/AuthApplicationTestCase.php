@@ -11,8 +11,12 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
-use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\LoginCodeMapper;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\RegistrationTicketMapper;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\AuthTokenIssuer;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\AuthTokenIssuing;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\SpiralTokenStorage;
 use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
 use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
@@ -25,6 +29,7 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
@@ -43,9 +48,33 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
         return new FakeSecretHasher();
     }
 
-    protected function tokenStorage(): CycleTokenStorage
+    /**
+     * Доменная граница AuthTokenStorageContract (issuePair/rotate/revokeSession) — тот же
+     * биндинг, что и в AuthBootloader.
+     */
+    protected function tokenStorage(): AuthTokenIssuer
     {
-        return new CycleTokenStorage(
+        return new AuthTokenIssuer(
+            authTokenRepository: $this->authTokenRepository(),
+            authTokenIssuing: $this->authTokenIssuing(),
+        );
+    }
+
+    /**
+     * Vendor-граница Spiral\Auth\TokenStorageInterface (load) — тот же биндинг, что и в
+     * AuthBootloader под именем 'cycle'.
+     */
+    protected function spiralTokenStorage(): SpiralTokenStorage
+    {
+        return new SpiralTokenStorage(
+            authTokenRepository: $this->authTokenRepository(),
+            authTokenIssuing: $this->authTokenIssuing(),
+        );
+    }
+
+    private function authTokenIssuing(): AuthTokenIssuing
+    {
+        return new AuthTokenIssuing(
             authTokenRepository: $this->authTokenRepository(),
             tokenGenerator: new RandomTokenGenerator(),
         );
@@ -83,6 +112,11 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
         return new FindUserForAuthHandler(userRepository: $this->userRepository());
     }
 
+    /**
+     * User — чистая доменная сущность без Cycle-разметки, поэтому не может быть сохранена через
+     * generic persist(): EntityManager не знает её роль. Хелпер переводит User в Cycle Entity
+     * через UserMapper перед прогоном, как это уже делает UserApplicationTestCase.
+     */
     protected function persistUser(string $email, string $nickname, bool $banned = false): User
     {
         $user = User::create(
@@ -97,12 +131,16 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
             $user->ban();
         }
 
-        $this->entityManager()->persist($user);
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
         $this->entityManager()->run();
 
         return $user;
     }
 
+    /**
+     * LoginCode — чистая доменная сущность без Cycle-разметки, поэтому персист идёт через
+     * LoginCodeMapper так же, как это делает CycleLoginCodeRepository.
+     */
     protected function persistLoginCode(
         string $email,
         string $code,
@@ -123,12 +161,16 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
             $loginCode->registerFailedAttempt($now);
         }
 
-        $this->entityManager()->persist($loginCode);
+        $this->entityManager()->persist((new LoginCodeMapper())->toCycleEntity($loginCode));
         $this->entityManager()->run();
 
         return $loginCode;
     }
 
+    /**
+     * RegistrationTicket — чистая доменная сущность без Cycle-разметки, поэтому персист идёт
+     * через RegistrationTicketMapper так же, как это делает CycleRegistrationTicketRepository.
+     */
     protected function persistRegistrationTicket(
         string $email,
         string $ticketRaw,
@@ -143,7 +185,7 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
             now: $now,
         );
 
-        $this->entityManager()->persist($ticket);
+        $this->entityManager()->persist((new RegistrationTicketMapper())->toCycleEntity($ticket));
         $this->entityManager()->run();
 
         return $ticket;

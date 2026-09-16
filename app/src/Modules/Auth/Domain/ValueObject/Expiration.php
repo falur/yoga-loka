@@ -9,7 +9,8 @@ use App\Shared\Domain\Trait\ComparesDateTimeToMicroseconds;
 /**
  * Момент истечения срока (кода, талона, токена). Единый VO для всех TTL: отличается только
  * длительностью при создании. after() считает now + seconds, fromDateTime восстанавливает
- * сохранённый момент (граница БД через ExpirationTypecast).
+ * сохранённый момент (граница БД — нативный datetime-typecast Cycle на Cycle Entity, значение
+ * передаёт Mapper).
  */
 final readonly class Expiration implements \Stringable, \JsonSerializable
 {

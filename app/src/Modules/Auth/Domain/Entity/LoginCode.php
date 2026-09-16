@@ -10,41 +10,22 @@ use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
-use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ConsumptionTypecast;
-use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ExpirationTypecast;
-use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleLoginCodeRepository;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
+use App\Shared\Domain\Trait\HasTimestamps;
 
-#[Entity(
-    role: 'auth_login_code',
-    table: 'auth_login_codes',
-    repository: CycleLoginCodeRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class LoginCode
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: LoginCodeId::class)]
     public private(set) LoginCodeId $id;
 
-    #[Column(type: 'string(254)', typecast: EmailAddress::class)]
     public private(set) EmailAddress $email;
 
-    #[Column(type: 'text', name: 'code_hash', typecast: SecretHash::class)]
     public private(set) SecretHash $codeHash;
 
-    #[Column(type: 'datetime', name: 'expires_at', typecast: ExpirationTypecast::class)]
     public private(set) Expiration $expiration;
 
-    #[Column(type: 'integer', typecast: CodeAttempts::class)]
     public private(set) CodeAttempts $attempts;
 
-    #[Column(type: 'datetime', name: 'consumed_at', nullable: true, typecast: ConsumptionTypecast::class)]
     public private(set) Consumption $consumption;
 
     public static function issue(
@@ -62,6 +43,29 @@ final class LoginCode
         $loginCode->attempts = CodeAttempts::initial();
         $loginCode->consumption = Consumption::notConsumed();
         $loginCode->initializeTimestamps($now);
+
+        return $loginCode;
+    }
+
+    public static function restore(
+        LoginCodeId $id,
+        EmailAddress $email,
+        SecretHash $codeHash,
+        Expiration $expiration,
+        CodeAttempts $attempts,
+        Consumption $consumption,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $loginCode = new self();
+        $loginCode->id = $id;
+        $loginCode->email = $email;
+        $loginCode->codeHash = $codeHash;
+        $loginCode->expiration = $expiration;
+        $loginCode->attempts = $attempts;
+        $loginCode->consumption = $consumption;
+        $loginCode->createdAt = $createdAt;
+        $loginCode->updatedAt = $updatedAt;
 
         return $loginCode;
     }

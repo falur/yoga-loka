@@ -20,8 +20,9 @@ use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Access\AuthenticatedRouteRule;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Access\PublicRouteRule;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
-use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\AuthTokenIssuer;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\SpiralTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\UserActorProvider;
 use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
@@ -61,7 +62,7 @@ final class AuthBootloader extends Bootloader
         RegistrationTicketRepository::class => CycleRegistrationTicketRepository::class,
         SecretHasherContract::class => HmacSecretHasher::class,
         TokenGeneratorContract::class => RandomTokenGenerator::class,
-        AuthTokenStorageContract::class => CycleTokenStorage::class,
+        AuthTokenStorageContract::class => AuthTokenIssuer::class,
         LoginCodeMailerContract::class => SpiralLoginCodeMailer::class,
     ];
 
@@ -90,7 +91,7 @@ final class AuthBootloader extends Bootloader
             name: 'header',
             transport: new HeaderTransport(header: 'Authorization', valueFormat: 'Bearer %s'),
         );
-        $httpAuth->addTokenStorage(name: 'cycle', storage: CycleTokenStorage::class);
+        $httpAuth->addTokenStorage(name: 'cycle', storage: SpiralTokenStorage::class);
         $auth->addActorProvider(UserActorProvider::class);
     }
 

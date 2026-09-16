@@ -10,9 +10,10 @@ use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**
- * Доменная граница хранилища токенов для Application-сценариев. Реализуется тем же адаптером,
- * что и Spiral\Auth\TokenStorageInterface (CycleTokenStorage), но хендлеры зависят только от
- * этого контракта, а auth-middleware — от фреймворк-интерфейса.
+ * Доменная граница хранилища токенов для Application-сценариев. Реализуется адаптером
+ * AuthTokenIssuer, а Spiral\Auth\TokenStorageInterface — отдельным адаптером SpiralTokenStorage;
+ * оба делят общий приём выпуска токена AuthTokenIssuing. Хендлеры зависят только от этого
+ * контракта, а auth-middleware — от фреймворк-интерфейса.
  */
 interface AuthTokenStorageContract
 {

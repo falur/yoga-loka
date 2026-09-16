@@ -7,7 +7,8 @@ namespace Tests\Kernel\Modules\Auth;
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Contract\TokenGeneratorContract;
-use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\AuthTokenIssuer;
+use App\Modules\Auth\Infrastructure\Spiral\Auth\SpiralTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Access\AuthenticatedRouteRule;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Access\PublicRouteRule;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
@@ -33,14 +34,14 @@ final class AuthBootloaderTest extends TestCase
     {
         self::assertInstanceOf(HmacSecretHasher::class, $this->getContainer()->get(SecretHasherContract::class));
         self::assertInstanceOf(RandomTokenGenerator::class, $this->getContainer()->get(TokenGeneratorContract::class));
-        self::assertInstanceOf(CycleTokenStorage::class, $this->getContainer()->get(AuthTokenStorageContract::class));
+        self::assertInstanceOf(AuthTokenIssuer::class, $this->getContainer()->get(AuthTokenStorageContract::class));
     }
 
-    public function testCycleTokenStorageRegisteredUnderCycleName(): void
+    public function testSpiralTokenStorageRegisteredUnderCycleName(): void
     {
         $storage = $this->getContainer()->get(TokenStorageProviderInterface::class)->getStorage('cycle');
 
-        self::assertInstanceOf(CycleTokenStorage::class, $storage);
+        self::assertInstanceOf(SpiralTokenStorage::class, $storage);
     }
 
     public function testQueueRegistersSendLoginCodeJobWithOutboxSerializer(): void

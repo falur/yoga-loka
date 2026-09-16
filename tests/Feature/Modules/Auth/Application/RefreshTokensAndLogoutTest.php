@@ -24,8 +24,8 @@ final class RefreshTokensAndLogoutTest extends AuthApplicationTestCase
 
         self::assertNotSame($pair->refreshToken, $newPair->refreshToken);
         self::assertNotSame($pair->accessToken, $newPair->accessToken);
-        self::assertNull($this->tokenStorage()->load($pair->refreshToken));
-        self::assertInstanceOf(TokenInterface::class, $this->tokenStorage()->load($newPair->accessToken));
+        self::assertNull($this->spiralTokenStorage()->load($pair->refreshToken));
+        self::assertInstanceOf(TokenInterface::class, $this->spiralTokenStorage()->load($newPair->accessToken));
     }
 
     public function testRefreshRejectsInvalidToken(): void
@@ -38,13 +38,13 @@ final class RefreshTokensAndLogoutTest extends AuthApplicationTestCase
     public function testLogoutRevokesWholeSession(): void
     {
         $pair = $this->tokenStorage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
-        $accessView = $this->tokenStorage()->load($pair->accessToken);
+        $accessView = $this->spiralTokenStorage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 
         $this->logoutHandler()->handle(new LogoutCommand(authSessionId: $accessView->getPayload()['sessionID']));
 
-        self::assertNull($this->tokenStorage()->load($pair->accessToken));
-        self::assertNull($this->tokenStorage()->load($pair->refreshToken));
+        self::assertNull($this->spiralTokenStorage()->load($pair->accessToken));
+        self::assertNull($this->spiralTokenStorage()->load($pair->refreshToken));
     }
 
     private function refreshHandler(): RefreshTokensHandler

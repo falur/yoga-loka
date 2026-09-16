@@ -24,6 +24,9 @@ use App\Modules\Auth\Domain\ValueObject\UnknownUserAgent;
 use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
 use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\AuthTokenMapper;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\LoginCodeMapper;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\RegistrationTicketMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;
@@ -296,29 +299,51 @@ final class AuthRepositoryTest extends DatabaseTestCase
         self::assertNull($this->authTokenRepository()->findByHash(TokenHash::fromRawToken('missing')));
     }
 
+    /**
+     * Токен мог быть удалён параллельным отзывом сессии между чтением и удалением: домен больше
+     * не несёт разметку Cycle, поэтому репозиторий сам ищет строку перед удалением и молча
+     * выходит, если её уже нет, — повторный отзыв не должен падать.
+     */
+    public function testDeleteIgnoresTokenMissingInDatabase(): void
+    {
+        $missingToken = $this->authToken(
+            userId: UserId::generate(),
+            sessionId: SessionId::generate(),
+            type: AuthTokenType::Access,
+            rawToken: 'never-stored',
+            ttlSeconds: 3600,
+            device: SessionDevice::unknown(),
+        );
+
+        $this->authTokenRepository()->delete($missingToken);
+
+        self::assertNull($this->authTokenRepository()->findByHash(TokenHash::fromRawToken('never-stored')));
+    }
+
     public function testRejectsDuplicateTokenHash(): void
     {
         $userId = UserId::generate();
         $sessionId = SessionId::generate();
+        $authTokenMapper = new AuthTokenMapper();
         $this->entityManager()->persist(
-            $this->authToken(
+            $authTokenMapper->toCycleEntity($this->authToken(
                 userId: $userId,
                 sessionId: $sessionId,
                 type: AuthTokenType::Access,
                 rawToken: 'dup',
                 ttlSeconds: 3600,
                 device: SessionDevice::unknown(),
-            ),
+            )),
         );
         $this->entityManager()->persist(
-            $this->authToken(
+            $authTokenMapper->toCycleEntity($this->authToken(
                 userId: $userId,
                 sessionId: $sessionId,
                 type: AuthTokenType::Refresh,
                 rawToken: 'dup',
                 ttlSeconds: 3600,
                 device: SessionDevice::unknown(),
-            ),
+            )),
         );
 
         $this->expectException(\Throwable::class);
@@ -368,13 +393,26 @@ final class AuthRepositoryTest extends DatabaseTestCase
         );
     }
 
-    private function persist(object ...$entities): void
+    /**
+     * LoginCode/RegistrationTicket/AuthToken — чистые доменные сущности без Cycle-разметки,
+     * поэтому персист идёт через их Mapper, как это делают одноимённые CycleRepository.
+     */
+    private function persist(LoginCode|RegistrationTicket|AuthToken ...$entities): void
     {
         foreach ($entities as $entity) {
-            $this->entityManager()->persist($entity);
+            $this->entityManager()->persist($this->toCycleEntity($entity));
         }
 
         $this->entityManager()->run();
+    }
+
+    private function toCycleEntity(LoginCode|RegistrationTicket|AuthToken $entity): object
+    {
+        return match (true) {
+            $entity instanceof LoginCode => (new LoginCodeMapper())->toCycleEntity($entity),
+            $entity instanceof RegistrationTicket => (new RegistrationTicketMapper())->toCycleEntity($entity),
+            $entity instanceof AuthToken => (new AuthTokenMapper())->toCycleEntity($entity),
+        };
     }
 
     private function entityManager(): EntityManagerInterface

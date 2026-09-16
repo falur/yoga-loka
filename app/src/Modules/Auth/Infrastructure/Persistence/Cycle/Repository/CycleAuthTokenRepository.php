@@ -9,25 +9,30 @@ use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Columns\AuthTokenColumns;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Entity\CycleAuthTokenEntity;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Mapper\AuthTokenMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
+use Cycle\Database\Injection\Parameter;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<AuthToken>
+ * @extends AbstractRepository<CycleAuthTokenEntity>
  */
 final class CycleAuthTokenRepository extends AbstractRepository implements AuthTokenRepository
 {
     /**
-     * @param Select<AuthToken> $select
+     * @param Select<CycleAuthTokenEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private AuthTokenMapper $authTokenMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -36,29 +41,42 @@ final class CycleAuthTokenRepository extends AbstractRepository implements AuthT
     #[\Override]
     public function findByHash(TokenHash $tokenHash): AuthToken|null
     {
-        return $this->select()
-            ->where('token_hash', $tokenHash->value())
+        /** @var CycleAuthTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->select()
+            ->where(AuthTokenColumns::TOKEN_HASH, $tokenHash->value())
             ->fetchOne();
+
+        return $cycleEntity === null ? null : $this->authTokenMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function findByHashForUpdate(TokenHash $tokenHash): AuthToken|null
     {
-        return $this->select()
-            ->where('token_hash', $tokenHash->value())
+        /** @var CycleAuthTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->select()
+            ->where(AuthTokenColumns::TOKEN_HASH, $tokenHash->value())
             ->forUpdate()
             ->fetchOne();
+
+        return $cycleEntity === null ? null : $this->authTokenMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function findBySessionIdForUpdate(SessionId $sessionId): AuthTokenCollection
     {
-        return new AuthTokenCollection(
-            $this->select()
-                ->where('session_id', $sessionId->value())
-                ->forUpdate()
-                ->fetchAll(),
-        );
+        $authTokenCollection = new AuthTokenCollection();
+
+        /** @var iterable<CycleAuthTokenEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(AuthTokenColumns::SESSION_ID, $sessionId->value())
+            ->forUpdate()
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $authTokenCollection->push($this->authTokenMapper->toDomain($cycleEntity));
+        }
+
+        return $authTokenCollection;
     }
 
     /**
@@ -68,49 +86,85 @@ final class CycleAuthTokenRepository extends AbstractRepository implements AuthT
     #[\Override]
     public function findActiveByUserId(UserId $userId, \DateTimeImmutable $now): AuthTokenCollection
     {
-        return new AuthTokenCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->where('expires_at', '>', $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS))
-                ->orderBy(expression: 'session_id', direction: 'DESC')
-                ->orderBy(expression: 'created_at')
-                ->fetchAll(),
-        );
+        $authTokenCollection = new AuthTokenCollection();
+
+        /** @var iterable<CycleAuthTokenEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(AuthTokenColumns::USER_ID, $userId->value())
+            ->where(AuthTokenColumns::EXPIRES_AT, '>', $now->format(DatabaseDateTimeFormat::WITH_MICROSECONDS))
+            ->orderBy(expression: AuthTokenColumns::SESSION_ID, direction: 'DESC')
+            ->orderBy(expression: AuthTokenColumns::CREATED_AT)
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $authTokenCollection->push($this->authTokenMapper->toDomain($cycleEntity));
+        }
+
+        return $authTokenCollection;
     }
 
     #[\Override]
     public function findByUserAndSessionForUpdate(UserId $userId, SessionId $sessionId): AuthTokenCollection
     {
-        return new AuthTokenCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->where('session_id', $sessionId->value())
-                ->forUpdate()
-                ->fetchAll(),
-        );
+        $authTokenCollection = new AuthTokenCollection();
+
+        /** @var iterable<CycleAuthTokenEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(AuthTokenColumns::USER_ID, $userId->value())
+            ->where(AuthTokenColumns::SESSION_ID, $sessionId->value())
+            ->forUpdate()
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $authTokenCollection->push($this->authTokenMapper->toDomain($cycleEntity));
+        }
+
+        return $authTokenCollection;
     }
 
     #[\Override]
     public function save(AuthToken $authToken): void
     {
+        /** @var CycleAuthTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([AuthTokenColumns::ID => $authToken->id->value()]);
+
         $this->entityManager
-            ->persist($authToken)
+            ->persist($this->authTokenMapper->toCycleEntity(
+                authToken: $authToken,
+                cycleEntity: $cycleEntity,
+            ))
             ->run();
     }
 
     #[\Override]
     public function delete(AuthToken $authToken): void
     {
+        /** @var CycleAuthTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([AuthTokenColumns::ID => $authToken->id->value()]);
+
+        if ($cycleEntity === null) {
+            return;
+        }
+
         $this->entityManager
-            ->delete($authToken)
+            ->delete($cycleEntity)
             ->run();
     }
 
     #[\Override]
     public function deleteAll(AuthTokenCollection $authTokens): void
     {
-        foreach ($authTokens as $authToken) {
-            $this->entityManager->delete($authToken);
+        if (!$authTokens->isEmpty()) {
+            /** @var iterable<CycleAuthTokenEntity> $cycleEntities */
+            $cycleEntities = $this->select()
+                ->where(AuthTokenColumns::ID, 'in', new Parameter($authTokens->mapToList(
+                    static fn(AuthToken $authToken): string => $authToken->id->value(),
+                )))
+                ->fetchAll();
+
+            foreach ($cycleEntities as $cycleEntity) {
+                $this->entityManager->delete($cycleEntity);
+            }
         }
 
         $this->entityManager->run();

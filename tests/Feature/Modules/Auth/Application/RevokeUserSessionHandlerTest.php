@@ -20,7 +20,7 @@ final class RevokeUserSessionHandlerTest extends AuthApplicationTestCase
     {
         $userId = UserId::generate();
         $pair = $this->tokenStorage()->issuePair(userId: $userId, device: SessionDevice::unknown());
-        $accessView = $this->tokenStorage()->load($pair->accessToken);
+        $accessView = $this->spiralTokenStorage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 
         $this->handler()->handle(new RevokeUserSessionCommand(
@@ -28,14 +28,14 @@ final class RevokeUserSessionHandlerTest extends AuthApplicationTestCase
             sessionId: $accessView->getPayload()['sessionID'],
         ));
 
-        self::assertNull($this->tokenStorage()->load($pair->accessToken));
-        self::assertNull($this->tokenStorage()->load($pair->refreshToken));
+        self::assertNull($this->spiralTokenStorage()->load($pair->accessToken));
+        self::assertNull($this->spiralTokenStorage()->load($pair->refreshToken));
     }
 
     public function testThrowsForForeignSession(): void
     {
         $pair = $this->tokenStorage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
-        $accessView = $this->tokenStorage()->load($pair->accessToken);
+        $accessView = $this->spiralTokenStorage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 
         $this->expectException(SessionNotFoundException::class);

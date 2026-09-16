@@ -8,7 +8,7 @@ use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Exception\OutboxMessageLoadingException;
 use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 
 /**
  * Чтение интеграционного события из outbox: строка должна существовать, а её тип — совпасть
@@ -17,14 +17,14 @@ use App\Modules\Outbox\Repository\OutboxEventRepository;
 final readonly class LoadIntegrationEventHandler
 {
     public function __construct(
-        private OutboxEventRepository $outboxEventRepository,
+        private StoredOutboxEventRepository $storedOutboxEventRepository,
         private OutboxMessageSerializerContract $outboxMessageSerializer,
     ) {}
 
     public function handle(LoadIntegrationEventQuery $query): LoadIntegrationEventResult
     {
         $outboxEventId = OutboxEventId::fromString($query->outboxEventId);
-        $storedOutboxEvent = $this->outboxEventRepository->findById($outboxEventId)
+        $storedOutboxEvent = $this->storedOutboxEventRepository->findById($outboxEventId)
             ?? throw OutboxMessageLoadingException::eventNotFound(
                 outboxEventId: $outboxEventId,
                 expectedMessageClass: $query->expectedEventClass,

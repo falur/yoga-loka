@@ -15,7 +15,7 @@ use App\Modules\Auth\Domain\ValueObject\UserAgent;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ExpirationTypecast;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\IpTypecast;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\UserAgentTypecast;
-use App\Modules\Auth\Repository\AuthTokenRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleAuthTokenRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -26,7 +26,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'auth_token',
     table: 'auth_tokens',
-    repository: AuthTokenRepository::class,
+    repository: CycleAuthTokenRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class AuthToken

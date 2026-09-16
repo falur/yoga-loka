@@ -17,7 +17,7 @@ use App\Modules\Outbox\Infrastructure\Spiral\PublicApi\IntegrationEventLoaderPro
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use CuyZ\Valinor\Mapper\MappingError;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
@@ -93,7 +93,7 @@ final class IntegrationEventLoaderTest extends DatabaseTestCase
         $integrationEventLoader = new IntegrationEventLoaderProvider(
             queryBus: $this->getContainer()->get(QueryBusInterface::class),
             loadIntegrationEventHandler: new LoadIntegrationEventHandler(
-                outboxEventRepository: $this->getContainer()->get(OutboxEventRepository::class),
+                storedOutboxEventRepository: $this->getContainer()->get(StoredOutboxEventRepository::class),
                 outboxMessageSerializer: new DifferentIntegrationEventSerializer(),
             ),
         );

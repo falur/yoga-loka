@@ -9,9 +9,8 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
-use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Spiral\Core\CoreInterceptorInterface;
 use Spiral\Core\CoreInterface;
@@ -20,8 +19,7 @@ use Spiral\Queue\Exception\RetryException;
 final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInterface
 {
     public function __construct(
-        private OutboxEventRepository $outboxEventRepository,
-        private EntityManagerInterface $entityManager,
+        private StoredOutboxEventRepository $storedOutboxEventRepository,
         private OutboxConfig $outboxConfig,
         private LoggerInterface $logger,
         private OutboxQueueSerializer $outboxQueueSerializer,
@@ -43,7 +41,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
             return $core->callAction(controller: $controller, action: $action, parameters: $parameters);
         }
 
-        $storedOutboxEvent = $this->outboxEventRepository->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository->findById($outboxEventId);
 
         if ($storedOutboxEvent === null) {
             $this->logger->warning(message: 'Outbox interceptor не нашёл событие для задачи и не запустил Job.', context: [
@@ -78,8 +76,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
 
         $now = new \DateTimeImmutable();
         $storedOutboxEvent->markHandled($now);
-        $this->entityManager->persist($storedOutboxEvent);
-        $this->entityManager->run();
+        $this->storedOutboxEventRepository->save($storedOutboxEvent);
 
         $this->logger->debug(message: 'Outbox interceptor поставил handled.', context: [
             'outboxId' => $storedOutboxEvent->id->value(),
@@ -209,8 +206,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
             );
         }
 
-        $this->entityManager->persist($storedOutboxEvent);
-        $this->entityManager->run();
+        $this->storedOutboxEventRepository->save($storedOutboxEvent);
 
         $jobFailureContext = [
             'outboxId' => $storedOutboxEvent->id->value(),

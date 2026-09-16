@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Outbox\Infrastructure\Fixture;
 
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
-use Cycle\ORM\EntityManagerInterface;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use Spiral\Queue\OptionsInterface;
 use Spiral\Queue\QueueInterface;
 
 final readonly class MarkHandledDuringPushQueue implements QueueInterface
 {
     public function __construct(
-        private OutboxEventRepository $outboxEventRepository,
-        private EntityManagerInterface $entityManager,
+        private StoredOutboxEventRepository $storedOutboxEventRepository,
         private OutboxEventId $outboxEventId,
         private \DateTimeImmutable $handledAt,
     ) {}
@@ -27,11 +25,10 @@ final readonly class MarkHandledDuringPushQueue implements QueueInterface
     {
         // Имитируем sync-worker: меняем статус через ту же Entity из identity map, что держит
         // relay, — ровно как боевой OutboxQueueStatusInterceptor внутри sync-push.
-        $storedOutboxEvent = $this->outboxEventRepository->findById($this->outboxEventId)
+        $storedOutboxEvent = $this->storedOutboxEventRepository->findById($this->outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->markHandled($this->handledAt);
-        $this->entityManager->persist($storedOutboxEvent);
-        $this->entityManager->run();
+        $this->storedOutboxEventRepository->save($storedOutboxEvent);
 
         return 'job-id';
     }

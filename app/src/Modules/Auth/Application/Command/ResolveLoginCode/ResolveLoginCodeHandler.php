@@ -13,10 +13,11 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
-use App\Modules\Auth\Repository\LoginCodeRepository;
+use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
+use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Domain\Entity\LoginCode;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 
@@ -35,7 +36,7 @@ final readonly class ResolveLoginCodeHandler
         private TokenGeneratorContract $tokenGenerator,
         private AuthTokenStorageContract $authTokenStorage,
         private UserContract $users,
-        private EntityManagerInterface $entityManager,
+        private RegistrationTicketRepository $registrationTicketRepository,
     ) {}
 
     #[Transactional]
@@ -60,19 +61,21 @@ final readonly class ResolveLoginCodeHandler
 
         if (!$this->secretHasher->verify(secret: $command->code, hash: $loginCode->codeHash->value())) {
             $loginCode->registerFailedAttempt($now);
-            $this->entityManager->persist($loginCode);
-            $this->entityManager->run();
+            $this->loginCodeRepository->save($loginCode);
 
             return LoginCodeResolution::failed(LoginCodeOutcome::Wrong);
         }
 
+        // Погашение кода ставится в запись без прогона: его уносит в базу прогон того шага,
+        // которым заканчивается сценарий, — как и до перехода на репозитории.
         $loginCode->consume($now);
-        $this->entityManager->persist($loginCode);
+        $this->loginCodeRepository->add($loginCode);
 
         return $this->resolveVerifiedCode(
             email: $email,
             now: $now,
             device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
+            loginCode: $loginCode,
         );
     }
 
@@ -80,6 +83,7 @@ final readonly class ResolveLoginCodeHandler
         EmailAddress $email,
         \DateTimeImmutable $now,
         SessionDevice $device,
+        LoginCode $loginCode,
     ): LoginCodeResolution {
         $signIn = $this->users->findForSignIn($email->value());
 
@@ -88,7 +92,7 @@ final readonly class ResolveLoginCodeHandler
         }
 
         if (!$signIn->canSignIn) {
-            $this->entityManager->run();
+            $this->loginCodeRepository->save($loginCode);
 
             return LoginCodeResolution::failed(LoginCodeOutcome::NotAllowed);
         }
@@ -97,7 +101,7 @@ final readonly class ResolveLoginCodeHandler
             userId: UserId::fromString($signIn->userId),
             device: $device,
         );
-        $this->entityManager->run();
+        $this->loginCodeRepository->save($loginCode);
 
         return LoginCodeResolution::verified($tokens);
     }
@@ -112,8 +116,8 @@ final readonly class ResolveLoginCodeHandler
             expiration: Expiration::after(now: $now, seconds: self::TICKET_TTL_SECONDS),
             now: $now,
         );
-        $this->entityManager->persist($ticket);
-        $this->entityManager->run();
+        // Прогон этого шага уносит в базу и талон, и поставленное выше погашение кода.
+        $this->registrationTicketRepository->save($ticket);
 
         return LoginCodeResolution::needsProfile($ticketRaw);
     }

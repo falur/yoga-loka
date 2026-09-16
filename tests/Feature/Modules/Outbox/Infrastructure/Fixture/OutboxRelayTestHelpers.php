@@ -8,7 +8,7 @@ use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
 use Cycle\ORM\EntityManagerInterface;
@@ -31,9 +31,9 @@ trait OutboxRelayTestHelpers
         return $this->getContainer()->get(DatabaseInterface::class);
     }
 
-    private function outboxEventRepository(): OutboxEventRepository
+    private function storedOutboxEventRepository(): StoredOutboxEventRepository
     {
-        return $this->getContainer()->get(OutboxEventRepository::class);
+        return $this->getContainer()->get(StoredOutboxEventRepository::class);
     }
 
     private function outboxEventStore(): IntegrationEventStoreContract

@@ -15,7 +15,6 @@ use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use CuyZ\Valinor\Mapper\MappingError;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\Exception\RetryException;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
@@ -254,8 +253,7 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
     private function interceptorWithLogger(RecordingOutboxLogger $recordingOutboxLogger): OutboxQueueStatusInterceptor
     {
         return new OutboxQueueStatusInterceptor(
-            outboxEventRepository: $this->outboxEventRepository(),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
+            storedOutboxEventRepository: $this->storedOutboxEventRepository(),
             outboxConfig: $this->getContainer()->get(OutboxConfig::class),
             logger: $recordingOutboxLogger,
             outboxQueueSerializer: $this->getContainer()->get(OutboxQueueSerializer::class),

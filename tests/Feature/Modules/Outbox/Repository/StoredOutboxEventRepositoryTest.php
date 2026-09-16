@@ -17,11 +17,11 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;
 
-final class OutboxEventRepositoryTest extends DatabaseTestCase
+final class StoredOutboxEventRepositoryTest extends DatabaseTestCase
 {
     public function testStorePersistsAndRestoresOutboxEvent(): void
     {
@@ -35,7 +35,7 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
 
         $this->entityManager()->run();
 
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertInstanceOf(StoredOutboxEvent::class, $storedOutboxEvent);
         self::assertTrue($outboxEventId->equals($storedOutboxEvent->id));
@@ -102,7 +102,7 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
         $this->entityManager()->persist($failedEvent);
         $this->entityManager()->run();
 
-        $pendingEvents = $this->outboxEventRepository()->findPendingForRelay(
+        $pendingEvents = $this->storedOutboxEventRepository()->findPendingForRelay(
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: $now,
         );
@@ -146,9 +146,9 @@ final class OutboxEventRepositoryTest extends DatabaseTestCase
         return $this->getContainer()->get(EntityManagerInterface::class);
     }
 
-    private function outboxEventRepository(): OutboxEventRepository
+    private function storedOutboxEventRepository(): StoredOutboxEventRepository
     {
-        return $this->getContainer()->get(OutboxEventRepository::class);
+        return $this->getContainer()->get(StoredOutboxEventRepository::class);
     }
 
     private function outboxEventStore(): IntegrationEventStoreContract

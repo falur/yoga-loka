@@ -17,7 +17,6 @@ use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
 use Cycle\Database\DatabaseInterface;
-use Cycle\ORM\EntityManagerInterface;
 use Spiral\Queue\OptionsInterface;
 use Spiral\Queue\QueueConnectionProviderInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
@@ -92,8 +91,7 @@ final class OutboxRelayPublishTest extends TestCase
         $this->getContainer()->bindSingleton(
             QueueConnectionProviderInterface::class,
             new MarkHandledDuringPushQueueConnectionProvider(
-                outboxEventRepository: $this->outboxEventRepository(),
-                entityManager: $this->entityManager(),
+                storedOutboxEventRepository: $this->storedOutboxEventRepository(),
                 outboxEventId: $outboxEventId,
                 handledAt: new \DateTimeImmutable('2026-05-25 16:14:00'),
             ),
@@ -129,7 +127,7 @@ final class OutboxRelayPublishTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:04:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(0, $publishedCount);
         self::assertNotNull($storedOutboxEvent);
@@ -226,7 +224,7 @@ final class OutboxRelayPublishTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:10:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertNotNull($storedOutboxEvent);
         self::assertSame(OutboxEventStatus::Pending, $storedOutboxEvent->status);
@@ -251,7 +249,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
         $this->entityManager()->run();
 
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->recordPublishFailure(
             lastError: OutboxLastError::fromString('Предыдущая ошибка публикации.'),
@@ -266,7 +264,7 @@ final class OutboxRelayPublishTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:12:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(0, $publishedCount);
         self::assertNotNull($storedOutboxEvent);
@@ -354,7 +352,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
         $this->entityManager()->run();
 
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         // Истёкшая claim-аренда: событие зависло в publishing, available_at в прошлом.
         $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
@@ -386,7 +384,7 @@ final class OutboxRelayPublishTest extends TestCase
         );
         $this->entityManager()->run();
 
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId)
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
         $this->entityManager()->persist($storedOutboxEvent);
@@ -397,7 +395,7 @@ final class OutboxRelayPublishTest extends TestCase
             now: new \DateTimeImmutable('2026-05-25 16:05:00'),
         );
 
-        $reclaimedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $reclaimedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(1, $publishedCount);
         self::assertNotNull($reclaimedOutboxEvent);
@@ -409,11 +407,10 @@ final class OutboxRelayPublishTest extends TestCase
     private function relayWithLogger(RecordingOutboxLogger $recordingOutboxLogger): OutboxRelay
     {
         return new OutboxRelay(
-            outboxEventRepository: $this->outboxEventRepository(),
+            storedOutboxEventRepository: $this->storedOutboxEventRepository(),
             outboxQueuePublisher: $this->getContainer()->make(OutboxQueuePublisher::class),
             outboxConfig: $this->getContainer()->get(OutboxConfig::class),
             database: $this->getContainer()->get(DatabaseInterface::class),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             logger: $recordingOutboxLogger,
         );
     }

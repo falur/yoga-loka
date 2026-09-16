@@ -12,7 +12,7 @@ use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ConsumptionTypecast;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ExpirationTypecast;
-use App\Modules\Auth\Repository\LoginCodeRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleLoginCodeRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -22,7 +22,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'auth_login_code',
     table: 'auth_login_codes',
-    repository: LoginCodeRepository::class,
+    repository: CycleLoginCodeRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class LoginCode

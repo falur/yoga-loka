@@ -13,7 +13,6 @@ use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxQueueStatusInterceptorTestHelpers;
@@ -169,7 +168,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             }),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $this->outboxEventRepository()->findById($storedOutboxEvent->id)?->status);
+        self::assertSame(OutboxEventStatus::Handled, $this->storedOutboxEventRepository()->findById($storedOutboxEvent->id)?->status);
         self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
         self::assertSame($handledAt, $storedOutboxEvent->handledAt->value());
     }
@@ -285,8 +284,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
     private function interceptorWithLogger(RecordingOutboxLogger $recordingOutboxLogger): OutboxQueueStatusInterceptor
     {
         return new OutboxQueueStatusInterceptor(
-            outboxEventRepository: $this->outboxEventRepository(),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
+            storedOutboxEventRepository: $this->storedOutboxEventRepository(),
             outboxConfig: $this->getContainer()->get(OutboxConfig::class),
             logger: $recordingOutboxLogger,
             outboxQueueSerializer: $this->getContainer()->get(OutboxQueueSerializer::class),

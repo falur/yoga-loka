@@ -12,10 +12,9 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueuePublisher;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
-use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 final readonly class OutboxRelay implements OutboxRelayContract
@@ -27,11 +26,10 @@ final readonly class OutboxRelay implements OutboxRelayContract
     // Дефолты намеренно совпадают (60s), но это разные домены времени и независимые настройки.
     // Если в будущем понадобится разный таймаут — развести через отдельную колонку claimed_until.
     public function __construct(
-        private OutboxEventRepository $outboxEventRepository,
+        private StoredOutboxEventRepository $storedOutboxEventRepository,
         private OutboxQueuePublisher $outboxQueuePublisher,
         private OutboxConfig $outboxConfig,
         private DatabaseInterface $database,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -77,7 +75,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
             $claimUntil,
             $now,
         ): OutboxEventCollection {
-            $claimedOutboxEvents = $this->outboxEventRepository->findPendingForRelay(
+            $claimedOutboxEvents = $this->storedOutboxEventRepository->findPendingForRelay(
                 outboxRelayBatchSize: $outboxRelayBatchSize,
                 now: $now,
             );
@@ -92,7 +90,6 @@ final readonly class OutboxRelay implements OutboxRelayContract
                     availableAt: $claimUntil,
                     now: $now,
                 );
-                $this->entityManager->persist($claimedOutboxEvent);
 
                 // Повторный захват по истёкшей claim-аренде, исчерпавший лимит попыток,
                 // переводится в failed прямо здесь — нарушение инварианта доставки, ERROR.
@@ -105,7 +102,8 @@ final readonly class OutboxRelay implements OutboxRelayContract
                 }
             }
 
-            $this->entityManager->run();
+            // Захват всей пачки фиксируется одним прогоном внутри этой транзакции.
+            $this->storedOutboxEventRepository->saveAll($claimedOutboxEvents);
 
             // Исчерпавшие лимит захвата события уже в failed: на публикацию их не отдаём.
             return $claimedOutboxEvents->reject(
@@ -133,8 +131,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
             }
 
             $storedOutboxEvent->markQueued($now);
-            $this->entityManager->persist($storedOutboxEvent);
-            $this->entityManager->run();
+            $this->storedOutboxEventRepository->save($storedOutboxEvent);
 
             $this->logger->debug(message: 'Outbox relay поставил событие в очередь.', context: [
                 'outboxId' => $storedOutboxEvent->id->value(),
@@ -163,8 +160,7 @@ final readonly class OutboxRelay implements OutboxRelayContract
                 availableAt: $now->modify(\sprintf('+%d seconds', $this->outboxConfig->publishRetryDelaySeconds)),
                 now: $now,
             );
-            $this->entityManager->persist($storedOutboxEvent);
-            $this->entityManager->run();
+            $this->storedOutboxEventRepository->save($storedOutboxEvent);
 
             $publishFailureContext = [
                 'outboxId' => $storedOutboxEvent->id->value(),

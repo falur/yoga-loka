@@ -2,24 +2,38 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Repository;
+namespace App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository;
 
 use App\Modules\Auth\Domain\Collection\AuthTokenCollection;
 use App\Modules\Auth\Domain\Entity\AuthToken;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
 use App\Shared\Domain\ValueObject\UserId;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
-use Cycle\ORM\Select\Repository;
+use Cycle\ORM\EntityManagerInterface;
+use Cycle\ORM\ORM;
+use Cycle\ORM\Select;
 
 /**
- * @extends Repository<AuthToken>
+ * @extends AbstractRepository<AuthToken>
  */
-final class AuthTokenRepository extends Repository
+final class CycleAuthTokenRepository extends AbstractRepository implements AuthTokenRepository
 {
     /**
-     * Обычное чтение по хэшу (token_hash UNIQUE) — для load() на каждом запросе, без блокировки.
+     * @param Select<AuthToken> $select
      */
+    public function __construct(
+        Select $select,
+        ORM $orm,
+        string $role,
+        private EntityManagerInterface $entityManager,
+    ) {
+        parent::__construct(select: $select, orm: $orm, role: $role);
+    }
+
+    #[\Override]
     public function findByHash(TokenHash $tokenHash): AuthToken|null
     {
         return $this->select()
@@ -27,9 +41,7 @@ final class AuthTokenRepository extends Repository
             ->fetchOne();
     }
 
-    /**
-     * Чтение по хэшу с блокировкой строки — для ротации refresh-токена.
-     */
+    #[\Override]
     public function findByHashForUpdate(TokenHash $tokenHash): AuthToken|null
     {
         return $this->select()
@@ -38,9 +50,7 @@ final class AuthTokenRepository extends Repository
             ->fetchOne();
     }
 
-    /**
-     * Все токены сессии с блокировкой строк — для ротации и отзыва сессии.
-     */
+    #[\Override]
     public function findBySessionIdForUpdate(SessionId $sessionId): AuthTokenCollection
     {
         return new AuthTokenCollection(
@@ -52,10 +62,10 @@ final class AuthTokenRepository extends Repository
     }
 
     /**
-     * Все не истёкшие токены пользователя — для вывода списка его сессий. Read-only, без
-     * блокировки. session_id DESC = новые сессии сверху (UUID v7 хронологичен). Оператор `>`
-     * согласован с Expiration::isExpired (now >= value = истёк).
+     * session_id DESC = новые сессии сверху (UUID v7 хронологичен). Оператор `>` согласован
+     * с Expiration::isExpired (now >= value = истёк).
      */
+    #[\Override]
     public function findActiveByUserId(UserId $userId, \DateTimeImmutable $now): AuthTokenCollection
     {
         return new AuthTokenCollection(
@@ -68,10 +78,7 @@ final class AuthTokenRepository extends Repository
         );
     }
 
-    /**
-     * Все токены конкретной сессии конкретного пользователя с блокировкой строк — для отзыва
-     * сессии с проверкой владельца. Чужая сессия → пустая коллекция.
-     */
+    #[\Override]
     public function findByUserAndSessionForUpdate(UserId $userId, SessionId $sessionId): AuthTokenCollection
     {
         return new AuthTokenCollection(
@@ -81,5 +88,31 @@ final class AuthTokenRepository extends Repository
                 ->forUpdate()
                 ->fetchAll(),
         );
+    }
+
+    #[\Override]
+    public function save(AuthToken $authToken): void
+    {
+        $this->entityManager
+            ->persist($authToken)
+            ->run();
+    }
+
+    #[\Override]
+    public function delete(AuthToken $authToken): void
+    {
+        $this->entityManager
+            ->delete($authToken)
+            ->run();
+    }
+
+    #[\Override]
+    public function deleteAll(AuthTokenCollection $authTokens): void
+    {
+        foreach ($authTokens as $authToken) {
+            $this->entityManager->delete($authToken);
+        }
+
+        $this->entityManager->run();
     }
 }

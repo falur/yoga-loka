@@ -6,7 +6,7 @@ namespace App\Modules\Auth\Application\Query\GetUserSessions;
 
 use App\Modules\Auth\Application\View\SessionViewAssembler;
 use App\Modules\Auth\Application\View\SessionViewCollection;
-use App\Modules\Auth\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use Psr\Log\LoggerInterface;

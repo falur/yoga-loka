@@ -11,7 +11,7 @@ use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ConsumptionTypecast;
 use App\Modules\Auth\Infrastructure\Persistence\Cycle\Typecast\ExpirationTypecast;
-use App\Modules\Auth\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleRegistrationTicketRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -21,7 +21,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'auth_registration_ticket',
     table: 'auth_registration_tickets',
-    repository: RegistrationTicketRepository::class,
+    repository: CycleRegistrationTicketRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class RegistrationTicket

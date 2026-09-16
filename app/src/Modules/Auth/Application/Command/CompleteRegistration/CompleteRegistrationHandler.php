@@ -9,11 +9,10 @@ use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Dto\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
-use App\Modules\Auth\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
 use App\Modules\User\Public\Contract\UserContract;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\InvalidRegistrationTicketException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -21,8 +20,8 @@ use Psr\Log\LoggerInterface;
 /**
  * Завершение регистрации по талону. Создание пользователя идёт через публичный контракт User и
  * остаётся вложенным диспатчем (#[Transactional] → SAVEPOINT): занятый ник/email бросает
- * ValidationException 422, откатывая SAVEPOINT и внешнюю транзакцию — поэтому талон НЕ гасится и
- * попытку можно повторить.
+ * EmailAlreadyTakenException или NicknameAlreadyTakenException (422), откатывая SAVEPOINT и
+ * внешнюю транзакцию — поэтому талон НЕ гасится и попытку можно повторить.
  */
 final readonly class CompleteRegistrationHandler
 {
@@ -31,7 +30,6 @@ final readonly class CompleteRegistrationHandler
         private SecretHasherContract $secretHasher,
         private AuthTokenStorageContract $authTokenStorage,
         private UserContract $users,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -42,14 +40,16 @@ final readonly class CompleteRegistrationHandler
         $now = new \DateTimeImmutable();
         $ticketHash = SecretHash::fromString($this->secretHasher->hash($command->ticket));
         $ticket = $this->registrationTicketRepository->findActiveByHashForUpdate($ticketHash)
-            ?? throw new AuthenticationException('app.auth.invalid_ticket');
+            ?? throw new InvalidRegistrationTicketException();
 
         if ($ticket->isExpired($now)) {
-            throw new AuthenticationException('app.auth.invalid_ticket');
+            throw new InvalidRegistrationTicketException();
         }
 
+        // Погашение талона ставится в запись до создания аккаунта, поэтому уходит в базу
+        // тем же прогоном, что и новый пользователь.
         $ticket->consume($now);
-        $this->entityManager->persist($ticket);
+        $this->registrationTicketRepository->add($ticket);
 
         $createdUser = $this->users->createUser(
             email: $ticket->email->value(),
@@ -62,7 +62,7 @@ final readonly class CompleteRegistrationHandler
             userId: UserId::fromString($createdUser->userId),
             device: SessionDevice::fromRequest(ip: $command->ip, userAgent: $command->userAgent),
         );
-        $this->entityManager->run();
+        $this->registrationTicketRepository->save($ticket);
 
         $this->logger->info(message: 'Регистрация завершена.', context: [
             'userId' => $createdUser->userId,

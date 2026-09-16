@@ -14,13 +14,13 @@ use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -53,7 +53,7 @@ final class OutboxEventStoreTransactionTest extends TestCase
         );
         $storedMedia = $this->getContainer()->get(MediaRepository::class)->findById($storeMediaAndOutboxResult->mediaId);
         $storedOutboxEvent = $this->getContainer()
-            ->get(OutboxEventRepository::class)
+            ->get(StoredOutboxEventRepository::class)
             ->findById($storeMediaAndOutboxResult->outboxEventId);
 
         self::assertInstanceOf(Media::class, $storedMedia);

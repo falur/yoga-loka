@@ -17,7 +17,7 @@ use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Typecast\OutboxAvailable
 use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Typecast\OutboxEventDateTypecast;
 use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Typecast\OutboxEventPayloadTypecast;
 use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Typecast\OutboxLastErrorTypecast;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Repository\CycleStoredOutboxEventRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -27,7 +27,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'outbox_event',
     table: 'outbox_events',
-    repository: OutboxEventRepository::class,
+    repository: CycleStoredOutboxEventRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 class StoredOutboxEvent

@@ -13,9 +13,9 @@ use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
-use App\Modules\Auth\Repository\AuthTokenRepository;
-use App\Modules\Auth\Repository\LoginCodeRepository;
-use App\Modules\Auth\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
+use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
 use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
@@ -27,8 +27,8 @@ use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
 use App\Modules\User\Public\Contract\UserContract;
-use App\Modules\User\Repository\ReservedNicknameRepository;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
@@ -48,7 +48,6 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
         return new CycleTokenStorage(
             authTokenRepository: $this->authTokenRepository(),
             tokenGenerator: new RandomTokenGenerator(),
-            entityManager: $this->entityManager(),
         );
     }
 
@@ -74,7 +73,6 @@ abstract class AuthApplicationTestCase extends DatabaseTestCase
         return new CreateUserHandler(
             userRepository: $this->userRepository(),
             reservedNicknameRepository: $this->reservedNicknameRepository(),
-            entityManager: $this->entityManager(),
             logger: new \Psr\Log\NullLogger(),
             localeResolver: $this->getContainer()->get(\App\Shared\Domain\Locale\LocaleResolver::class),
         );

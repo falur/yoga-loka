@@ -10,6 +10,8 @@ use App\Modules\Outbox\Application\Contract\OutboxRelayContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelayLoopControlContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelaySleeperContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Repository\CycleStoredOutboxEventRepository;
 use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
 use App\Modules\Outbox\Infrastructure\Spiral\PublicApi\IntegrationEventLoaderProvider;
@@ -28,9 +30,15 @@ use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Console\Bootloader\ConsoleBootloader;
 
+/**
+ * Точка подключения модуля Outbox к приложению: доменный интерфейс хранения единственного корня
+ * агрегата связан со своей Cycle-реализацией, публичные контракты и технические порты — со своими
+ * реализациями.
+ */
 final class OutboxBootloader extends Bootloader
 {
     protected const BINDINGS = [
+        StoredOutboxEventRepository::class => CycleStoredOutboxEventRepository::class,
         IntegrationEventStoreContract::class => IntegrationEventStoreProvider::class,
         IntegrationEventLoaderContract::class => IntegrationEventLoaderProvider::class,
         IntegrationEventRoutingContract::class => IntegrationEventRoutingProvider::class,

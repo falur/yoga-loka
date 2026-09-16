@@ -14,21 +14,21 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Domain\ValueObject\TokenHash;
-use App\Modules\Auth\Repository\AuthTokenRepository;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Exception\InvalidRefreshTokenException;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Auth\Domain\Exception\SessionNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use Spiral\Auth\TokenInterface;
 use Spiral\Auth\TokenStorageInterface;
 
 /**
  * Единый адаптер хранилища токенов: реализует и Spiral\Auth\TokenStorageInterface (load для
  * auth-middleware), и доменный AuthTokenStorageContract (issuePair/rotate/revokeSession для
- * хендлеров). Инфраструктурный orchestrator: persist/run делает сам (vendor-middleware зовёт
+ * хендлеров). Инфраструктурный orchestrator: запись и удаление ведёт методами
+ * AuthTokenRepository, которые фиксируют изменение своим прогоном (vendor-middleware зовёт
  * create/delete напрямую и ждёт реального flush; вызовы доменных методов идут внутри
- * #[Transactional]-сценария, несколько run() в одной транзакции безопасны).
+ * #[Transactional]-сценария, несколько прогонов в одной транзакции безопасны).
  */
 final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTokenStorageContract
 {
@@ -38,7 +38,6 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
     public function __construct(
         private AuthTokenRepository $authTokenRepository,
         private TokenGeneratorContract $tokenGenerator,
-        private EntityManagerInterface $entityManager,
     ) {}
 
     /**
@@ -99,8 +98,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
             return;
         }
 
-        $this->entityManager->delete($authToken);
-        $this->entityManager->run();
+        $this->authTokenRepository->delete($authToken);
     }
 
     #[\Override]
@@ -135,10 +133,10 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
     public function rotate(string $refreshRaw, SessionDevice $device): IssuedTokenPair
     {
         $authToken = $this->authTokenRepository->findByHashForUpdate(TokenHash::fromRawToken($refreshRaw))
-            ?? throw new AuthenticationException('app.auth.invalid_refresh');
+            ?? throw new InvalidRefreshTokenException();
 
         if (!$authToken->isRefresh() || $authToken->isExpired(new \DateTimeImmutable())) {
-            throw new AuthenticationException('app.auth.invalid_refresh');
+            throw new InvalidRefreshTokenException();
         }
 
         $userId = $authToken->userId;
@@ -154,11 +152,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
     {
         $sessionTokens = $this->authTokenRepository->findBySessionIdForUpdate($sessionId);
 
-        foreach ($sessionTokens as $sessionToken) {
-            $this->entityManager->delete($sessionToken);
-        }
-
-        $this->entityManager->run();
+        $this->authTokenRepository->deleteAll($sessionTokens);
     }
 
     #[\Override]
@@ -170,14 +164,10 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
         );
 
         if ($sessionTokens->isEmpty()) {
-            throw new NotFoundException('app.auth.session_not_found');
+            throw new SessionNotFoundException();
         }
 
-        foreach ($sessionTokens as $sessionToken) {
-            $this->entityManager->delete($sessionToken);
-        }
-
-        $this->entityManager->run();
+        $this->authTokenRepository->deleteAll($sessionTokens);
     }
 
     /**
@@ -205,8 +195,7 @@ final readonly class CycleTokenStorage implements TokenStorageInterface, AuthTok
             now: new \DateTimeImmutable(),
         );
 
-        $this->entityManager->persist($authToken);
-        $this->entityManager->run();
+        $this->authTokenRepository->save($authToken);
 
         return new AuthTokenView(
             id: $rawToken,

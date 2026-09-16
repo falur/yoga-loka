@@ -10,7 +10,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueHeaders;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use Cycle\ORM\EntityManagerInterface;
 
 /**
@@ -33,7 +33,7 @@ trait OutboxQueueStatusInterceptorTestHelpers
         $this->entityManager()->persist($storedOutboxEvent);
         $this->entityManager()->run();
 
-        return $this->outboxEventRepository()->findById($storedOutboxEvent->id)
+        return $this->storedOutboxEventRepository()->findById($storedOutboxEvent->id)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
     }
 
@@ -53,8 +53,8 @@ trait OutboxQueueStatusInterceptorTestHelpers
         return $this->getContainer()->get(EntityManagerInterface::class);
     }
 
-    private function outboxEventRepository(): OutboxEventRepository
+    private function storedOutboxEventRepository(): StoredOutboxEventRepository
     {
-        return $this->getContainer()->get(OutboxEventRepository::class);
+        return $this->getContainer()->get(StoredOutboxEventRepository::class);
     }
 }

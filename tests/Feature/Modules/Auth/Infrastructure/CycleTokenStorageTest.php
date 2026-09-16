@@ -12,12 +12,11 @@ use App\Modules\Auth\Domain\ValueObject\SessionId;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\AuthTokenView;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
-use App\Modules\Auth\Repository\AuthTokenRepository;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Exception\InvalidRefreshTokenException;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Auth\Domain\Exception\SessionNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use Spiral\Auth\TokenInterface;
 use Tests\DatabaseTestCase;
 
@@ -113,7 +112,7 @@ final class CycleTokenStorageTest extends DatabaseTestCase
 
     public function testRotateRejectsUnknownRefresh(): void
     {
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRefreshTokenException::class);
 
         $this->storage()->rotate(refreshRaw: 'unknown-token', device: SessionDevice::unknown());
     }
@@ -122,7 +121,7 @@ final class CycleTokenStorageTest extends DatabaseTestCase
     {
         $pair = $this->storage()->issuePair(userId: UserId::generate(), device: SessionDevice::unknown());
 
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRefreshTokenException::class);
 
         $this->storage()->rotate(refreshRaw: $pair->accessToken, device: SessionDevice::unknown());
     }
@@ -134,7 +133,7 @@ final class CycleTokenStorageTest extends DatabaseTestCase
             expiresAt: new \DateTimeImmutable('-1 hour'),
         );
 
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRefreshTokenException::class);
 
         $this->storage()->rotate(refreshRaw: $expiredRefresh->getID(), device: SessionDevice::unknown());
     }
@@ -221,7 +220,7 @@ final class CycleTokenStorageTest extends DatabaseTestCase
         $accessView = $this->storage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(SessionNotFoundException::class);
 
         $this->storage()->revokeUserSession(
             userId: UserId::generate(),
@@ -231,7 +230,7 @@ final class CycleTokenStorageTest extends DatabaseTestCase
 
     public function testRevokeUserSessionThrowsForUnknownSession(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(SessionNotFoundException::class);
 
         $this->storage()->revokeUserSession(userId: UserId::generate(), sessionId: SessionId::generate());
     }
@@ -253,7 +252,6 @@ final class CycleTokenStorageTest extends DatabaseTestCase
         return new CycleTokenStorage(
             authTokenRepository: $this->authTokenRepository(),
             tokenGenerator: new RandomTokenGenerator(),
-            entityManager: $this->getContainer()->get(EntityManagerInterface::class),
         );
     }
 

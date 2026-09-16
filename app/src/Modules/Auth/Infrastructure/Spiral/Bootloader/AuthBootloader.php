@@ -8,6 +8,12 @@ use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Contract\TokenGeneratorContract;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
+use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleAuthTokenRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleLoginCodeRepository;
+use App\Modules\Auth\Infrastructure\Persistence\Cycle\Repository\CycleRegistrationTicketRepository;
 use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
@@ -33,8 +39,9 @@ use Spiral\Router\GroupRegistry;
 use Spiral\Views\Bootloader\ViewsBootloader;
 
 /**
- * Каркас аутентификации модуля Auth. Контракты Application привязаны к инфраструктурным
- * реализациям. Транспорт (Authorization: Bearer), хранилище токенов (cycle) и actor-provider
+ * Каркас аутентификации модуля Auth. Доменные интерфейсы хранения трёх независимых корней
+ * агрегатов связаны со своими Cycle-реализациями, контракты Application — с инфраструктурными
+ * реализациями. Транспорт (Authorization: Bearer), хранилище токенов (cycle) и actor-provider
  * регистрируются кодом без app/config/auth.php. View-шаблоны модуля (например письмо с кодом
  * входа) лежат в Infrastructure/Spiral/Resources/views и регистрируются под namespace `auth`. Пара
  * LoginCodeRequestedEvent → SendLoginCodeJob регистрируется в outbox-реестре. Установление личности
@@ -49,6 +56,9 @@ final class AuthBootloader extends Bootloader
     public const string VIEW_NAMESPACE = 'auth';
 
     protected const BINDINGS = [
+        AuthTokenRepository::class => CycleAuthTokenRepository::class,
+        LoginCodeRepository::class => CycleLoginCodeRepository::class,
+        RegistrationTicketRepository::class => CycleRegistrationTicketRepository::class,
         SecretHasherContract::class => HmacSecretHasher::class,
         TokenGeneratorContract::class => RandomTokenGenerator::class,
         AuthTokenStorageContract::class => CycleTokenStorage::class,

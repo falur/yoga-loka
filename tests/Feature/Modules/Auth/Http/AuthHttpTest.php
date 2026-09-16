@@ -16,13 +16,13 @@ use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\RegistrationTicketId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
-use App\Modules\Auth\Repository\AuthTokenRepository;
-use App\Modules\Auth\Repository\LoginCodeRepository;
+use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
+use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\Database\DatabaseInterface;
@@ -536,7 +536,7 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
     private function registrationTicketRepositoryFindActive(string $ticketRaw): RegistrationTicket|null
     {
         return $this->getContainer()
-            ->get(\App\Modules\Auth\Repository\RegistrationTicketRepository::class)
+            ->get(\App\Modules\Auth\Domain\Repository\RegistrationTicketRepository::class)
             ->findActiveByHashForUpdate(SecretHash::fromString($this->secretHasher()->hash($ticketRaw)));
     }
 

@@ -43,7 +43,7 @@ final class OutboxRelayTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:08:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(1, $publishedCount);
         self::assertNotNull($storedOutboxEvent);
@@ -65,7 +65,7 @@ final class OutboxRelayTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:15:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(0, $publishedCount);
         self::assertNotNull($storedOutboxEvent);
@@ -88,7 +88,7 @@ final class OutboxRelayTest extends TestCase
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable('2099-05-25 16:16:00'),
         );
-        $storedOutboxEvent = $this->outboxEventRepository()->findById($outboxEventId);
+        $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId);
 
         self::assertSame(0, $publishedCount);
         self::assertNotNull($storedOutboxEvent);

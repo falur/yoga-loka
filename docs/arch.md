@@ -45,6 +45,7 @@ app/
             Configuration/
             PublicApi/                 реализации контрактов из Public
             Http/
+              Access/                  применение публичных атрибутов доступа до Controller
               Controller/
               Filter/
               Middleware/

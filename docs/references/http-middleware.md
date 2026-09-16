@@ -2,7 +2,7 @@
 
 ## Назначение
 
-Middleware решает техническую задачу HTTP-границы до и после Controller: локаль, ограничение частоты, контекст запроса, требование доступа.
+Middleware решает техническую задачу HTTP-границы до и после Controller: локаль, ограничение частоты, контекст запроса, установление личности. Требование доступа middleware не проверяет — его объявляет публичный атрибут маршрута.
 
 ## Когда применять
 
@@ -15,35 +15,52 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Spiral\Http\Middleware;
 
-use GianTiaga\SpiralOpenApi\Response\Enum\HttpStatus;
-use GianTiaga\SpiralOpenApi\Response\ErrorResponse;
+use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Spiral\Translator\TranslatorInterface;
+use Spiral\Auth\AuthContextInterface;
 
 /**
- * Требует действующую сессию: без идентификатора пользователя в запросе отдаёт 401 сразу.
- * Middleware стоит вне цепочки интерсепторов контроллера, поэтому исключение здесь
- * в ответ не преобразуется и ответ собирается явно.
+ * Кладёт authUserId/authSessionId из payload access-токена в request-атрибуты, чтобы контроллер
+ * читал их через Filter #[Attribute], а не ServerRequestInterface. При отсутствии/битом payload
+ * или для refresh-токена атрибуты не ставятся (и middleware не падает).
  */
-final readonly class RequireAuthenticatedMiddleware implements MiddlewareInterface
+final readonly class AuthContextAttributeMiddleware implements MiddlewareInterface
 {
+    public const string ATTRIBUTE_USER_ID = 'authUserId';
+    public const string ATTRIBUTE_SESSION_ID = 'authSessionId';
+
     public function __construct(
-        private TranslatorInterface $translator,
+        private AuthContextInterface $authContext,
     ) {}
 
     #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if ($request->getAttribute(AuthContextAttributeMiddleware::ATTRIBUTE_USER_ID) === null) {
-            $errorResponse = new ErrorResponse(
-                message: $this->translator->trans(id: 'app.auth.unauthenticated', parameters: [], domain: 'auth'),
-                code: HttpStatus::Unauthorized->value,
-            );
+        $token = $this->authContext->getToken();
 
-            return $errorResponse->withStatus(HttpStatus::Unauthorized)->toResponse();
+        if ($token === null) {
+            return $handler->handle($request);
+        }
+
+        $payload = $token->getPayload();
+
+        if (($payload['type'] ?? null) !== AuthTokenType::Access->value) {
+            return $handler->handle($request);
+        }
+
+        $userId = $payload['userID'] ?? null;
+        $sessionId = $payload['sessionID'] ?? null;
+
+        if (\is_string($userId) && \is_string($sessionId)) {
+            // PSR-7 ServerRequestInterface::withAttribute объявляет первый параметр как $name,
+            // но конкретные реализации (Nyholm — $attribute) расходятся в имени, поэтому named
+            // arguments невозможны и используются позиционные (правило погашено в phpstan.neon).
+            $request = $request
+                ->withAttribute(self::ATTRIBUTE_USER_ID, $userId)
+                ->withAttribute(self::ATTRIBUTE_SESSION_ID, $sessionId);
         }
 
         return $handler->handle($request);
@@ -56,10 +73,11 @@ final readonly class RequireAuthenticatedMiddleware implements MiddlewareInterfa
 - Класс называется `{Задача}Middleware`, реализует `MiddlewareInterface` и лежит в `Infrastructure/Spiral/Http/Middleware` своего модуля.
 - Единственный метод — `process()`; он либо передаёт запрос дальше, либо возвращает готовый ответ.
 - Имя request attribute хранится в константе и читается по ней, а не по строковому литералу.
-- Текст ошибки берётся из переводов по ключу и отдаётся на языке пользователя.
+- Middleware не возвращает отказ по доступу: требование объявляет публичный атрибут маршрута, а применяет его общий адаптер HTTP-границы до Controller — см. карточку [Публичный атрибут доступа](public-attribute.md).
+- Если middleware всё же отдаёт готовый ответ (например ограничение частоты), текст ошибки берётся из переводов по ключу и отдаётся на языке пользователя.
 - В ответе нет секретов, токенов и внутренних подробностей.
 - Middleware не обращается к Repository, Reader и шине и не содержит доменных ветвлений.
-- Бизнес-модуль подключает middleware `Auth` и `Access` не напрямую, а через публичный атрибут доступа — см. карточку [Публичный атрибут доступа](public-attribute.md).
+- Бизнес-модуль подключает middleware `Auth` и `Access` не напрямую, а через публичный атрибут доступа.
 
 ## Допустимые варианты
 

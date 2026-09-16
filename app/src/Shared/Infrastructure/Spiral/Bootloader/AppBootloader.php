@@ -13,6 +13,7 @@ use Spiral\Domain\GuardInterceptor;
 use Psr\Clock\ClockInterface;
 use Spiral\Interceptors\HandlerInterface;
 use Symfony\Component\Clock\NativeClock;
+use App\Shared\Infrastructure\Spiral\Http\Access\RouteAccessInterceptor;
 use GianTiaga\SpiralApiErrors\Interceptor\ApiExceptionInterceptor;
 use GianTiaga\SpiralOpenApi\Response\Interceptor\HttpResponseInterceptor;
 
@@ -27,6 +28,10 @@ final class AppBootloader extends DomainBootloader
         GuardInterceptor::class,
         HttpResponseInterceptor::class,
         ApiExceptionInterceptor::class,
+        // Интерсептор доступа стоит после обработчика ошибок API: более ранний в списке
+        // оборачивает более поздний, поэтому только отсюда доменное исключение отказа
+        // превращается в прежний ответ, а не в 500.
+        RouteAccessInterceptor::class,
     ];
 
     #[\Override]

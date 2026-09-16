@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Spiral\Http\Controller;
 
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
+use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\Auth\Application\Command\CompleteRegistration\CompleteRegistrationCommand;
 use App\Modules\Auth\Application\Command\CompleteRegistration\CompleteRegistrationHandler;
 use App\Modules\Auth\Application\Command\Logout\LogoutCommand;
@@ -26,8 +28,6 @@ use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\RegisterFilter;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\RequestCodeFilter;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\RevokeSessionFilter;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\VerifyCodeFilter;
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\RequireAuthenticatedMiddleware;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Resource\SessionResource;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Resource\TokenPairResource;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Resource\VerifyResultResource;
@@ -37,7 +37,6 @@ use GianTiaga\SpiralCqrs\QueryBusInterface;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
 use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
-use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Core\Container\Autowire;
 use Spiral\Router\Annotation\Route;
 use Spiral\Translator\TranslatorInterface;
@@ -56,6 +55,7 @@ final readonly class AuthController
             new Autowire(alias: RateLimitMiddleware::class, parameters: ['maxAttempts' => 5, 'perSeconds' => 60]),
         ],
     )]
+    #[PublicRoute]
     public function requestCode(
         RequestCodeFilter $requestCodeFilter,
         TranslatorInterface $translator,
@@ -87,6 +87,7 @@ final readonly class AuthController
             new Autowire(alias: RateLimitMiddleware::class, parameters: ['maxAttempts' => 10, 'perSeconds' => 60]),
         ],
     )]
+    #[PublicRoute]
     public function verifyCode(
         VerifyCodeFilter $verifyCodeFilter,
         CommandBusInterface $commandBus,
@@ -119,6 +120,7 @@ final readonly class AuthController
             new Autowire(alias: RateLimitMiddleware::class, parameters: ['maxAttempts' => 10, 'perSeconds' => 60]),
         ],
     )]
+    #[PublicRoute]
     public function register(
         RegisterFilter $registerFilter,
         TranslatorInterface $translator,
@@ -154,6 +156,7 @@ final readonly class AuthController
             new Autowire(alias: RateLimitMiddleware::class, parameters: ['maxAttempts' => 20, 'perSeconds' => 60]),
         ],
     )]
+    #[PublicRoute]
     public function refresh(
         RefreshFilter $refreshFilter,
         CommandBusInterface $commandBus,
@@ -179,15 +182,8 @@ final readonly class AuthController
         name: 'api.v1.auth.logout',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function logout(
         LogoutFilter $logoutFilter,
         CommandBusInterface $commandBus,
@@ -211,15 +207,8 @@ final readonly class AuthController
         name: 'api.v1.auth.sessions.index',
         methods: ['GET'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function sessions(
         ListSessionsFilter $listSessionsFilter,
         GetUserSessionsHandler $getUserSessionsHandler,
@@ -248,15 +237,8 @@ final readonly class AuthController
         name: 'api.v1.auth.sessions.revoke',
         methods: ['DELETE'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function revokeSession(
         string $sessionId,
         RevokeSessionFilter $revokeSessionFilter,

@@ -237,6 +237,34 @@ final class AuthHttpTest extends NonTransactionalDatabaseTestCase
         $this->http()->postJson('/api/v1/auth/logout')->assertUnauthorized();
     }
 
+    /**
+     * Тело отказа собирает общий обработчик ошибок API из доменного исключения правила сессии
+     * и остаётся прежним: перевод ключа `app.auth.unauthenticated` на языке запроса и код 401.
+     */
+    public function testLogoutWithoutTokenReturnsTranslatedUnauthenticatedBody(): void
+    {
+        $this->http()
+            ->withHeader('Accept-Language', 'en')
+            ->postJson('/api/v1/auth/logout')
+            ->assertBodySame('{"message":"Authentication required.","code":401}');
+
+        $this->http()
+            ->withHeader('Accept-Language', 'ru')
+            ->postJson('/api/v1/auth/logout')
+            ->assertBodySame('{"message":"Требуется аутентификация.","code":401}');
+    }
+
+    /**
+     * Публичный маршрут входа работает без сессии и после переезда установления личности
+     * на всю группу `api`: переданный заголовок отсутствует, отказа нет.
+     */
+    public function testPublicRouteStaysAvailableWithoutSession(): void
+    {
+        $this->http()
+            ->postJson('/api/v1/auth/code/request', ['email' => 'public-route@example.com'])
+            ->assertNoContent();
+    }
+
     public function testLogoutWithRefreshTokenAsBearerReturns401(): void
     {
         $pair = $this->issueTokenPair();

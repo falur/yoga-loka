@@ -9,7 +9,7 @@ use Spiral\Validation\Symfony\AttributesFilter;
 
 /**
  * Читает authUserId/authSessionId из request-атрибутов, выставленных
- * AuthContextAttributeMiddleware (наличие гарантирует RequireAuthenticatedMiddleware), без
+ * AuthContextAttributeMiddleware (наличие гарантирует объявление доступа маршрута), без
  * обращения к ServerRequestInterface. authSessionId нужен, чтобы пометить текущую сессию.
  */
 final class ListSessionsFilter extends AttributesFilter

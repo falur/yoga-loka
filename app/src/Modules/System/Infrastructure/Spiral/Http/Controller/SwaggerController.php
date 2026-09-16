@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\System\Infrastructure\Spiral\Http\Controller;
 
+use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Shared\Domain\Exception\NotFoundException;
 use App\Modules\System\Infrastructure\Spiral\Http\View\SwaggerView;
 use App\Shared\Infrastructure\Spiral\Configuration\OpenApi\OpenApiConfig;
@@ -24,6 +25,7 @@ final readonly class SwaggerController
     ) {}
 
     #[Route(route: '/api/docs', name: 'api.docs', methods: ['GET'], group: 'api')]
+    #[PublicRoute]
     #[OpenApi(ignore: true)]
     public function index(): HtmlResponse
     {
@@ -35,6 +37,7 @@ final readonly class SwaggerController
     }
 
     #[Route(route: '/api/docs/openapi.yml', name: 'api.docs.openapi', methods: ['GET'], group: 'api')]
+    #[PublicRoute]
     #[OpenApi(ignore: true)]
     public function spec(): FileContentResponse
     {

@@ -8,7 +8,12 @@ use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Contract\TokenGeneratorContract;
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
+use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
+use App\Modules\Auth\Infrastructure\Spiral\Http\Access\AuthenticatedRouteRule;
+use App\Modules\Auth\Infrastructure\Spiral\Http\Access\PublicRouteRule;
+use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\CycleTokenStorage;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\UserActorProvider;
@@ -16,10 +21,15 @@ use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
+use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
+use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
+use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Auth\Transport\HeaderTransport;
 use Spiral\Bootloader\Auth\AuthBootloader as SpiralAuthBootloader;
 use Spiral\Bootloader\Auth\HttpAuthBootloader;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Core\Container\Autowire;
+use Spiral\Router\GroupRegistry;
 use Spiral\Views\Bootloader\ViewsBootloader;
 
 /**
@@ -27,7 +37,9 @@ use Spiral\Views\Bootloader\ViewsBootloader;
  * реализациям. Транспорт (Authorization: Bearer), хранилище токенов (cycle) и actor-provider
  * регистрируются кодом без app/config/auth.php. View-шаблоны модуля (например письмо с кодом
  * входа) лежат в Infrastructure/Spiral/Resources/views и регистрируются под namespace `auth`. Пара
- * LoginCodeRequestedEvent → SendLoginCodeJob регистрируется в outbox-реестре.
+ * LoginCodeRequestedEvent → SendLoginCodeJob регистрируется в outbox-реестре. Установление личности
+ * подключается к группе маршрутов `api` целиком, а правила публичных атрибутов доступа — в общий
+ * реестр правил HTTP-границы.
  */
 final class AuthBootloader extends Bootloader
 {
@@ -48,7 +60,14 @@ final class AuthBootloader extends Bootloader
      */
     public function defineDependencies(): array
     {
-        return [HttpAuthBootloader::class, SpiralAuthBootloader::class, ViewsBootloader::class];
+        // RoutesBootloader объявлен зависимостью намеренно: он должен загрузиться раньше, чтобы
+        // middleware установления личности встало в группе `api` после собственного конвейера группы.
+        return [
+            HttpAuthBootloader::class,
+            SpiralAuthBootloader::class,
+            ViewsBootloader::class,
+            RoutesBootloader::class,
+        ];
     }
 
     public function init(HttpAuthBootloader $httpAuth, SpiralAuthBootloader $auth, ViewsBootloader $views): void
@@ -65,11 +84,29 @@ final class AuthBootloader extends Bootloader
         $auth->addActorProvider(UserActorProvider::class);
     }
 
-    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
-    {
+    public function boot(
+        IntegrationEventRoutingContract $integrationEventRouting,
+        GroupRegistry $routeGroups,
+        AccessRuleRegistry $accessRuleRegistry,
+    ): void {
         $integrationEventRouting->register(
             integrationEventClass: LoginCodeRequestedEvent::class,
             jobClass: SendLoginCodeJob::class,
+        );
+
+        // Установление личности не является требованием доступа: оно кладёт личность в запрос и
+        // никому не отказывает, поэтому объявляется один раз на всю группу `api`.
+        $routeGroups->getGroup(RoutesBootloader::GROUP_API)
+            ->addMiddleware(new Autowire(
+                alias: AuthTransportWithStorageMiddleware::class,
+                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
+            ))
+            ->addMiddleware(AuthContextAttributeMiddleware::class);
+
+        $accessRuleRegistry->register(declarationClass: PublicRoute::class, rule: new PublicRouteRule());
+        $accessRuleRegistry->register(
+            declarationClass: AuthenticatedRoute::class,
+            rule: new AuthenticatedRouteRule(),
         );
     }
 }

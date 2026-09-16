@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Spiral\Bootloader;
 
+use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
 use App\Shared\Infrastructure\Spiral\Http\Middleware\LocaleMiddleware;
 use Spiral\Bootloader\Http\RoutesBootloader as BaseRoutesBootloader;
 use Spiral\Cookies\Middleware\CookiesMiddleware;
@@ -18,7 +19,8 @@ use Spiral\Session\Middleware\SessionMiddleware;
 use GianTiaga\SpiralApiErrors\Middleware\RouteNotFoundMiddleware;
 
 /**
- * Настраивает маршруты и middleware приложения.
+ * Настраивает маршруты и middleware приложения, а также реестр правил доступа маршрутов:
+ * реестр принадлежит общей части HTTP-границы, а наполняют его bootloader-ы модулей-владельцев доступа.
  *
  * @link https://spiral.dev/docs/http-routing
  */
@@ -27,6 +29,8 @@ final class RoutesBootloader extends BaseRoutesBootloader
     public const string GROUP_API = 'api';
     public const string GROUP_WEB = 'web';
     protected const array DEPENDENCIES = [AnnotatedRoutesBootloader::class];
+
+    protected const array SINGLETONS = [AccessRuleRegistry::class => AccessRuleRegistry::class];
 
     #[\Override]
     protected function globalMiddleware(): array

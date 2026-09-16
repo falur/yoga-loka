@@ -9,7 +9,7 @@ use Spiral\Validation\Symfony\AttributesFilter;
 
 /**
  * Читает authUserId из request-атрибута, выставленного AuthContextAttributeMiddleware (наличие
- * гарантирует RequireAuthenticatedMiddleware), без обращения к ServerRequestInterface. sessionId
+ * гарантирует объявление доступа маршрута), без обращения к ServerRequestInterface. sessionId
  * приходит как параметр маршрута и читается аргументом метода контроллера.
  */
 final class RevokeSessionFilter extends AttributesFilter

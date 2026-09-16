@@ -9,7 +9,7 @@ use Spiral\Validation\Symfony\AttributesFilter;
 
 /**
  * Читает sessionId из request-атрибута, выставленного AuthContextAttributeMiddleware
- * (наличие гарантирует RequireAuthenticatedMiddleware), без обращения к ServerRequestInterface.
+ * (наличие гарантирует объявление доступа маршрута), без обращения к ServerRequestInterface.
  */
 final class LogoutFilter extends AttributesFilter
 {

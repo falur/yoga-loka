@@ -12,6 +12,8 @@ use App\Modules\User\Domain\Enum\UserStatus;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\ReservedNicknameMapper;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
@@ -69,7 +71,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
 
     public function testRejectsTakenEmail(): void
     {
-        $this->persist($this->createUser(email: 'taken@example.com', nickname: 'someone'));
+        $this->persistUser($this->createUser(email: 'taken@example.com', nickname: 'someone'));
 
         $this->expectException(EmailAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.email_taken');
@@ -84,7 +86,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
 
     public function testRejectsTakenNickname(): void
     {
-        $this->persist($this->createUser(email: 'owner@example.com', nickname: 'busy.nick'));
+        $this->persistUser($this->createUser(email: 'owner@example.com', nickname: 'busy.nick'));
 
         $this->expectException(NicknameAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.nickname_taken');
@@ -99,7 +101,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
 
     public function testRejectsReservedNickname(): void
     {
-        $this->persist(ReservedNickname::create(UserNickname::fromString('reserved')));
+        $this->persistReservedNickname(ReservedNickname::create(UserNickname::fromString('reserved')));
 
         $this->expectException(NicknameAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.nickname_taken');
@@ -132,9 +134,20 @@ final class CreateUserHandlerTest extends DatabaseTestCase
         );
     }
 
-    private function persist(object $entity): void
+    /**
+     * User и ReservedNickname — чистые доменные сущности без Cycle-разметки, поэтому не могут
+     * быть сохранены через generic persist(): EntityManager не знает их роль. Хелперы переводят
+     * их в Cycle Entity через Mapper перед постановкой в очередь EntityManager.
+     */
+    private function persistUser(User $user): void
     {
-        $this->entityManager()->persist($entity);
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
+        $this->entityManager()->run();
+    }
+
+    private function persistReservedNickname(ReservedNickname $reservedNickname): void
+    {
+        $this->entityManager()->persist((new ReservedNicknameMapper())->toCycleEntity($reservedNickname));
         $this->entityManager()->run();
     }
 

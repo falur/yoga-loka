@@ -7,32 +7,17 @@ namespace App\Modules\User\Domain\Entity;
 use App\Modules\User\Domain\ValueObject\ReservedNicknameHolder;
 use App\Modules\User\Domain\ValueObject\ReservedNicknameId;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\ReservedNicknameHolderTypecast;
-use App\Modules\User\Infrastructure\Persistence\Cycle\Repository\CycleReservedNicknameRepository;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
+use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'reserved_nickname',
-    table: 'reserved_nicknames',
-    repository: CycleReservedNicknameRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class ReservedNickname
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: ReservedNicknameId::class)]
     public private(set) ReservedNicknameId $id;
 
-    #[Column(type: 'string(30)', typecast: UserNickname::class)]
     public private(set) UserNickname $nickname;
 
-    #[Column(type: 'uuid', name: 'assigned_user_id', nullable: true, typecast: ReservedNicknameHolderTypecast::class)]
     public private(set) ReservedNicknameHolder $holder;
 
     public static function create(UserNickname $nickname): self
@@ -42,6 +27,23 @@ final class ReservedNickname
         $reservedNickname->nickname = $nickname;
         $reservedNickname->holder = ReservedNicknameHolder::unassigned();
         $reservedNickname->initializeTimestamps();
+
+        return $reservedNickname;
+    }
+
+    public static function restore(
+        ReservedNicknameId $id,
+        UserNickname $nickname,
+        ReservedNicknameHolder $holder,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $reservedNickname = new self();
+        $reservedNickname->id = $id;
+        $reservedNickname->nickname = $nickname;
+        $reservedNickname->holder = $holder;
+        $reservedNickname->createdAt = $createdAt;
+        $reservedNickname->updatedAt = $updatedAt;
 
         return $reservedNickname;
     }

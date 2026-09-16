@@ -12,6 +12,7 @@ use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\User\Domain\Entity\ReservedNickname;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\Entity\UserBan;
@@ -28,6 +29,9 @@ use App\Modules\User\Domain\ValueObject\UserLocation;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Domain\ValueObject\UserSpiritualName;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\ReservedNicknameMapper;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserBanMapper;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
 use App\Modules\User\Domain\Repository\UserBanRepository;
 use App\Modules\User\Domain\Repository\UserRepository;
@@ -49,8 +53,8 @@ final class UserRepositoryTest extends DatabaseTestCase
         $user->confirmEmail();
         $user->markDeleted(new \DateTimeImmutable('2026-06-13 12:00:00'));
 
-        $this->entityManager()->persist($media);
-        $this->entityManager()->persist($user);
+        $this->persistMedia($media);
+        $this->persistUser($user);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -77,7 +81,7 @@ final class UserRepositoryTest extends DatabaseTestCase
     {
         $user = $this->createUser(email: 'empty@example.com', nickname: 'empty.user');
 
-        $this->entityManager()->persist($user);
+        $this->persistUser($user);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -96,8 +100,8 @@ final class UserRepositoryTest extends DatabaseTestCase
         $first = $this->createUser(email: 'count.first@example.com', nickname: 'count.first');
         $second = $this->createUser(email: 'count.second@example.com', nickname: 'count.second');
 
-        $this->entityManager()->persist($first);
-        $this->entityManager()->persist($second);
+        $this->persistUser($first);
+        $this->persistUser($second);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -117,8 +121,8 @@ final class UserRepositoryTest extends DatabaseTestCase
             expiration: BanExpiration::permanent(),
         );
 
-        $this->entityManager()->persist($user);
-        $this->entityManager()->persist($permanentBan);
+        $this->persistUser($user);
+        $this->persistUserBan($permanentBan);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -159,12 +163,12 @@ final class UserRepositoryTest extends DatabaseTestCase
             unbannedReason: BanUnbannedReason::of('Снят'),
         );
 
-        $this->entityManager()->persist($expiredUser);
-        $this->entityManager()->persist($unbannedUser);
-        $this->entityManager()->persist($activeTemporaryUser);
-        $this->entityManager()->persist($expiredBan);
-        $this->entityManager()->persist($unbannedBan);
-        $this->entityManager()->persist($activeTemporaryBan);
+        $this->persistUser($expiredUser);
+        $this->persistUser($unbannedUser);
+        $this->persistUser($activeTemporaryUser);
+        $this->persistUserBan($expiredBan);
+        $this->persistUserBan($unbannedBan);
+        $this->persistUserBan($activeTemporaryBan);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -182,8 +186,8 @@ final class UserRepositoryTest extends DatabaseTestCase
         $reservedNickname = ReservedNickname::create(UserNickname::fromString('reserved'));
         $reservedNickname->assignTo($user->id);
 
-        $this->entityManager()->persist($user);
-        $this->entityManager()->persist($reservedNickname);
+        $this->persistUser($user);
+        $this->persistReservedNickname($reservedNickname);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -197,8 +201,8 @@ final class UserRepositoryTest extends DatabaseTestCase
 
     public function testDuplicateEmailFails(): void
     {
-        $this->entityManager()->persist($this->createUser());
-        $this->entityManager()->persist($this->createUser(email: 'TEST@example.com', nickname: 'other.nick'));
+        $this->persistUser($this->createUser());
+        $this->persistUser($this->createUser(email: 'TEST@example.com', nickname: 'other.nick'));
 
         $this->expectException(\Throwable::class);
 
@@ -207,8 +211,8 @@ final class UserRepositoryTest extends DatabaseTestCase
 
     public function testDuplicateNicknameFails(): void
     {
-        $this->entityManager()->persist($this->createUser());
-        $this->entityManager()->persist($this->createUser(email: 'other@example.com', nickname: 'YOGA.TEST'));
+        $this->persistUser($this->createUser());
+        $this->persistUser($this->createUser(email: 'other@example.com', nickname: 'YOGA.TEST'));
 
         $this->expectException(\Throwable::class);
 
@@ -217,8 +221,8 @@ final class UserRepositoryTest extends DatabaseTestCase
 
     public function testDuplicateReservedNicknameFails(): void
     {
-        $this->entityManager()->persist(ReservedNickname::create(UserNickname::fromString('reserved')));
-        $this->entityManager()->persist(ReservedNickname::create(UserNickname::fromString('RESERVED')));
+        $this->persistReservedNickname(ReservedNickname::create(UserNickname::fromString('reserved')));
+        $this->persistReservedNickname(ReservedNickname::create(UserNickname::fromString('RESERVED')));
 
         $this->expectException(\Throwable::class);
 
@@ -271,5 +275,31 @@ final class UserRepositoryTest extends DatabaseTestCase
     private function reservedNicknameRepository(): ReservedNicknameRepository
     {
         return $this->getContainer()->get(ReservedNicknameRepository::class);
+    }
+
+    /**
+     * User, UserBan, ReservedNickname и Media — чистые доменные сущности без Cycle-разметки,
+     * поэтому не могут быть сохранены через generic persist(): EntityManager не знает их роль.
+     * Хелперы переводят их в Cycle Entity через Mapper перед постановкой в очередь
+     * EntityManager, flush остаётся общим — как до разделения.
+     */
+    private function persistUser(User $user): void
+    {
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
+    }
+
+    private function persistMedia(Media $media): void
+    {
+        $this->entityManager()->persist($this->getContainer()->get(MediaMapper::class)->toCycleEntity($media));
+    }
+
+    private function persistUserBan(UserBan $userBan): void
+    {
+        $this->entityManager()->persist((new UserBanMapper())->toCycleEntity($userBan));
+    }
+
+    private function persistReservedNickname(ReservedNickname $reservedNickname): void
+    {
+        $this->entityManager()->persist((new ReservedNicknameMapper())->toCycleEntity($reservedNickname));
     }
 }

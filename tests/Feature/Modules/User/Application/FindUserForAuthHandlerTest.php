@@ -11,6 +11,7 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use Cycle\ORM\EntityManagerInterface;
@@ -77,9 +78,14 @@ final class FindUserForAuthHandlerTest extends DatabaseTestCase
         );
     }
 
-    private function persist(object $entity): void
+    /**
+     * User — чистая доменная сущность без Cycle-разметки, поэтому не может быть сохранена через
+     * generic persist(): EntityManager не знает её роль. Хелпер переводит User в Cycle Entity
+     * через Mapper перед постановкой в очередь EntityManager.
+     */
+    private function persist(User $user): void
     {
-        $this->entityManager()->persist($entity);
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
         $this->entityManager()->run();
     }
 

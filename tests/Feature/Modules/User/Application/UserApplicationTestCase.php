@@ -22,6 +22,8 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaImageConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
@@ -35,6 +37,7 @@ use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
 use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
 use App\Modules\User\Domain\Repository\UserRepository;
@@ -58,8 +61,11 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
 
     private int $userCounter = 0;
 
-    protected function persistUser(UserAvatar|null $avatar = null, Locale $locale = Locale::Ru): User
-    {
+    protected function persistUser(
+        UserAvatar|null $avatar = null,
+        Locale $locale = Locale::Ru,
+        bool $confirmed = false,
+    ): User {
         $this->userCounter++;
 
         $user = User::create(
@@ -73,9 +79,26 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
             $user->setAvatar($avatar);
         }
 
-        $this->persist($user);
+        if ($confirmed) {
+            $user->confirmEmail();
+        }
+
+        $this->persistUserEntity($user);
 
         return $user;
+    }
+
+    /**
+     * User — чистая доменная сущность без Cycle-разметки, поэтому не может быть сохранена через
+     * generic persist(): EntityManager не знает её роль. Хелпер переводит User в Cycle Entity
+     * через Mapper перед постановкой в очередь EntityManager и сам выполняет прогон —
+     * вызывающая сторона не должна повторно персистить тот же доменный объект (новый Cycle
+     * Entity получит другой PK-конфликт).
+     */
+    protected function persistUserEntity(User $user): void
+    {
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
+        $this->entityManager()->run();
     }
 
     protected function persistReadyPublicMedia(): Media
@@ -192,9 +215,25 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
         return $this->getContainer()->get(UserRepository::class);
     }
 
+    /**
+     * Media и MediaImageConversion — чистые доменные сущности без Cycle-разметки, поэтому в
+     * отличие от прежнего (Cycle-нативного) состояния не могут быть сохранены через generic
+     * persist(): EntityManager не знает их роль. Хелпер переводит их в Cycle Entity через
+     * соответствующий Mapper перед постановкой в очередь EntityManager, по образцу
+     * tests/Support/Media/PersistsMedia.php.
+     */
     protected function persist(object $entity): void
     {
-        $this->entityManager()->persist($entity);
+        $this->entityManager()->persist(match (true) {
+            $entity instanceof Media => $this->getContainer()->get(MediaMapper::class)->toCycleEntity($entity),
+            $entity instanceof MediaImageConversion => $this->getContainer()
+                ->get(MediaImageConversionMapper::class)
+                ->toCycleEntity($entity),
+            default => throw new \InvalidArgumentException(\sprintf(
+                'persist() не знает Mapper для сущности %s.',
+                $entity::class,
+            )),
+        });
         $this->entityManager()->run();
     }
 

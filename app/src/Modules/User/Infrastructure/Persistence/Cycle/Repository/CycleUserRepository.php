@@ -9,6 +9,9 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\Repository\UserRepository;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Columns\UserColumns;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
@@ -17,17 +20,18 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<User>
+ * @extends AbstractRepository<CycleUserEntity>
  */
 final class CycleUserRepository extends AbstractRepository implements UserRepository
 {
     /**
-     * @param Select<User> $select
+     * @param Select<CycleUserEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private UserMapper $userMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -36,7 +40,10 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
     #[\Override]
     public function findById(UserId $userId): User|null
     {
-        return $this->findByPK($userId->value());
+        /** @var CycleUserEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($userId->value());
+
+        return $cycleEntity === null ? null : $this->userMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
@@ -46,14 +53,21 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
             return new UserCollection();
         }
 
-        return new UserCollection(
-            $this->select()
-                ->where('id', 'in', new Parameter(\array_map(
-                    static fn(UserId $userId): string => $userId->value(),
-                    $userIds,
-                )))
-                ->fetchAll(),
-        );
+        $userCollection = new UserCollection();
+
+        /** @var iterable<CycleUserEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(UserColumns::ID, 'in', new Parameter(\array_map(
+                static fn(UserId $userId): string => $userId->value(),
+                $userIds,
+            )))
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $userCollection->push($this->userMapper->toDomain($cycleEntity));
+        }
+
+        return $userCollection;
     }
 
     #[\Override]
@@ -64,7 +78,7 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
         }
 
         return $this->select()
-            ->where('id', 'in', new Parameter(\array_map(
+            ->where(UserColumns::ID, 'in', new Parameter(\array_map(
                 static fn(UserId $userId): string => $userId->value(),
                 $userIds,
             )))
@@ -74,13 +88,19 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
     #[\Override]
     public function findByEmail(Email $email): User|null
     {
-        return $this->findOne(['email' => $email->value()]);
+        /** @var CycleUserEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([UserColumns::EMAIL => $email->value()]);
+
+        return $cycleEntity === null ? null : $this->userMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function findByNickname(UserNickname $nickname): User|null
     {
-        return $this->findOne(['nickname' => $nickname->value()]);
+        /** @var CycleUserEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([UserColumns::NICKNAME => $nickname->value()]);
+
+        return $cycleEntity === null ? null : $this->userMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
@@ -98,8 +118,14 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
     #[\Override]
     public function save(User $user): void
     {
+        /** @var CycleUserEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([UserColumns::ID => $user->id->value()]);
+
         $this->entityManager
-            ->persist($user)
+            ->persist($this->userMapper->toCycleEntity(
+                user: $user,
+                cycleEntity: $cycleEntity,
+            ))
             ->run();
     }
 }

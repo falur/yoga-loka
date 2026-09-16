@@ -53,9 +53,7 @@ final class UserProviderTest extends UserApplicationTestCase
 
     public function testFindForSignInReturnsIdentifierAndSignInRight(): void
     {
-        $user = $this->persistUser();
-        $user->confirmEmail();
-        $this->persist($user);
+        $user = $this->persistUser(confirmed: true);
         $this->cleanOrmHeap();
 
         $signIn = $this->userProvider()->findForSignIn($user->email->value());

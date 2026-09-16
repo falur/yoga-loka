@@ -11,10 +11,9 @@ use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 
 /**
- * Доступ к вложениям записей. Медиа и его конверсии пока грузятся eager (media.*Conversions) вместе
- * со связью на чужую сущность. Сборке ответа они больше не нужны: ссылки вложений лента берёт у
- * Media пакетно через публичный контракт (PostViewAssembler -> MediaContract::urlsByIds). Связь и
- * eager-load снимаются отдельной задачей переезда — до этого они остаются как есть.
+ * Доступ к вложениям записей. Возвращает только собственные строки post_media: медиа соседнего модуля
+ * здесь не читается ни связью, ни join-ом. Ссылки вложений для ответа лента берёт у Media пакетно
+ * через публичный контракт (PostViewAssembler -> MediaContract::urlsByIds).
  *
  * @extends AbstractRepository<PostMedia>
  */
@@ -25,9 +24,6 @@ final class PostMediaRepository extends AbstractRepository
         return new PostMediaCollection(
             $this->select()
                 ->where('post_id', $postId->value())
-                ->load('media.imageConversions')
-                ->load('media.videoConversions')
-                ->load('media.audioConversions')
                 ->orderBy(expression: 'position', direction: 'ASC')
                 ->fetchAll(),
         );
@@ -49,9 +45,6 @@ final class PostMediaRepository extends AbstractRepository
                     static fn(PostId $postId): string => $postId->value(),
                     $postIds,
                 )))
-                ->load('media.imageConversions')
-                ->load('media.videoConversions')
-                ->load('media.audioConversions')
                 ->orderBy(expression: 'post_id', direction: 'ASC')
                 ->orderBy(expression: 'position', direction: 'ASC')
                 ->fetchAll(),

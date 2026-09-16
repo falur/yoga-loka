@@ -51,6 +51,10 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         self::assertCount(2, $attachments);
         self::assertSame(0, $attachments->first()?->position->value());
         self::assertSame($firstMedia->id->value(), $attachments->first()?->mediaId->value());
+        self::assertSame(
+            [$firstMedia->id->value(), $secondMedia->id->value()],
+            $attachments->map(static fn(PostMedia $item): string => $item->mediaId->value())->all(),
+        );
 
         $restoredPost = $this->postRepository()->findById($post->id);
         self::assertInstanceOf(Post::class, $restoredPost);
@@ -148,7 +152,12 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
         $this->entityManager()->run();
     }
 
-    public function testCannotDeleteMediaReferencedByPostMedia(): void
+    /**
+     * Межмодульного внешнего ключа post_media.media_id -> media.id больше нет: удаление медиа
+     * соседним модулем не блокируется вложением и не удаляет его строку. Недоступное медиа мягко
+     * исключается из ответа сборкой ответа, а не ограничением базы.
+     */
+    public function testDeletingReferencedMediaKeepsAttachmentRow(): void
     {
         $user = $this->createUser();
         $this->persist($user);
@@ -162,10 +171,14 @@ final class PostMediaRepositoryTest extends PostsRepositoryTestCase
             position: MediaPosition::fromInt(0),
         ));
 
-        $this->expectException(\Throwable::class);
-
         $this->entityManager()->delete($media);
         $this->entityManager()->run();
+        $this->cleanOrmHeap();
+
+        $attachments = $this->postMediaRepository()->findByPostId($post->id);
+
+        self::assertCount(1, $attachments);
+        self::assertSame($media->id->value(), $attachments->first()?->mediaId->value());
     }
 
     private function newPost(UserId $userId): Post

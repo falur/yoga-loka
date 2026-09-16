@@ -29,7 +29,7 @@ use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
 use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -53,7 +53,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         self::assertTrue($media->isReady());
         self::assertSame(MediaStorage::Private, $media->storage);
 
-        $conversions = $this->imageConversionRepository()->findByMediaId($media->id);
+        $conversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
         self::assertCount(1, $conversions);
         self::assertSame(MediaStorage::Private, $conversions->first()->storage);
     }
@@ -72,7 +72,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             plan: $this->imagePlan($this->imageConversionSpec(width: 100, height: 100)),
         ));
 
-        $conversion = $this->imageConversionRepository()->findByMediaId($media->id)->first();
+        $conversion = $this->mediaRepository()->findImageConversionsByMediaId($media->id)->first();
         self::assertSame(100, $conversion->width->value());
         self::assertSame(56, $conversion->height->value());
     }
@@ -94,7 +94,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         self::assertTrue($media->isReady());
         self::assertSame(MediaStorage::Public, $media->storage);
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testProcessesVideoMediaIntoNormalizedAndPoster(): void
@@ -125,12 +125,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         self::assertTrue($media->isReady());
 
-        $videoConversion = $this->videoConversionRepository()->findByMediaId($media->id)->first();
+        $videoConversion = $this->mediaRepository()->findVideoConversionsByMediaId($media->id)->first();
         self::assertNotNull($videoConversion);
         self::assertSame(1280, $videoConversion->width->value());
         self::assertSame(2000, $videoConversion->duration->value());
 
-        $poster = $this->imageConversionRepository()->findByMediaId($media->id)->first();
+        $poster = $this->mediaRepository()->findImageConversionsByMediaId($media->id)->first();
         self::assertNotNull($poster);
         self::assertSame(MediaImageConversionType::Poster, $poster->type);
         self::assertSame(1280, $poster->width->value());
@@ -162,7 +162,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         self::assertTrue($media->isReady());
 
-        $audioConversion = $this->audioConversionRepository()->findByMediaId($media->id)->first();
+        $audioConversion = $this->mediaRepository()->findAudioConversionsByMediaId($media->id)->first();
         self::assertNotNull($audioConversion);
         self::assertSame(44_100, $audioConversion->sampleRate->value());
         self::assertSame([0, 64, 128, 255], $audioConversion->waveform->peaks());
@@ -195,7 +195,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         ));
 
         self::assertTrue($media->isReady());
-        self::assertCount(1, $this->videoConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
     }
 
     public function testRerunsAudioAfterProcessingFailed(): void
@@ -224,7 +224,7 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
 
         self::assertTrue($media->isReady());
 
-        $audioConversions = $this->audioConversionRepository()->findByMediaId($media->id);
+        $audioConversions = $this->mediaRepository()->findAudioConversionsByMediaId($media->id);
         self::assertCount(1, $audioConversions);
         self::assertSame(44_100, $audioConversions->first()->sampleRate->value());
         self::assertSame([0, 64, 128, 255], $audioConversions->first()->waveform->peaks());
@@ -307,12 +307,12 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
         // и хранилище по видимости. Реальную перекладку оригинала в постоянное хранилище держит
         // сквозной MediaProcessingFlowTest::testCompleteThenRelayProcessesDocumentToReady.
         self::assertStringStartsWith('documents/', $media->path->value());
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new ProcessMediaCommand(
             mediaId: UserId::generate()->value(),
@@ -355,7 +355,6 @@ final class ProcessMediaHandlerTest extends MediaApplicationTestCase
             mediaImageProcessor: $imageProcessor,
             mediaVideoProcessor: $videoProcessor ?? $this->createStub(MediaVideoProcessorContract::class),
             mediaAudioProcessor: $audioProcessor ?? $this->createStub(MediaAudioProcessorContract::class),
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

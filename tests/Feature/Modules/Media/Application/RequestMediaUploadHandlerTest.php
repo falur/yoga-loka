@@ -19,6 +19,9 @@ use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Exception\MediaFileNameWithoutExtensionException;
+use App\Modules\Media\Domain\Exception\MediaFileSizeExceededException;
+use App\Modules\Media\Domain\Exception\MediaMimeTypeNotAllowedException;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
@@ -26,7 +29,6 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\LoggerInterface;
@@ -130,7 +132,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         self::assertSame('upload-1', $result->uploadId);
         self::assertNotNull($result->parts);
         self::assertCount(1, $result->parts);
-        self::assertNotNull($this->multipartUploadRepository()->findByMediaId(MediaId::fromString($result->mediaId)));
+        self::assertNotNull($this->mediaRepository()->findMultipartUploadByMediaId(MediaId::fromString($result->mediaId)));
 
         // TTL частей multipart тоже берётся из спеки (600), а не из конфига.
         self::assertNotNull($capturedExpiresAt);
@@ -143,7 +145,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsUnsupportedMimeType(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaMimeTypeNotAllowedException::class);
 
         $this->handler()->handle(new RequestMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -154,7 +156,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsMimeTypeOutsideSpec(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaMimeTypeNotAllowedException::class);
 
         $this->handler()->handle(new RequestMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -165,7 +167,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsSizeAboveSpecMax(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaFileSizeExceededException::class);
 
         $this->handler()->handle(new RequestMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -176,7 +178,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsFileNameWithoutExtension(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaFileNameWithoutExtensionException::class);
 
         $this->handler()->handle(new RequestMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -226,7 +228,7 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
     {
         // Резолвер поддерживает text/csv как документ, но спецификация его не разрешает —
         // потребитель сужает набор, а не расширяет.
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaMimeTypeNotAllowedException::class);
         $this->expectExceptionMessage('app.media.mime_not_allowed');
 
         $this->handler()->handle(new RequestMediaUploadCommand(
@@ -243,10 +245,10 @@ final class RequestMediaUploadHandlerTest extends MediaApplicationTestCase
         LoggerInterface|null $logger = null,
     ): RequestMediaUploadHandler {
         return new RequestMediaUploadHandler(
+            mediaRepository: $this->mediaRepository(),
             mediaFileService: $fileService ?? $this->createStub(MediaFileServiceContract::class),
             mediaTypeResolver: new MediaTypeResolver(),
             uploadPlanner: new MediaUploadPlanner($this->mediaConfig(threshold: $threshold, partSize: $partSize)),
-            entityManager: $this->entityManager(),
             logger: $logger ?? new NullLogger(),
         );
     }

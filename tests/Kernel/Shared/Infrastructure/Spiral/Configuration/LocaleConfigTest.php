@@ -7,7 +7,7 @@ namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
+use App\Shared\Infrastructure\Spiral\Configuration\Exception\InvalidConfigValueException;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;

@@ -10,7 +10,7 @@ use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -58,7 +58,7 @@ final class RecordMediaProcessingFailureHandlerTest extends MediaApplicationTest
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler()->handle(new RecordMediaProcessingFailureCommand(
             mediaId: UserId::generate()->value(),
@@ -71,7 +71,6 @@ final class RecordMediaProcessingFailureHandlerTest extends MediaApplicationTest
     {
         return new RecordMediaProcessingFailureHandler(
             mediaRepository: $this->mediaRepository(),
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

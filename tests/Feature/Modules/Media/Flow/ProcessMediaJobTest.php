@@ -14,7 +14,7 @@ use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
@@ -99,7 +99,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
     public function testTransientFailureStillRetriesWhenRecordingErrorThrows(): void
     {
         // Сценарий ревью: медиа конкурентно удалили к моменту записи ошибки -> запись
-        // (RecordMediaProcessingFailureHandler::handle -> findById ?? throw NotFoundException)
+        // (RecordMediaProcessingFailureHandler::handle -> findById ?? throw MediaNotFoundException)
         // падает. Вторичный сбой записи не должен подменять исходную классификацию:
         // для временного исходного сбоя Job всё равно бросает RetryException.
         $missingMediaId = Uuid::uuid7()->toString();
@@ -133,7 +133,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $thrown = $caught;
         }
 
-        // Исходная причина не подменяется: временный сбой -> RetryException, а не NotFoundException.
+        // Исходная причина не подменяется: временный сбой -> RetryException, а не MediaNotFoundException.
         self::assertInstanceOf(RetryException::class, $thrown);
         // Вторичный сбой записи залогирован как ERROR (rules.md:84), плюс ERROR классификации не мешает
         // WARN временного повтора.
@@ -141,7 +141,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         self::assertTrue($logger->hasLevel(LogLevel::WARNING));
     }
 
-    public function testMigratedNotFoundExceptionCarriesTranslationKeyWithoutTranslationInQueueContext(): void
+    public function testMediaNotFoundExceptionCarriesTranslationKeyWithoutTranslationInQueueContext(): void
     {
         // Очередь не выполняет перевод (per-request локали нет): мигрированное исключение несёт
         // ключ перевода, а не русский текст — getMessage() == ключ, translationKey() == ключ.
@@ -153,8 +153,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
                     isTransient: false,
                 ),
             );
-            self::fail('Ожидалось NotFoundException.');
-        } catch (NotFoundException $exception) {
+            self::fail('Ожидалось MediaNotFoundException.');
+        } catch (MediaNotFoundException $exception) {
             self::assertSame('app.media.not_found', $exception->translationKey());
             self::assertSame('app.media.not_found', $exception->getMessage());
             self::assertSame([], $exception->translationParameters());

@@ -7,7 +7,7 @@ namespace Tests\Unit\Modules\Media\Application;
 use App\Modules\Media\Application\Service\MediaTypeResolver;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Media\Domain\Exception\MediaUnsupportedFileTypeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -93,7 +93,7 @@ final class MediaTypeResolverTest extends TestCase
     #[DataProvider('unsupportedMimeTypeProvider')]
     public function testRejectsUnsupportedMimeTypes(string $mimeType): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaUnsupportedFileTypeException::class);
 
         new MediaTypeResolver()->resolve(MediaMimeType::fromString($mimeType));
     }

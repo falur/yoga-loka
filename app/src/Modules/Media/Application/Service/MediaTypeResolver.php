@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Service;
 
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Exception\MediaUnsupportedFileTypeException;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
-use App\Shared\Domain\Exception\ValidationException;
 
 /**
  * Резолвер MIME -> MediaType. Поддержан список разрешённых MIME-типов документов (он
@@ -63,9 +63,6 @@ final readonly class MediaTypeResolver
             return MediaType::Audio;
         }
 
-        throw new ValidationException(
-            translationKey: 'app.media.unsupported_file_type',
-            translationParameters: ['type' => $value],
-        );
+        throw new MediaUnsupportedFileTypeException($value);
     }
 }

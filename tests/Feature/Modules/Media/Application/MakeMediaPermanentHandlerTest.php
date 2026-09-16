@@ -6,9 +6,9 @@ namespace Tests\Feature\Modules\Media\Application;
 
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentCommand;
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaCannotBeMadePermanentException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -61,7 +61,7 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler()->handle(new MakeMediaPermanentCommand(
             userId: UserId::generate()->value(),
@@ -75,7 +75,7 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
 
         $this->handler()->handle(new MakeMediaPermanentCommand(
             userId: UserId::generate()->value(),
@@ -89,7 +89,7 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaCannotBeMadePermanentException::class);
 
         $this->handler()->handle(new MakeMediaPermanentCommand(
             userId: $userId->value(),
@@ -109,7 +109,7 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
         $last->markUploaded();
         $this->persist($first, $staging, $last);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaCannotBeMadePermanentException::class);
         $this->expectExceptionMessage('app.media.cannot_make_permanent');
 
         $this->handler()->handle(new MakeMediaPermanentCommand(
@@ -122,7 +122,6 @@ final class MakeMediaPermanentHandlerTest extends MediaApplicationTestCase
     {
         return new MakeMediaPermanentHandler(
             mediaRepository: $this->mediaRepository(),
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

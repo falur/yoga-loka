@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Spiral\Configuration\Mapping;
 
-use App\Shared\Infrastructure\Exception\ConfigMappingException;
-use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
+use App\Shared\Infrastructure\Spiral\Configuration\Exception\ConfigMappingException;
+use App\Shared\Infrastructure\Spiral\Configuration\Exception\InvalidConfigValueException;
 use CuyZ\Valinor\Mapper\MappingError;
 use CuyZ\Valinor\Mapper\TreeMapper;
 use CuyZ\Valinor\Normalizer\Normalizer;

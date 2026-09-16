@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Spiral\Configuration\Locale;
 
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
-use App\Shared\Infrastructure\Exception\InvalidConfigValueException;
+use App\Shared\Infrastructure\Spiral\Configuration\Exception\InvalidConfigValueException;
 
 final readonly class LocaleConfig implements TypedConfig
 {

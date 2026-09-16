@@ -10,10 +10,10 @@ use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotReadyForAttachmentException;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
 
 final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
@@ -59,7 +59,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
             mediaIds: [UserId::generate()->value()],
@@ -72,7 +72,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $media = $this->readyMediaOwnedBy(UserId::generate());
         $this->persist($media);
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
             mediaIds: [$media->id->value()],
@@ -90,7 +90,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $last = $this->readyMediaOwnedBy($owner);
         $this->persist($first, $foreign, $last);
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
         $this->expectExceptionMessage('app.media.access_denied');
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
@@ -105,7 +105,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $owner);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaNotReadyForAttachmentException::class);
 
         $this->handler()->handle(new CheckMediaAttachableQuery(
             mediaIds: [$media->id->value()],
@@ -122,7 +122,7 @@ final class CheckMediaAttachableHandlerTest extends MediaApplicationTestCase
         $media->markReadyOriginalRemoved();
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaNotReadyForAttachmentException::class);
         $this->expectExceptionMessage('app.media.not_ready');
 
         $this->handler()->handle(new CheckMediaAttachableQuery(

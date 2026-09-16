@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Shared\Infrastructure\Exception;
+namespace Tests\Unit\Shared\Infrastructure\Spiral\Configuration\Exception;
 
-use App\Shared\Infrastructure\Exception\ConfigMappingException;
+use App\Shared\Infrastructure\Spiral\Configuration\Exception\ConfigMappingException;
 use CuyZ\Valinor\Mapper\MappingError;
 use CuyZ\Valinor\MapperBuilder;
 use PHPUnit\Framework\TestCase;

@@ -29,8 +29,8 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -77,7 +77,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
     {
         $userId = UserId::generate();
         $media = $this->readyMediaWithImageConversion($userId, MediaStorage::Public);
-        $conversionPath = $this->imageConversionRepository()->findByMediaId($media->id)->first()?->path;
+        $conversionPath = $this->mediaRepository()->findImageConversionsByMediaId($media->id)->first()?->path;
         self::assertNotNull($conversionPath);
 
         $fileService = $this->createMock(MediaFileServiceContract::class);
@@ -96,14 +96,14 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertContains($conversionPath->value(), $deletedPaths);
         self::assertContains($media->path->value(), $deletedPaths);
         self::assertNull($this->mediaRepository()->findById($media->id));
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testDeletesReadyMediaVideoConversionObjectsFromStorage(): void
     {
         $userId = UserId::generate();
         $media = $this->readyMediaWithVideoConversion($userId, MediaStorage::Public);
-        $conversionPath = $this->videoConversionRepository()->findByMediaId($media->id)->first()?->path;
+        $conversionPath = $this->mediaRepository()->findVideoConversionsByMediaId($media->id)->first()?->path;
         self::assertNotNull($conversionPath);
 
         $fileService = $this->createMock(MediaFileServiceContract::class);
@@ -122,14 +122,14 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertContains($conversionPath->value(), $deletedPaths);
         self::assertContains($media->path->value(), $deletedPaths);
         self::assertNull($this->mediaRepository()->findById($media->id));
-        self::assertCount(0, $this->videoConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
     }
 
     public function testDeletesReadyMediaAudioConversionObjectsFromStorage(): void
     {
         $userId = UserId::generate();
         $media = $this->readyMediaWithAudioConversion($userId, MediaStorage::Public);
-        $conversionPath = $this->audioConversionRepository()->findByMediaId($media->id)->first()?->path;
+        $conversionPath = $this->mediaRepository()->findAudioConversionsByMediaId($media->id)->first()?->path;
         self::assertNotNull($conversionPath);
 
         $fileService = $this->createMock(MediaFileServiceContract::class);
@@ -148,7 +148,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertContains($conversionPath->value(), $deletedPaths);
         self::assertContains($media->path->value(), $deletedPaths);
         self::assertNull($this->mediaRepository()->findById($media->id));
-        self::assertCount(0, $this->audioConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findAudioConversionsByMediaId($media->id));
     }
 
     public function testDeletesReadyOriginalRemovedMediaConversionsAndIdempotentOriginal(): void
@@ -159,7 +159,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $media = $this->readyMediaWithImageConversion($userId, MediaStorage::Public);
         $media->markReadyOriginalRemoved();
         $this->persist($media);
-        $conversionPath = $this->imageConversionRepository()->findByMediaId($media->id)->first()?->path;
+        $conversionPath = $this->mediaRepository()->findImageConversionsByMediaId($media->id)->first()?->path;
         self::assertNotNull($conversionPath);
 
         $fileService = $this->createMock(MediaFileServiceContract::class);
@@ -179,7 +179,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertContains($conversionPath->value(), $deletedPaths);
         self::assertContains($media->path->value(), $deletedPaths);
         self::assertNull($this->mediaRepository()->findById($media->id));
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testDeletesWaitingUploadWithoutMultipartRecord(): void
@@ -202,7 +202,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new DeleteMediaCommand(
             userId: UserId::generate()->value(),
@@ -215,7 +215,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: UserId::generate());
         $this->persist($media);
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new DeleteMediaCommand(
             userId: UserId::generate()->value(),
@@ -227,12 +227,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
     {
         return new DeleteMediaHandler(
             mediaRepository: $this->mediaRepository(),
-            mediaMultipartUploadRepository: $this->multipartUploadRepository(),
-            mediaImageConversionRepository: $this->imageConversionRepository(),
-            mediaVideoConversionRepository: $this->videoConversionRepository(),
-            mediaAudioConversionRepository: $this->audioConversionRepository(),
             mediaFileService: $fileService,
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

@@ -15,10 +15,11 @@ use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaOriginalNotRemovableException;
+use App\Modules\Media\Domain\Exception\MediaWithoutConversionsToKeepException;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -50,7 +51,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
-        self::assertCount(1, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testRemovesOriginalOfVideoMediaKeepingConversionAndPoster(): void
@@ -78,8 +79,8 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
-        self::assertCount(1, $this->videoConversionRepository()->findByMediaId($media->id));
-        self::assertCount(1, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testRemovesOriginalOfAudioMediaKeepingConversion(): void
@@ -108,12 +109,12 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $media->status);
         self::assertSame(MediaStatus::ReadyOriginalRemoved, $result->status);
         self::assertSame($media->id->value(), $result->mediaId);
-        self::assertCount(1, $this->audioConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findAudioConversionsByMediaId($media->id));
     }
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
         $this->expectExceptionMessage('app.media.not_found');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -126,7 +127,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
     {
         $media = $this->readyImageMediaWithConversion(UserId::generate());
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
         $this->expectExceptionMessage('app.media.access_denied');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -142,7 +143,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaOriginalNotRemovableException::class);
         $this->expectExceptionMessage('app.media.original_not_removable');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -161,7 +162,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
             mimeType: 'application/pdf',
         );
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaWithoutConversionsToKeepException::class);
         $this->expectExceptionMessage('app.media.no_conversions_to_keep');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -180,7 +181,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
             mimeType: 'image/jpeg',
         );
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaWithoutConversionsToKeepException::class);
         $this->expectExceptionMessage('app.media.no_conversions_to_keep');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -206,7 +207,7 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
             status: MediaConversionStatus::Processing,
         ));
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaWithoutConversionsToKeepException::class);
         $this->expectExceptionMessage('app.media.no_conversions_to_keep');
 
         $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new RemoveMediaOriginalCommand(
@@ -274,12 +275,9 @@ final class RemoveMediaOriginalHandlerTest extends MediaApplicationTestCase
         return new RemoveMediaOriginalHandler(
             mediaRepository: $this->mediaRepository(),
             mediaConversionsChecker: new MediaConversionsChecker(
-                mediaImageConversionRepository: $this->imageConversionRepository(),
-                mediaVideoConversionRepository: $this->videoConversionRepository(),
-                mediaAudioConversionRepository: $this->audioConversionRepository(),
+                mediaRepository: $this->mediaRepository(),
             ),
             mediaFileService: $fileService,
-            entityManager: $this->entityManager(),
             logger: $logger ?? new NullLogger(),
         );
     }

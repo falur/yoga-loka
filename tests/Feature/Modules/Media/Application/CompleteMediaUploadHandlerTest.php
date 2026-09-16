@@ -21,6 +21,19 @@ use App\Modules\Media\Public\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Public\Enum\MediaVideoConversionType;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaAudioConversionProfileRequiredException;
+use App\Modules\Media\Domain\Exception\MediaConversionBitrateOutOfRangeException;
+use App\Modules\Media\Domain\Exception\MediaConversionDimensionsOutOfRangeException;
+use App\Modules\Media\Domain\Exception\MediaConversionDuplicateTypeException;
+use App\Modules\Media\Domain\Exception\MediaConversionPlanTypeMismatchException;
+use App\Modules\Media\Domain\Exception\MediaConversionSampleRateOutOfRangeException;
+use App\Modules\Media\Domain\Exception\MediaConversionWaveformPeaksOutOfRangeException;
+use App\Modules\Media\Domain\Exception\MediaMultipartUploadNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaUploadNotPendingException;
+use App\Modules\Media\Domain\Exception\MediaUploadedObjectMismatchException;
+use App\Modules\Media\Domain\Exception\MediaVideoConversionProfileRequiredException;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPart;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartETag;
@@ -29,9 +42,6 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
@@ -145,7 +155,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionPlanTypeMismatchException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -161,7 +171,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionDuplicateTypeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -177,7 +187,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaVideoConversionProfileRequiredException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -193,7 +203,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaVideoConversionProfileRequiredException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -209,7 +219,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionBitrateOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -225,7 +235,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionSampleRateOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -241,7 +251,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionWaveformPeaksOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -257,7 +267,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionPlanTypeMismatchException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -273,7 +283,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Video, extension: 'mp4', mimeType: 'video/mp4');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionDimensionsOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -289,7 +299,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionPlanTypeMismatchException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -305,7 +315,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaAudioConversionProfileRequiredException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -321,7 +331,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaAudioConversionProfileRequiredException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -337,7 +347,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionBitrateOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -382,7 +392,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, type: MediaType::Document, extension: 'pdf', mimeType: 'application/pdf');
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionPlanTypeMismatchException::class);
         $this->expectExceptionMessage('app.media.conversion_plan_type_mismatch');
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
@@ -430,7 +440,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler($this->fileServiceWithHead(2048), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -445,7 +455,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: UserId::generate());
         $this->persist($media);
 
-        $this->expectException(ForbiddenException::class);
+        $this->expectException(MediaAccessDeniedException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: UserId::generate()->value(),
@@ -462,7 +472,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaUploadNotPendingException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -479,7 +489,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaConversionDimensionsOutOfRangeException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -508,7 +518,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId);
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaMultipartUploadNotFoundException::class);
 
         $this->handler($this->fileServiceWithHead(1024), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -527,7 +537,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('headObject')->willReturn(null);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaUploadedObjectMismatchException::class);
 
         $this->handler($fileService, $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -543,7 +553,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: $userId, size: MediaFileSize::fromInt(2048));
         $this->persist($media);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(MediaUploadedObjectMismatchException::class);
 
         $this->handler($this->fileServiceWithHead(999), $this->outboxStore())->handle(new CompleteMediaUploadCommand(
             userId: $userId->value(),
@@ -559,10 +569,8 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
     ): CompleteMediaUploadHandler {
         return new CompleteMediaUploadHandler(
             mediaRepository: $this->mediaRepository(),
-            mediaMultipartUploadRepository: $this->multipartUploadRepository(),
             mediaFileService: $fileService,
             integrationEventStore: $outboxStore,
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

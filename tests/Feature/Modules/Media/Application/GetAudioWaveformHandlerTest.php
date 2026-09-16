@@ -10,8 +10,10 @@ use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Exception\MediaConversionNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFinalizedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
-use App\Shared\Domain\Exception\NotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
 final class GetAudioWaveformHandlerTest extends MediaApplicationTestCase
@@ -43,7 +45,7 @@ final class GetAudioWaveformHandlerTest extends MediaApplicationTestCase
         $media = $this->createMedia(userId: UserId::generate(), type: MediaType::Audio, extension: 'mp3', mimeType: 'audio/mpeg');
         $this->persist($media);
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFinalizedException::class);
 
         $this->handler()->handle(new GetAudioWaveformQuery(mediaId: $media->id->value()));
     }
@@ -58,7 +60,7 @@ final class GetAudioWaveformHandlerTest extends MediaApplicationTestCase
         );
         $this->persist($media);
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaConversionNotFoundException::class);
 
         $this->handler()->handle(new GetAudioWaveformQuery(mediaId: $media->id->value()));
     }
@@ -68,14 +70,14 @@ final class GetAudioWaveformHandlerTest extends MediaApplicationTestCase
         $media = $this->readyAudioMedia();
         $this->persist($media);
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaConversionNotFoundException::class);
 
         $this->handler()->handle(new GetAudioWaveformQuery(mediaId: $media->id->value()));
     }
 
     public function testRejectsMissingMedia(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(MediaNotFoundException::class);
 
         $this->handler()->handle(new GetAudioWaveformQuery(mediaId: UserId::generate()->value()));
     }
@@ -84,7 +86,6 @@ final class GetAudioWaveformHandlerTest extends MediaApplicationTestCase
     {
         return new GetAudioWaveformHandler(
             mediaRepository: $this->mediaRepository(),
-            mediaAudioConversionRepository: $this->audioConversionRepository(),
         );
     }
 

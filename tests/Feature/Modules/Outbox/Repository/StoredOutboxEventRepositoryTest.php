@@ -93,14 +93,17 @@ final class StoredOutboxEventRepositoryTest extends DatabaseTestCase
             now: $now,
         );
 
-        $this->entityManager()->persist($availablePendingEvent);
-        $this->entityManager()->persist($futurePendingEvent);
-        $this->entityManager()->persist($expiredPublishingEvent);
-        $this->entityManager()->persist($activePublishingEvent);
-        $this->entityManager()->persist($queuedEvent);
-        $this->entityManager()->persist($handledEvent);
-        $this->entityManager()->persist($failedEvent);
-        $this->entityManager()->run();
+        // StoredOutboxEvent — чистая доменная сущность без Cycle-разметки, поэтому в отличие
+        // от прежнего прямого $entityManager->persist() сохраняется через доменный saveAll().
+        $this->storedOutboxEventRepository()->saveAll(new OutboxEventCollection([
+            $availablePendingEvent,
+            $futurePendingEvent,
+            $expiredPublishingEvent,
+            $activePublishingEvent,
+            $queuedEvent,
+            $handledEvent,
+            $failedEvent,
+        ]));
 
         $pendingEvents = $this->storedOutboxEventRepository()->findPendingForRelay(
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),

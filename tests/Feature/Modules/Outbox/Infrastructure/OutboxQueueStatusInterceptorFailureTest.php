@@ -15,9 +15,11 @@ use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
 use CuyZ\Valinor\Mapper\MappingError;
+use Cycle\Database\DatabaseInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\Exception\RetryException;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\DeleteEventDuringJobQueueStatusCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\MarkFinalThenThrowQueueStatusCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxQueueStatusInterceptorTestHelpers;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\QueueStatusDebugLogJobCore;
@@ -61,9 +63,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 ),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertFalse($reloadedStoredOutboxEvent->failedAt->isEmpty());
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -91,9 +94,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 ),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertFalse($reloadedStoredOutboxEvent->failedAt->isEmpty());
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -109,14 +113,45 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 action: 'handle',
                 parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
                 core: new MarkFinalThenThrowQueueStatusCore(
-                    storedOutboxEvent: $storedOutboxEvent,
-                    entityManager: $this->entityManager(),
+                    storedOutboxEventRepository: $this->storedOutboxEventRepository(),
+                    outboxEventId: $storedOutboxEvent->id,
                     exception: new \RuntimeException('Job упал после перевода события в финальный статус.'),
                 ),
             );
         } finally {
-            // recordJobFailure увидел уже-финальное событие и не перезаписал его статус.
-            self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
+            // recordJobFailure перечитал состояние из репозитория, увидел уже-финальное событие
+            // (сохранённое fixture-ом через отдельный findById(), а не общий PHP-объект) и не
+            // перезаписал его статус ошибкой — проверка идёт по реальной строке БД.
+            self::assertSame(OutboxEventStatus::Handled, $this->reloadStoredOutboxEvent($storedOutboxEvent->id)->status);
+        }
+    }
+
+    /**
+     * Зеркало успешной ветки: строка события исчезла, пока Job работал, и Job при этом упал.
+     * Перечит вернёт null, поэтому ошибка записывается в снимок, прочитанный до запуска Job, —
+     * interceptor не падает второй ошибкой и не теряет факт неудачи.
+     */
+    public function testInterceptorSurvivesEventDeletedDuringFailedJob(): void
+    {
+        $storedOutboxEvent = $this->persistQueuedEvent();
+
+        $this->expectException(\RuntimeException::class);
+
+        try {
+            $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
+                controller: OutboxDebugLogJob::class,
+                action: 'handle',
+                parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
+                core: new DeleteEventDuringJobQueueStatusCore(
+                    database: $this->getContainer()->get(DatabaseInterface::class),
+                    outboxEventId: $storedOutboxEvent->id,
+                    exception: new \RuntimeException('Job упал после исчезновения своего события.'),
+                ),
+            );
+        } finally {
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -134,9 +169,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new \RuntimeException('Job упал.')),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertSame(1, $storedOutboxEvent->attempts->value());
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertSame(1, $reloadedStoredOutboxEvent->attempts->value());
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -156,8 +192,9 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 ),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -175,8 +212,9 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new \RuntimeException(\str_repeat('x', 3000))),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertLessThanOrEqual(2000, \mb_strlen($storedOutboxEvent->lastError->value() ?? ''));
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertLessThanOrEqual(2000, \mb_strlen($reloadedStoredOutboxEvent->lastError->value() ?? ''));
         }
     }
 
@@ -194,9 +232,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new RetryException(reason: 'Повторить позже.')),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Queued, $storedOutboxEvent->status);
-            self::assertSame(1, $storedOutboxEvent->attempts->value());
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Queued, $reloadedStoredOutboxEvent->status);
+            self::assertSame(1, $reloadedStoredOutboxEvent->attempts->value());
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 
@@ -215,7 +254,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new RetryException(reason: 'Повторить позже.')),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Queued, $storedOutboxEvent->status);
+            self::assertSame(
+                OutboxEventStatus::Queued,
+                $this->reloadStoredOutboxEvent($storedOutboxEvent->id)->status,
+            );
             self::assertTrue($recordingOutboxLogger->hasRecord(
                 level: 'debug',
                 messageSubstring: 'оставил событие на повтор',
@@ -242,7 +284,10 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new \RuntimeException('Job окончательно упал.')),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
+            self::assertSame(
+                OutboxEventStatus::Failed,
+                $this->reloadStoredOutboxEvent($storedOutboxEvent->id)->status,
+            );
             self::assertTrue($recordingOutboxLogger->hasRecord(
                 level: 'error',
                 messageSubstring: 'окончательно перевёл событие в failed',
@@ -277,8 +322,7 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
             outboxMaxAttempts: OutboxMaxAttempts::fromInt(2),
             now: new \DateTimeImmutable('2026-05-25 16:05:30'),
         );
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         $this->expectException(RetryException::class);
 
@@ -290,10 +334,11 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
                 core: new QueueStatusTestCore(new RetryException(reason: 'Повторить позже.')),
             );
         } finally {
-            self::assertSame(OutboxEventStatus::Failed, $storedOutboxEvent->status);
-            self::assertSame(2, $storedOutboxEvent->attempts->value());
-            self::assertFalse($storedOutboxEvent->failedAt->isEmpty());
-            self::assertFalse($storedOutboxEvent->lastError->isEmpty());
+            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+            self::assertSame(2, $reloadedStoredOutboxEvent->attempts->value());
+            self::assertFalse($reloadedStoredOutboxEvent->failedAt->isEmpty());
+            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
         }
     }
 }

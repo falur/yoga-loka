@@ -23,8 +23,9 @@ final readonly class MarkHandledDuringPushQueue implements QueueInterface
     #[\Override]
     public function push(string $name, array $payload = [], OptionsInterface|null $options = null): string
     {
-        // Имитируем sync-worker: меняем статус через ту же Entity из identity map, что держит
-        // relay, — ровно как боевой OutboxQueueStatusInterceptor внутри sync-push.
+        // Имитируем sync-worker: меняем статус через свой собственный findById(), как боевой
+        // OutboxQueueStatusInterceptor внутри sync-push. OutboxRelay сам перечитывает состояние
+        // из репозитория после push — эту мутацию он обязан увидеть.
         $storedOutboxEvent = $this->storedOutboxEventRepository->findById($this->outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->markHandled($this->handledAt);

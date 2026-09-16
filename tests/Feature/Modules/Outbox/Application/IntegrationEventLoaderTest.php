@@ -132,10 +132,16 @@ final class IntegrationEventLoaderTest extends DatabaseTestCase
             availableAt: $now,
             now: $now,
         );
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        // StoredOutboxEvent — чистая доменная сущность без Cycle-разметки, поэтому в отличие
+        // от прежнего прямого $entityManager->persist() сохраняется через доменный save().
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         return $storedOutboxEvent->id->value();
+    }
+
+    private function storedOutboxEventRepository(): StoredOutboxEventRepository
+    {
+        return $this->getContainer()->get(StoredOutboxEventRepository::class);
     }
 
     private function entityManager(): EntityManagerInterface

@@ -15,6 +15,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\Repository\MediaRepository;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
@@ -45,6 +46,7 @@ final class OutboxEventStoreTransactionTest extends TestCase
         $storeMediaAndOutboxHandler = new StoreMediaAndOutboxHandler(
             entityManager: $this->getContainer()->get(EntityManagerInterface::class),
             outboxEventStore: $this->getContainer()->get(IntegrationEventStoreContract::class),
+            mediaMapper: $this->getContainer()->get(MediaMapper::class),
         );
 
         $storeMediaAndOutboxResult = $this->getContainer()->get(CommandBusInterface::class)->dispatch(
@@ -78,13 +80,18 @@ final readonly class StoreMediaAndOutboxHandler
     public function __construct(
         private EntityManagerInterface $entityManager,
         private IntegrationEventStoreContract $outboxEventStore,
+        private MediaMapper $mediaMapper,
     ) {}
 
     #[Transactional]
     public function handle(StoreMediaAndOutboxCommand $storeMediaAndOutboxCommand): StoreMediaAndOutboxResult
     {
         $media = $this->createMedia();
-        $this->entityManager->persist($media);
+        // Media — чистая доменная сущность без Cycle-разметки, поэтому в отличие от прежнего
+        // (Cycle-нативного) состояния не может быть сохранена через generic persist():
+        // EntityManager не знает её роль. Персист идёт через MediaMapper, как это делает
+        // CycleMediaRepository.
+        $this->entityManager->persist($this->mediaMapper->toCycleEntity($media));
         $storedOutboxEventId = $this->outboxEventStore->add(
             new OutboxDebugLogRequestedEvent(
                 text: 'transaction check',

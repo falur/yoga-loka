@@ -70,17 +70,25 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
             throw $exception;
         }
 
-        if ($this->eventBecameFinalDuringJob($storedOutboxEvent)) {
+        // Job мог сам (например вложенным sync-переотправлением) уже перевести это же событие в
+        // финальный статус через собственный findById()+save(). StoredOutboxEvent — чистая
+        // доменная сущность без Cycle-разметки, поэтому Mapper каждый раз отдаёт отдельный объект:
+        // $storedOutboxEvent выше не видит чужую запись. Перечитываем состояние из репозитория
+        // перед проверкой eventBecameFinalDuringJob(), по образцу OutboxRelay::publish().
+        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
+            ?? $storedOutboxEvent;
+
+        if ($this->eventBecameFinalDuringJob($currentStoredOutboxEvent)) {
             return $result;
         }
 
         $now = new \DateTimeImmutable();
-        $storedOutboxEvent->markHandled($now);
-        $this->storedOutboxEventRepository->save($storedOutboxEvent);
+        $currentStoredOutboxEvent->markHandled($now);
+        $this->storedOutboxEventRepository->save($currentStoredOutboxEvent);
 
         $this->logger->debug(message: 'Outbox interceptor поставил handled.', context: [
-            'outboxId' => $storedOutboxEvent->id->value(),
-            'outboxType' => $storedOutboxEvent->type->value(),
+            'outboxId' => $currentStoredOutboxEvent->id->value(),
+            'outboxType' => $currentStoredOutboxEvent->type->value(),
         ]);
 
         return $result;
@@ -185,7 +193,13 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
 
     private function recordJobFailure(StoredOutboxEvent $storedOutboxEvent, \Throwable $exception): void
     {
-        if ($this->eventBecameFinalDuringJob($storedOutboxEvent)) {
+        // Тот же sync-сценарий, что и на успешной ветке process(): Job мог уже сам перевести
+        // это же событие в финальный статус собственным findById()+save() до того, как исключение
+        // добралось сюда. Перечитываем состояние из репозитория перед проверкой и записью.
+        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
+            ?? $storedOutboxEvent;
+
+        if ($this->eventBecameFinalDuringJob($currentStoredOutboxEvent)) {
             return;
         }
 
@@ -193,26 +207,26 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
         $lastError = OutboxLastError::fromThrowable($exception);
 
         if ($exception instanceof RetryException) {
-            $storedOutboxEvent->recordJobRetry(
+            $currentStoredOutboxEvent->recordJobRetry(
                 lastError: $lastError,
                 outboxMaxAttempts: $this->outboxMaxAttempts(),
                 now: $now,
             );
         } else {
-            $storedOutboxEvent->markFailed(
+            $currentStoredOutboxEvent->markFailed(
                 lastError: $lastError,
                 outboxMaxAttempts: $this->outboxMaxAttempts(),
                 now: $now,
             );
         }
 
-        $this->storedOutboxEventRepository->save($storedOutboxEvent);
+        $this->storedOutboxEventRepository->save($currentStoredOutboxEvent);
 
         $jobFailureContext = [
-            'outboxId' => $storedOutboxEvent->id->value(),
-            'outboxType' => $storedOutboxEvent->type->value(),
-            'status' => $storedOutboxEvent->status->value,
-            'attempts' => $storedOutboxEvent->attempts->value(),
+            'outboxId' => $currentStoredOutboxEvent->id->value(),
+            'outboxType' => $currentStoredOutboxEvent->type->value(),
+            'status' => $currentStoredOutboxEvent->status->value,
+            'attempts' => $currentStoredOutboxEvent->attempts->value(),
             'errorClass' => $exception::class,
         ];
 
@@ -220,7 +234,7 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
         // RetryException на последней попытке тоже даёт failed. Окончательный переход
         // в Failed — нарушение инварианта доставки (потеря внешнего действия), поэтому
         // ERROR. Возврат в Queued (событие остаётся в обороте) — штатный retry, DEBUG.
-        if ($storedOutboxEvent->isFinal()) {
+        if ($currentStoredOutboxEvent->isFinal()) {
             $this->logger->error(message: 'Outbox interceptor окончательно перевёл событие в failed.', context: $jobFailureContext);
 
             return;

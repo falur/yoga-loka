@@ -11,7 +11,6 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueHeaders;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
-use Cycle\ORM\EntityManagerInterface;
 
 /**
  * @mixin \Tests\TestCase
@@ -30,10 +29,21 @@ trait OutboxQueueStatusInterceptorTestHelpers
         // Проводим событие тем же путём, что и боевой relay: publishing -> queued, через Entity.
         $storedOutboxEvent->markPublishing(availableAt: $now, now: $now);
         $storedOutboxEvent->markQueued($now);
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         return $this->storedOutboxEventRepository()->findById($storedOutboxEvent->id)
+            ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
+    }
+
+    /**
+     * StoredOutboxEvent — чистая доменная сущность без Cycle-разметки: Mapper создаёт новый
+     * доменный объект на каждый findById(), поэтому мутация, которую interceptor сделал через
+     * свой собственный fetch внутри process(), не видна на объекте, которым владеет тест.
+     * Хелпер перечитывает актуальное состояние из репозитория перед такой проверкой.
+     */
+    private function reloadStoredOutboxEvent(OutboxEventId $outboxEventId): StoredOutboxEvent
+    {
+        return $this->storedOutboxEventRepository()->findById($outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
     }
 
@@ -46,11 +56,6 @@ trait OutboxQueueStatusInterceptorTestHelpers
             OutboxQueueHeaders::OUTBOX_ID => [$outboxEventId->value()],
             OutboxQueueHeaders::OUTBOX_TYPE => [OutboxDebugLogRequestedEvent::class],
         ];
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return $this->getContainer()->get(EntityManagerInterface::class);
     }
 
     private function storedOutboxEventRepository(): StoredOutboxEventRepository

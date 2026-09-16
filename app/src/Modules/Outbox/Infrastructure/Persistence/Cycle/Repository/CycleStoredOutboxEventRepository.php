@@ -10,6 +10,9 @@ use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Columns\StoredOutboxEventColumns;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Entity\CycleStoredOutboxEventEntity;
+use App\Modules\Outbox\Infrastructure\Persistence\Cycle\Mapper\StoredOutboxEventMapper;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\Database\Injection\Parameter;
 use Cycle\ORM\EntityManagerInterface;
@@ -17,17 +20,18 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<StoredOutboxEvent>
+ * @extends AbstractRepository<CycleStoredOutboxEventEntity>
  */
 final class CycleStoredOutboxEventRepository extends AbstractRepository implements StoredOutboxEventRepository
 {
     /**
-     * @param Select<StoredOutboxEvent> $select
+     * @param Select<CycleStoredOutboxEventEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private StoredOutboxEventMapper $storedOutboxEventMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -36,7 +40,10 @@ final class CycleStoredOutboxEventRepository extends AbstractRepository implemen
     #[\Override]
     public function findById(OutboxEventId $outboxEventId): StoredOutboxEvent|null
     {
-        return $this->findByPK($outboxEventId->value());
+        /** @var CycleStoredOutboxEventEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($outboxEventId->value());
+
+        return $cycleEntity === null ? null : $this->storedOutboxEventMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
@@ -44,37 +51,56 @@ final class CycleStoredOutboxEventRepository extends AbstractRepository implemen
         OutboxRelayBatchSize $outboxRelayBatchSize,
         \DateTimeImmutable $now,
     ): OutboxEventCollection {
-        return new OutboxEventCollection(
-            $this->select()
-                ->where('status', 'in', new Parameter([
-                    OutboxEventStatus::Pending->value,
-                    OutboxEventStatus::Publishing->value,
-                ]))
-                ->where('available_at', '<=', $now)
-                // Порядок выборки согласован с составным индексом (status, available_at, id):
-                // сначала по времени доступности (естественный порядок relay), затем id
-                // (UUID v7, хронологический) как стабильный tie-breaker.
-                ->orderBy([
-                    'available_at' => 'ASC',
-                    'id' => 'ASC',
-                ])
-                ->forUpdate()
-                ->limit($outboxRelayBatchSize->value())
-                ->fetchAll(),
-        );
+        $outboxEventCollection = new OutboxEventCollection();
+
+        /** @var iterable<CycleStoredOutboxEventEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(StoredOutboxEventColumns::STATUS, 'in', new Parameter([
+                OutboxEventStatus::Pending->value,
+                OutboxEventStatus::Publishing->value,
+            ]))
+            ->where(StoredOutboxEventColumns::AVAILABLE_AT, '<=', $now)
+            // Порядок выборки согласован с составным индексом (status, available_at, id):
+            // сначала по времени доступности (естественный порядок relay), затем id
+            // (UUID v7, хронологический) как стабильный tie-breaker.
+            ->orderBy([
+                StoredOutboxEventColumns::AVAILABLE_AT => 'ASC',
+                StoredOutboxEventColumns::ID => 'ASC',
+            ])
+            ->forUpdate()
+            ->limit($outboxRelayBatchSize->value())
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $outboxEventCollection->push($this->storedOutboxEventMapper->toDomain($cycleEntity));
+        }
+
+        return $outboxEventCollection;
     }
 
     #[\Override]
     public function add(StoredOutboxEvent $storedOutboxEvent): void
     {
-        $this->entityManager->persist($storedOutboxEvent);
+        /** @var CycleStoredOutboxEventEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([StoredOutboxEventColumns::ID => $storedOutboxEvent->id->value()]);
+
+        $this->entityManager->persist($this->storedOutboxEventMapper->toCycleEntity(
+            storedOutboxEvent: $storedOutboxEvent,
+            cycleEntity: $cycleEntity,
+        ));
     }
 
     #[\Override]
     public function save(StoredOutboxEvent $storedOutboxEvent): void
     {
+        /** @var CycleStoredOutboxEventEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([StoredOutboxEventColumns::ID => $storedOutboxEvent->id->value()]);
+
         $this->entityManager
-            ->persist($storedOutboxEvent)
+            ->persist($this->storedOutboxEventMapper->toCycleEntity(
+                storedOutboxEvent: $storedOutboxEvent,
+                cycleEntity: $cycleEntity,
+            ))
             ->run();
     }
 
@@ -82,7 +108,13 @@ final class CycleStoredOutboxEventRepository extends AbstractRepository implemen
     public function saveAll(OutboxEventCollection $storedOutboxEvents): void
     {
         foreach ($storedOutboxEvents as $storedOutboxEvent) {
-            $this->entityManager->persist($storedOutboxEvent);
+            /** @var CycleStoredOutboxEventEntity|null $cycleEntity */
+            $cycleEntity = $this->findOne([StoredOutboxEventColumns::ID => $storedOutboxEvent->id->value()]);
+
+            $this->entityManager->persist($this->storedOutboxEventMapper->toCycleEntity(
+                storedOutboxEvent: $storedOutboxEvent,
+                cycleEntity: $cycleEntity,
+            ));
         }
 
         $this->entityManager->run();

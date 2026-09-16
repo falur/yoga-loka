@@ -117,62 +117,72 @@ final readonly class OutboxRelay implements OutboxRelayContract
         try {
             $outboxJobClass = $this->outboxQueuePublisher->publish($storedOutboxEvent);
 
-            // Sync-Job исполняется в момент push в том же процессе и через тот же identity map,
-            // поэтому interceptor успевает увести нашу же Entity из publishing (handled/failed/
-            // queued). Переводим в queued только если событие всё ещё publishing, иначе оставляем
-            // выставленный sync-Job статус нетронутым.
-            if ($storedOutboxEvent->status !== OutboxEventStatus::Publishing) {
+            // Sync-Job исполняется в момент push в том же процессе: interceptor успевает увести
+            // событие из publishing (handled/failed/queued) через свой собственный findById().
+            // StoredOutboxEvent — чистая доменная сущность без Cycle-разметки, поэтому Mapper
+            // отдаёт interceptor-у отдельный объект, а не тот же $storedOutboxEvent, что держит
+            // relay (в отличие от прежнего Cycle identity map). Перечитываем состояние из
+            // репозитория и переводим в queued только если событие всё ещё publishing, иначе
+            // оставляем выставленный sync-Job статус нетронутым.
+            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
+                ?? $storedOutboxEvent;
+
+            if ($currentStoredOutboxEvent->status !== OutboxEventStatus::Publishing) {
                 $this->logger->debug(message: 'Outbox relay не стал менять статус после push.', context: [
-                    'outboxId' => $storedOutboxEvent->id->value(),
-                    'outboxType' => $storedOutboxEvent->type->value(),
+                    'outboxId' => $currentStoredOutboxEvent->id->value(),
+                    'outboxType' => $currentStoredOutboxEvent->type->value(),
                 ]);
 
                 return true;
             }
 
-            $storedOutboxEvent->markQueued($now);
-            $this->storedOutboxEventRepository->save($storedOutboxEvent);
+            $currentStoredOutboxEvent->markQueued($now);
+            $this->storedOutboxEventRepository->save($currentStoredOutboxEvent);
 
             $this->logger->debug(message: 'Outbox relay поставил событие в очередь.', context: [
-                'outboxId' => $storedOutboxEvent->id->value(),
-                'outboxType' => $storedOutboxEvent->type->value(),
+                'outboxId' => $currentStoredOutboxEvent->id->value(),
+                'outboxType' => $currentStoredOutboxEvent->type->value(),
                 'jobClass' => $outboxJobClass,
             ]);
 
             return true;
         } catch (\Throwable $exception) {
             // Тот же sync-сценарий, что и на успешной ветке: interceptor мог уже зафиксировать
-            // исход Job на нашей Entity (failed/queued/handled) и пробросить исключение дальше.
-            // Тогда не перезаписываем его статус ошибкой push.
-            if ($storedOutboxEvent->status !== OutboxEventStatus::Publishing) {
+            // исход Job через свой собственный findById() (failed/queued/handled) и пробросить
+            // исключение дальше. Перечитываем состояние из репозитория, чтобы не перезаписать
+            // его статус ошибкой push.
+            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
+                ?? $storedOutboxEvent;
+
+            if ($currentStoredOutboxEvent->status !== OutboxEventStatus::Publishing) {
                 $this->logger->debug(message: 'Outbox relay не стал записывать ошибку публикации после sync Job.', context: [
-                    'outboxId' => $storedOutboxEvent->id->value(),
-                    'outboxType' => $storedOutboxEvent->type->value(),
+                    'outboxId' => $currentStoredOutboxEvent->id->value(),
+                    'outboxType' => $currentStoredOutboxEvent->type->value(),
                     'errorClass' => $exception::class,
                 ]);
 
                 return false;
             }
 
-            $storedOutboxEvent->recordPublishFailure(
+            $currentStoredOutboxEvent->recordPublishFailure(
                 lastError: OutboxLastError::fromThrowable($exception),
                 outboxMaxAttempts: $this->outboxMaxAttempts(),
                 availableAt: $now->modify(\sprintf('+%d seconds', $this->outboxConfig->publishRetryDelaySeconds)),
                 now: $now,
             );
-            $this->storedOutboxEventRepository->save($storedOutboxEvent);
+            $this->storedOutboxEventRepository->save($currentStoredOutboxEvent);
 
             $publishFailureContext = [
-                'outboxId' => $storedOutboxEvent->id->value(),
-                'outboxType' => $storedOutboxEvent->type->value(),
-                'status' => $storedOutboxEvent->status->value,
+                'outboxId' => $currentStoredOutboxEvent->id->value(),
+                'outboxType' => $currentStoredOutboxEvent->type->value(),
+                'status' => $currentStoredOutboxEvent->status->value,
                 'errorClass' => $exception::class,
             ];
 
             // Уровень лога — по фактическому переходу статуса. Переход в Failed (исчерпаны
             // попытки) — нарушение инварианта доставки, поэтому ERROR. Возврат в Pending —
             // реальная инфраструктурная ошибка push с повтором, поэтому WARN.
-            if ($storedOutboxEvent->isFinal()) {
+            if ($currentStoredOutboxEvent->isFinal()) {
                 $this->logger->error(message: 'Outbox relay окончательно перевёл событие в failed после ошибки push.', context: $publishFailureContext);
 
                 return false;

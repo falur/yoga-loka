@@ -20,6 +20,7 @@ use Cycle\Database\DatabaseInterface;
 use Spiral\Queue\OptionsInterface;
 use Spiral\Queue\QueueConnectionProviderInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\DeleteEventDuringPushQueueConnectionProvider;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\MarkHandledDuringPushQueueConnectionProvider;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxRelayTestHelpers;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\RecordingOutboxLogger;
@@ -104,6 +105,73 @@ final class OutboxRelayPublishTest extends TestCase
 
         self::assertSame(1, $publishedCount);
         self::assertSame(OutboxEventStatus::Handled->value, $this->outboxStatusInDatabase($outboxEventId));
+    }
+
+    /**
+     * Строка события может исчезнуть между захватом и возвратом из push. Задача при этом уже
+     * ушла в очередь, поэтому relay опирается на снимок, прочитанный при захвате: он не падает
+     * и доводит событие до queued, чтобы взявший задачу worker нашёл своё событие на месте.
+     */
+    public function testRelaySurvivesEventDeletedDuringSuccessfulPush(): void
+    {
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogRequestedEvent(
+                text: 'relay vanished row',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:21:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new DeleteEventDuringPushQueueConnectionProvider(
+                database: $this->database(),
+                outboxEventId: $outboxEventId,
+            ),
+        );
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:22:00'),
+        );
+
+        self::assertSame(1, $publishedCount);
+        self::assertSame(OutboxEventStatus::Queued->value, $this->outboxStatusInDatabase($outboxEventId));
+    }
+
+    /**
+     * То же исчезновение строки, но push при этом ещё и падает: relay записывает ошибку
+     * публикации в снимок и не теряет событие — оно остаётся видимым как pending с ошибкой.
+     */
+    public function testRelaySurvivesEventDeletedDuringFailedPush(): void
+    {
+        $outboxEventId = $this->addOutboxMessage(
+            new OutboxDebugLogRequestedEvent(
+                text: 'relay vanished row on failure',
+                createdAt: new \DateTimeImmutable('2026-05-25 16:23:00'),
+            ),
+        );
+        $this->entityManager()->run();
+
+        $this->getContainer()->removeBinding(QueueConnectionProviderInterface::class);
+        $this->getContainer()->bindSingleton(
+            QueueConnectionProviderInterface::class,
+            new DeleteEventDuringPushQueueConnectionProvider(
+                database: $this->database(),
+                outboxEventId: $outboxEventId,
+                exception: new \RuntimeException('Очередь недоступна.'),
+            ),
+        );
+
+        $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
+            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
+            now: new \DateTimeImmutable('2099-05-25 16:24:00'),
+        );
+
+        self::assertSame(0, $publishedCount);
+        self::assertSame(OutboxEventStatus::Pending->value, $this->outboxStatusInDatabase($outboxEventId));
+        self::assertTrue($this->outboxLastErrorIsFilledInDatabase($outboxEventId));
     }
 
     public function testRelayKeepsEventPendingWhenQueuePushFails(): void
@@ -257,8 +325,7 @@ final class OutboxRelayPublishTest extends TestCase
             availableAt: new \DateTimeImmutable('2099-05-25 16:12:00'),
             now: new \DateTimeImmutable('2099-05-25 16:11:30'),
         );
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
@@ -356,8 +423,7 @@ final class OutboxRelayPublishTest extends TestCase
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         // Истёкшая claim-аренда: событие зависло в publishing, available_at в прошлом.
         $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         $recordingOutboxLogger = new RecordingOutboxLogger();
         $publishedCount = $this->relayWithLogger($recordingOutboxLogger)->relay(
@@ -387,8 +453,7 @@ final class OutboxRelayPublishTest extends TestCase
         $storedOutboxEvent = $this->storedOutboxEventRepository()->findById($outboxEventId)
             ?? throw new \RuntimeException('Тестовое outbox-событие не найдено.');
         $storedOutboxEvent->markPublishing(availableAt: $stuckSince, now: $stuckSince);
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
 
         $publishedCount = $this->getContainer()->make(OutboxRelay::class)->relay(
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),

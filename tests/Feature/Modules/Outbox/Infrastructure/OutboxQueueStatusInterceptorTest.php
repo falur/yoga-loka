@@ -13,8 +13,10 @@ use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use Cycle\Database\DatabaseInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;
+use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\DeleteEventDuringJobQueueStatusCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\OutboxQueueStatusInterceptorTestHelpers;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\QueueStatusDebugLogJobCore;
 use Tests\Feature\Modules\Outbox\Infrastructure\Fixture\QueueStatusTestCore;
@@ -123,8 +125,7 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
     {
         $storedOutboxEvent = $this->persistQueuedEvent();
         $storedOutboxEvent->markHandled(new \DateTimeImmutable('2026-05-25 16:05:00'));
-        $this->entityManager()->persist($storedOutboxEvent);
-        $this->entityManager()->run();
+        $this->storedOutboxEventRepository()->save($storedOutboxEvent);
         $core = new QueueStatusTestCore();
 
         $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
@@ -148,8 +149,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             core: new QueueStatusTestCore(),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
-        self::assertFalse($storedOutboxEvent->handledAt->isEmpty());
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
     }
 
     public function testInterceptorDoesNotOverwriteFinalStatusChangedDuringJob(): void
@@ -163,14 +165,37 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
             core: new QueueStatusTestCore(afterCall: function () use ($storedOutboxEvent, $handledAt): void {
                 $storedOutboxEvent->markHandled($handledAt);
-                $this->entityManager()->persist($storedOutboxEvent);
-                $this->entityManager()->run();
+                $this->storedOutboxEventRepository()->save($storedOutboxEvent);
             }),
         );
 
         self::assertSame(OutboxEventStatus::Handled, $this->storedOutboxEventRepository()->findById($storedOutboxEvent->id)?->status);
         self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
         self::assertSame($handledAt, $storedOutboxEvent->handledAt->value());
+    }
+
+    /**
+     * Строка события может исчезнуть, пока Job работает (параллельная чистка). Перечит вернёт
+     * null, и interceptor опирается на снимок, прочитанный до запуска Job: он не падает и
+     * доводит отработавшее событие до handled, не теряя факт успешной обработки.
+     */
+    public function testInterceptorSurvivesEventDeletedDuringSuccessfulJob(): void
+    {
+        $storedOutboxEvent = $this->persistQueuedEvent();
+
+        $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
+            controller: OutboxDebugLogJob::class,
+            action: 'handle',
+            parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
+            core: new DeleteEventDuringJobQueueStatusCore(
+                database: $this->getContainer()->get(DatabaseInterface::class),
+                outboxEventId: $storedOutboxEvent->id,
+            ),
+        );
+
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
     }
 
     public function testInterceptorHandlesSerializedTransportEnvelope(): void
@@ -204,8 +229,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             ),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
-        self::assertFalse($storedOutboxEvent->handledAt->isEmpty());
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
     }
 
     public function testInterceptorUsesPayloadWhenHeadersAreMissing(): void
@@ -229,8 +255,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             ),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
-        self::assertFalse($storedOutboxEvent->handledAt->isEmpty());
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
     }
 
     public function testInterceptorUsesTransportPayloadArrayWhenHeadersAreMissing(): void
@@ -249,8 +276,9 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
             core: new QueueStatusTestCore(),
         );
 
-        self::assertSame(OutboxEventStatus::Handled, $storedOutboxEvent->status);
-        self::assertFalse($storedOutboxEvent->handledAt->isEmpty());
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
+        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
     }
 
     public function testInterceptorDoesNotRunJobWhenHeadersAndPayloadHaveDifferentOutboxIds(): void

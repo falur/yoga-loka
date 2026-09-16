@@ -6,27 +6,14 @@ namespace App\Modules\Access\Domain\Entity;
 
 use App\Modules\Access\Domain\ValueObject\PermissionId;
 use App\Modules\Access\Domain\ValueObject\PermissionSlug;
-use App\Modules\Access\Infrastructure\Persistence\Cycle\Repository\CyclePermissionRepository;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
+use App\Shared\Domain\Trait\HasTimestamps;
 
-#[Entity(
-    role: 'permission',
-    table: 'permissions',
-    repository: CyclePermissionRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class Permission
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: PermissionId::class)]
     public private(set) PermissionId $id;
 
-    #[Column(type: 'string(64)', typecast: PermissionSlug::class)]
     public private(set) PermissionSlug $slug;
 
     public static function create(PermissionSlug $slug): self
@@ -35,6 +22,21 @@ final class Permission
         $permission->id = PermissionId::generate();
         $permission->slug = $slug;
         $permission->initializeTimestamps();
+
+        return $permission;
+    }
+
+    public static function restore(
+        PermissionId $id,
+        PermissionSlug $slug,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $permission = new self();
+        $permission->id = $id;
+        $permission->slug = $slug;
+        $permission->createdAt = $createdAt;
+        $permission->updatedAt = $updatedAt;
 
         return $permission;
     }

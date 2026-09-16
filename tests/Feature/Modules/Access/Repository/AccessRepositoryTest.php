@@ -17,10 +17,14 @@ use App\Modules\Access\Domain\ValueObject\RoleSlug;
 use App\Modules\Access\Domain\Repository\PermissionRepository;
 use App\Modules\Access\Domain\Repository\RoleRepository;
 use App\Modules\Access\Domain\Repository\UserRoleRepository;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Mapper\PermissionMapper;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Mapper\RoleMapper;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Mapper\UserRoleMapper;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Shared\Domain\Enum\Locale;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;
@@ -32,8 +36,8 @@ final class AccessRepositoryTest extends DatabaseTestCase
         $role = Role::create(RoleSlug::fromString('admin'));
         $permission = Permission::create(PermissionSlug::fromString('user.ban'));
 
-        $this->entityManager()->persist($role);
-        $this->entityManager()->persist($permission);
+        $this->persistRole($role);
+        $this->persistPermission($permission);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -66,11 +70,11 @@ final class AccessRepositoryTest extends DatabaseTestCase
         $rolePermission = RolePermission::create(roleId: $role->id, permissionId: $permission->id);
         $userRole = UserRole::create(userId: $user->id, roleId: $role->id);
 
-        $this->entityManager()->persist($user);
-        $this->entityManager()->persist($role);
-        $this->entityManager()->persist($permission);
-        $this->entityManager()->persist($rolePermission);
-        $this->entityManager()->persist($userRole);
+        $this->persistUser($user);
+        $this->persistRole($role);
+        $this->persistPermission($permission);
+        $this->persistRolePermission($rolePermission);
+        $this->persistUserRole($userRole);
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
@@ -87,8 +91,8 @@ final class AccessRepositoryTest extends DatabaseTestCase
 
     public function testDuplicateRoleSlugFails(): void
     {
-        $this->entityManager()->persist(Role::create(RoleSlug::fromString('admin')));
-        $this->entityManager()->persist(Role::create(RoleSlug::fromString('admin')));
+        $this->persistRole(Role::create(RoleSlug::fromString('admin')));
+        $this->persistRole(Role::create(RoleSlug::fromString('admin')));
 
         $this->expectException(\Throwable::class);
 
@@ -97,8 +101,8 @@ final class AccessRepositoryTest extends DatabaseTestCase
 
     public function testDuplicatePermissionSlugFails(): void
     {
-        $this->entityManager()->persist(Permission::create(PermissionSlug::fromString('user.ban')));
-        $this->entityManager()->persist(Permission::create(PermissionSlug::fromString('user.ban')));
+        $this->persistPermission(Permission::create(PermissionSlug::fromString('user.ban')));
+        $this->persistPermission(Permission::create(PermissionSlug::fromString('user.ban')));
 
         $this->expectException(\Throwable::class);
 
@@ -110,10 +114,10 @@ final class AccessRepositoryTest extends DatabaseTestCase
         $role = Role::create(RoleSlug::fromString('admin'));
         $permission = Permission::create(PermissionSlug::fromString('user.ban'));
 
-        $this->entityManager()->persist($role);
-        $this->entityManager()->persist($permission);
-        $this->entityManager()->persist(RolePermission::create(roleId: $role->id, permissionId: $permission->id));
-        $this->entityManager()->persist(RolePermission::create(roleId: $role->id, permissionId: $permission->id));
+        $this->persistRole($role);
+        $this->persistPermission($permission);
+        $this->persistRolePermission(RolePermission::create(roleId: $role->id, permissionId: $permission->id));
+        $this->persistRolePermission(RolePermission::create(roleId: $role->id, permissionId: $permission->id));
 
         $this->expectException(\Throwable::class);
 
@@ -125,10 +129,10 @@ final class AccessRepositoryTest extends DatabaseTestCase
         $user = $this->createUser();
         $role = Role::create(RoleSlug::fromString('admin'));
 
-        $this->entityManager()->persist($user);
-        $this->entityManager()->persist($role);
-        $this->entityManager()->persist(UserRole::create(userId: $user->id, roleId: $role->id));
-        $this->entityManager()->persist(UserRole::create(userId: $user->id, roleId: $role->id));
+        $this->persistUser($user);
+        $this->persistRole($role);
+        $this->persistUserRole(UserRole::create(userId: $user->id, roleId: $role->id));
+        $this->persistUserRole(UserRole::create(userId: $user->id, roleId: $role->id));
 
         $this->expectException(\Throwable::class);
 
@@ -163,5 +167,36 @@ final class AccessRepositoryTest extends DatabaseTestCase
     private function userRoleRepository(): UserRoleRepository
     {
         return $this->getContainer()->get(UserRoleRepository::class);
+    }
+
+    /**
+     * User, Role, Permission, RolePermission и UserRole — чистые доменные сущности без
+     * Cycle-разметки, поэтому не могут быть сохранены через generic persist(): EntityManager не
+     * знает их роль. Хелперы переводят их в Cycle Entity через Mapper перед постановкой в очередь
+     * EntityManager, flush остаётся общим — как до разделения.
+     */
+    private function persistUser(User $user): void
+    {
+        $this->entityManager()->persist((new UserMapper())->toCycleEntity($user));
+    }
+
+    private function persistRole(Role $role): void
+    {
+        $this->entityManager()->persist((new RoleMapper())->toCycleEntity($role));
+    }
+
+    private function persistPermission(Permission $permission): void
+    {
+        $this->entityManager()->persist((new PermissionMapper())->toCycleEntity($permission));
+    }
+
+    private function persistRolePermission(RolePermission $rolePermission): void
+    {
+        $this->entityManager()->persist((new RoleMapper())->toRolePermissionCycleEntity($rolePermission));
+    }
+
+    private function persistUserRole(UserRole $userRole): void
+    {
+        $this->entityManager()->persist((new UserRoleMapper())->toCycleEntity($userRole));
     }
 }

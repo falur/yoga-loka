@@ -6,27 +6,14 @@ namespace App\Modules\Access\Domain\Entity;
 
 use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Modules\Access\Domain\ValueObject\RoleSlug;
-use App\Modules\Access\Infrastructure\Persistence\Cycle\Repository\CycleRoleRepository;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
+use App\Shared\Domain\Trait\HasTimestamps;
 
-#[Entity(
-    role: 'role',
-    table: 'roles',
-    repository: CycleRoleRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class Role
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: RoleId::class)]
     public private(set) RoleId $id;
 
-    #[Column(type: 'string(64)', typecast: RoleSlug::class)]
     public private(set) RoleSlug $slug;
 
     public static function create(RoleSlug $slug): self
@@ -35,6 +22,21 @@ final class Role
         $role->id = RoleId::generate();
         $role->slug = $slug;
         $role->initializeTimestamps();
+
+        return $role;
+    }
+
+    public static function restore(
+        RoleId $id,
+        RoleSlug $slug,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $role = new self();
+        $role->id = $id;
+        $role->slug = $slug;
+        $role->createdAt = $createdAt;
+        $role->updatedAt = $updatedAt;
 
         return $role;
     }

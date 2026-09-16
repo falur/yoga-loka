@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Controller;
 
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Notifications\Application\Command\Notification\MarkAllNotificationsRead\MarkAllNotificationsReadCommand;
 use App\Modules\Notifications\Application\Command\Notification\MarkAllNotificationsRead\MarkAllNotificationsReadHandler;
 use App\Modules\Notifications\Application\Command\Notification\MarkNotificationRead\MarkNotificationReadCommand;
@@ -31,6 +32,7 @@ final class NotificationController
      * @return PaginationResponse<NotificationResource>
      */
     #[Route(route: '/api/v1/notifications', name: 'api.v1.notifications.list', methods: ['GET'], group: 'api')]
+    #[AuthenticatedRoute]
     public function list(
         ListNotificationsFilter $listNotificationsFilter,
         ListNotificationsHandler $listNotificationsHandler,
@@ -59,6 +61,7 @@ final class NotificationController
      * @return DataResponse<UnreadCountResource>
      */
     #[Route(route: '/api/v1/notifications/unread-count', name: 'api.v1.notifications.unread_count', methods: ['GET'], group: 'api')]
+    #[AuthenticatedRoute]
     public function unreadCount(
         NotificationRecipientFilter $notificationRecipientFilter,
         GetUnreadCountHandler $getUnreadCountHandler,
@@ -76,6 +79,7 @@ final class NotificationController
      * @return DataResponse<NotificationResource>
      */
     #[Route(route: '/api/v1/notifications/<id>/read', name: 'api.v1.notifications.read', methods: ['POST'], group: 'api')]
+    #[AuthenticatedRoute]
     public function read(
         string $id,
         MarkNotificationReadFilter $markNotificationReadFilter,
@@ -97,6 +101,7 @@ final class NotificationController
      * @return DataResponse<UnreadCountResource>
      */
     #[Route(route: '/api/v1/notifications/read-all', name: 'api.v1.notifications.read_all', methods: ['POST'], group: 'api')]
+    #[AuthenticatedRoute]
     public function readAll(
         NotificationRecipientFilter $notificationRecipientFilter,
         MarkAllNotificationsReadHandler $markAllNotificationsReadHandler,

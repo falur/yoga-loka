@@ -20,6 +20,7 @@ use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
 use App\Modules\Notifications\Repository\NotificationRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Testing\Http\TestResponse;
 use Tests\DatabaseTestCase;
 use Tests\Support\Media\PersistsMedia;
@@ -350,6 +351,45 @@ final class NotificationHttpTest extends DatabaseTestCase
 
         $response->assertNotFound();
         self::assertNotNull($this->deviceTokenRepository()->findByToken(DeviceToken::fromString('fcm-token')));
+    }
+
+    /**
+     * Все маршруты Notifications требуют действующую сессию. Это согласованное изменение внешнего
+     * поведения: до объявления доступа маршрут без сессии падал на обязательном `authUserId`
+     * в Filter, теперь отказывает общий механизм доступа тем же ответом, что и остальные
+     * защищённые маршруты — переводом ключа `app.auth.unauthenticated` и кодом 401.
+     */
+    #[DataProvider('protectedRouteProvider')]
+    public function testRouteWithoutSessionReturnsTranslatedUnauthenticated(string $method, string $uri): void
+    {
+        $request = $this->fakeHttp()
+            ->withHeader('Accept-Language', 'en')
+            ->createJsonRequest($uri, $method, [], [], []);
+
+        $response = $this->fakeHttp()->handleRequest($request);
+
+        $response->assertUnauthorized();
+        $response->assertBodySame('{"message":"Authentication required.","code":401}');
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function protectedRouteProvider(): array
+    {
+        return [
+            'список уведомлений' => ['GET', '/api/v1/notifications'],
+            'счётчик непрочитанных' => ['GET', '/api/v1/notifications/unread-count'],
+            'отметка уведомления прочитанным' => [
+                'POST',
+                '/api/v1/notifications/01996e0f-6c4a-7a6f-9f0e-2f5f9a3c1d20/read',
+            ],
+            'отметка всех прочитанными' => ['POST', '/api/v1/notifications/read-all'],
+            'чтение настроек' => ['GET', '/api/v1/notification-settings'],
+            'изменение настроек' => ['PUT', '/api/v1/notification-settings'],
+            'регистрация токена устройства' => ['POST', '/api/v1/notification-device-tokens'],
+            'удаление токена устройства' => ['DELETE', '/api/v1/notification-device-tokens'],
+        ];
     }
 
     /**

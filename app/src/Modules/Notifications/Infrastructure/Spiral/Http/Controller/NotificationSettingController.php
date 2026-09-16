@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Controller;
 
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\NotificationSettingUpdate;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsCommand;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsHandler;
@@ -26,6 +27,7 @@ final class NotificationSettingController
      * @return CollectionResponse<NotificationSettingResource>
      */
     #[Route(route: '/api/v1/notification-settings', name: 'api.v1.notification_settings.get', methods: ['GET'], group: 'api')]
+    #[AuthenticatedRoute]
     public function get(
         NotificationRecipientFilter $notificationRecipientFilter,
         GetNotificationSettingsHandler $getNotificationSettingsHandler,
@@ -43,6 +45,7 @@ final class NotificationSettingController
      * @return CollectionResponse<NotificationSettingResource>
      */
     #[Route(route: '/api/v1/notification-settings', name: 'api.v1.notification_settings.update', methods: ['PUT'], group: 'api')]
+    #[AuthenticatedRoute]
     public function update(
         UpdateNotificationSettingsFilter $updateNotificationSettingsFilter,
         UpdateNotificationSettingsHandler $updateNotificationSettingsHandler,

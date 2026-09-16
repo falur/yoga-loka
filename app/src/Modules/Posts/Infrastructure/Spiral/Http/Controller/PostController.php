@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Infrastructure\Spiral\Http\Controller;
 
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\RequireAuthenticatedMiddleware;
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Posts\Application\Command\CreatePost\CreatePostCommand;
 use App\Modules\Posts\Application\Command\CreatePost\CreatePostHandler;
 use App\Modules\Posts\Application\Command\DeletePost\DeletePostCommand;
@@ -38,8 +37,6 @@ use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationMetaResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
-use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
-use Spiral\Core\Container\Autowire;
 use Spiral\Router\Annotation\Route;
 
 final readonly class PostController
@@ -52,15 +49,8 @@ final readonly class PostController
         name: 'api.v1.posts.create',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function create(
         CreatePostFilter $createPostFilter,
         CommandBusInterface $commandBus,
@@ -89,15 +79,8 @@ final readonly class PostController
         name: 'api.v1.posts.publish',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function publish(
         string $id,
         PublishPostFilter $publishPostFilter,
@@ -123,15 +106,8 @@ final readonly class PostController
         name: 'api.v1.posts.repost',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function repost(
         string $id,
         RepostPostFilter $repostPostFilter,
@@ -158,15 +134,8 @@ final readonly class PostController
         name: 'api.v1.posts.delete',
         methods: ['DELETE'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function delete(
         string $id,
         DeletePostFilter $deletePostFilter,
@@ -189,15 +158,8 @@ final readonly class PostController
         name: 'api.v1.posts.like',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function like(
         string $id,
         LikePostFilter $likePostFilter,
@@ -220,15 +182,8 @@ final readonly class PostController
         name: 'api.v1.posts.unlike',
         methods: ['DELETE'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function unlike(
         string $id,
         UnlikePostFilter $unlikePostFilter,
@@ -254,15 +209,8 @@ final readonly class PostController
         name: 'api.v1.posts.show',
         methods: ['GET'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function show(
         string $id,
         GetPostFilter $getPostFilter,
@@ -288,15 +236,8 @@ final readonly class PostController
         name: 'api.v1.posts.user_feed',
         methods: ['GET'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function userFeed(
         string $id,
         GetUserFeedFilter $getUserFeedFilter,

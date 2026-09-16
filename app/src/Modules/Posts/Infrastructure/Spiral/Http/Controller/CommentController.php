@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Infrastructure\Spiral\Http\Controller;
 
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
-use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\RequireAuthenticatedMiddleware;
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Posts\Application\Command\CommentPost\CommentPostCommand;
 use App\Modules\Posts\Application\Command\CommentPost\CommentPostHandler;
 use App\Modules\Posts\Application\Command\DeleteComment\DeleteCommentCommand;
@@ -35,8 +34,6 @@ use GianTiaga\SpiralOpenApi\Response\DataResponse;
 use GianTiaga\SpiralOpenApi\Response\EmptySuccessResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationMetaResponse;
 use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
-use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
-use Spiral\Core\Container\Autowire;
 use Spiral\Router\Annotation\Route;
 
 final readonly class CommentController
@@ -49,15 +46,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.create',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function comment(
         string $id,
         CommentPostFilter $commentPostFilter,
@@ -85,15 +75,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.reply',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function reply(
         string $id,
         ReplyCommentFilter $replyCommentFilter,
@@ -118,15 +101,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.delete',
         methods: ['DELETE'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function delete(
         string $id,
         DeleteCommentFilter $deleteCommentFilter,
@@ -149,15 +125,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.like',
         methods: ['POST'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function like(
         string $id,
         LikeCommentFilter $likeCommentFilter,
@@ -180,15 +149,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.unlike',
         methods: ['DELETE'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function unlike(
         string $id,
         UnlikeCommentFilter $unlikeCommentFilter,
@@ -214,15 +176,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.list',
         methods: ['GET'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function list(
         string $id,
         GetPostCommentsFilter $getPostCommentsFilter,
@@ -257,15 +212,8 @@ final readonly class CommentController
         name: 'api.v1.posts.comments.replies',
         methods: ['GET'],
         group: 'api',
-        middleware: [
-            new Autowire(
-                alias: AuthTransportWithStorageMiddleware::class,
-                parameters: ['transportName' => 'header', 'storage' => 'cycle'],
-            ),
-            AuthContextAttributeMiddleware::class,
-            RequireAuthenticatedMiddleware::class,
-        ],
     )]
+    #[AuthenticatedRoute]
     public function replies(
         string $id,
         GetCommentRepliesFilter $getCommentRepliesFilter,

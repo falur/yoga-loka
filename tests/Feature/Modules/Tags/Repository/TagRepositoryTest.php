@@ -6,6 +6,7 @@ namespace Tests\Feature\Modules\Tags\Repository;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
+use App\Modules\Tags\Infrastructure\Persistence\Cycle\Mapper\TagMapper;
 use Tests\Feature\Modules\Tags\TagsRepositoryTestCase;
 
 final class TagRepositoryTest extends TagsRepositoryTestCase
@@ -16,7 +17,7 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
         $this->persist($user);
 
         $tag = Tag::create(text: TagText::fromString('Йога'), createdBy: $user->id);
-        $this->persist($tag);
+        $this->persistTag($tag);
         $this->cleanOrmHeap();
 
         $byId = $this->tagRepository()->findById($tag->id);
@@ -32,8 +33,8 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
     {
         $user = $this->createUser();
         $this->persist($user);
-        $this->persist(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
-        $this->persist(Tag::create(text: TagText::fromString('медитация'), createdBy: $user->id));
+        $this->persistTag(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
+        $this->persistTag(Tag::create(text: TagText::fromString('медитация'), createdBy: $user->id));
         $this->cleanOrmHeap();
 
         $found = $this->tagRepository()->findByTexts(
@@ -55,8 +56,13 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
         $user = $this->createUser();
         $this->persist($user);
 
-        $this->entityManager()->persist(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
-        $this->entityManager()->persist(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
+        $tagMapper = new TagMapper();
+        $this->entityManager()->persist($tagMapper->toCycleEntity(
+            Tag::create(text: TagText::fromString('йога'), createdBy: $user->id),
+        ));
+        $this->entityManager()->persist($tagMapper->toCycleEntity(
+            Tag::create(text: TagText::fromString('йога'), createdBy: $user->id),
+        ));
 
         $this->expectException(\Throwable::class);
 
@@ -67,11 +73,11 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
     {
         $user = $this->createUser();
         $this->persist($user);
-        $this->persist(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
+        $this->persistTag(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->delete($user);
+        $this->deleteUser($user);
         $this->entityManager()->run();
     }
 }

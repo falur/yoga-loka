@@ -21,7 +21,7 @@ final class TagsProviderTest extends TagsApplicationTestCase
     {
         $user = $this->persistUser();
         $existing = Tag::create(text: TagText::fromString('yoga'), createdBy: $user->id);
-        $this->persist($existing);
+        $this->persistTag($existing);
         $this->cleanOrmHeap();
 
         $resolved = $this->tagsContract()->resolve(
@@ -47,7 +47,7 @@ final class TagsProviderTest extends TagsApplicationTestCase
     {
         $user = $this->persistUser();
         $yoga = Tag::create(text: TagText::fromString('yoga'), createdBy: $user->id);
-        $this->persist($yoga);
+        $this->persistTag($yoga);
         $missing = TagId::generate()->value();
         $this->cleanOrmHeap();
 

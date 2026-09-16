@@ -18,8 +18,8 @@ final class GetTagsHandlerTest extends TagsApplicationTestCase
         $user = $this->persistUser();
         $yoga = Tag::create(text: TagText::fromString('yoga'), createdBy: $user->id);
         $meditation = Tag::create(text: TagText::fromString('meditation'), createdBy: $user->id);
-        $this->persist($yoga);
-        $this->persist($meditation);
+        $this->persistTag($yoga);
+        $this->persistTag($meditation);
 
         $tags = $this->handler()->handle(new GetTagsQuery(
             tagIds: [$yoga->id->value(), $meditation->id->value()],
@@ -41,7 +41,7 @@ final class GetTagsHandlerTest extends TagsApplicationTestCase
     {
         $user = $this->persistUser();
         $yoga = Tag::create(text: TagText::fromString('yoga'), createdBy: $user->id);
-        $this->persist($yoga);
+        $this->persistTag($yoga);
 
         $tags = $this->handler()->handle(new GetTagsQuery(
             tagIds: [$yoga->id->value(), TagId::generate()->value()],

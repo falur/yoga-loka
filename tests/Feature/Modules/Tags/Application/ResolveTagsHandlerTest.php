@@ -31,7 +31,7 @@ final class ResolveTagsHandlerTest extends TagsApplicationTestCase
     {
         $user = $this->persistUser();
         $existing = Tag::create(text: TagText::fromString('yoga'), createdBy: $user->id);
-        $this->persist($existing);
+        $this->persistTag($existing);
 
         $result = $this->handler()->handle(new ResolveTagsCommand(
             texts: ['yoga'],

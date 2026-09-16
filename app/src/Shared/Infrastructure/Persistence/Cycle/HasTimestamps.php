@@ -6,24 +6,18 @@ namespace App\Shared\Infrastructure\Persistence\Cycle;
 
 use Cycle\Annotated\Annotation\Column;
 
+/**
+ * Cycle Entity не содержит бизнес-методов (cycle-entity.md), поэтому поля — обычные
+ * публичные, без asymmetric visibility: {Name}Mapper::toCycleEntity() пишет значения
+ * напрямую из уже готовых доменных createdAt/updatedAt (App\Shared\Domain\Trait\HasTimestamps),
+ * а не через initializeTimestamps()/touch() — эти методы решают, когда обновлять updatedAt,
+ * и это доменное решение, принятое до Mapper.
+ */
 trait HasTimestamps
 {
     #[Column(type: 'datetime', name: 'created_at', typecast: 'datetime')]
-    public private(set) \DateTimeImmutable $createdAt;
+    public \DateTimeImmutable $createdAt;
 
     #[Column(type: 'datetime', name: 'updated_at', typecast: 'datetime')]
-    public private(set) \DateTimeImmutable $updatedAt;
-
-    public function initializeTimestamps(\DateTimeImmutable|null $now = null): void
-    {
-        $now ??= new \DateTimeImmutable();
-
-        $this->createdAt = $now;
-        $this->updatedAt = $now;
-    }
-
-    public function touch(\DateTimeImmutable|null $now = null): void
-    {
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
-    }
+    public \DateTimeImmutable $updatedAt;
 }

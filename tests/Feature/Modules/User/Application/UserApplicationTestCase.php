@@ -23,7 +23,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
-use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
 use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
@@ -36,8 +36,8 @@ use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Infrastructure\Spiral\PublicApi\UserProvider;
-use App\Modules\User\Repository\ReservedNicknameRepository;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\UserId;
@@ -171,7 +171,6 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
             createUserHandler: new CreateUserHandler(
                 userRepository: $this->userRepository(),
                 reservedNicknameRepository: $this->getContainer()->get(ReservedNicknameRepository::class),
-                entityManager: $this->entityManager(),
                 logger: new NullLogger(),
                 localeResolver: $this->getContainer()->get(LocaleResolver::class),
             ),

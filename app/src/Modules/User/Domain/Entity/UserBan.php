@@ -14,7 +14,7 @@ use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\BanExpirationType
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\BanUnbannedAtTypecast;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\BanUnbannedByTypecast;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\BanUnbannedReasonTypecast;
-use App\Modules\User\Repository\UserBanRepository;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Repository\CycleUserBanRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -25,7 +25,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'user_ban',
     table: 'user_bans',
-    repository: UserBanRepository::class,
+    repository: CycleUserBanRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class UserBan

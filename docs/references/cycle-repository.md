@@ -25,7 +25,6 @@ use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\Select;
-use Cycle\ORM\Transaction\Runner;
 
 /** @extends AbstractRepository<CycleUserEntity> */
 final class CycleUserRepository extends AbstractRepository implements UserRepository
@@ -67,7 +66,7 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
                 user: $user,
                 cycleEntity: $cycleEntity,
             ))
-            ->run(runner: Runner::outerTransaction());
+            ->run();
     }
 }
 ```
@@ -80,7 +79,8 @@ final class CycleUserRepository extends AbstractRepository implements UserReposi
 - Имена колонок берутся из `{Entity}Columns`.
 - Cycle-типы не выходят из Infrastructure.
 - Базовый класс `AbstractRepository` берётся из `App\Shared\Infrastructure\Persistence\Cycle`: его `select()` возвращает `WhenSelect` с `when()` и `cursorById()`.
-- Запись требует уже открытую Command handler-ом транзакцию.
+- Репозиторий не открывает и не закрывает бизнес-транзакцию: прогон `EntityManager` вкладывается
+  в транзакцию, открытую границей вызова, и выполняется своей, когда открытой нет.
 
 ## Допустимые варианты
 

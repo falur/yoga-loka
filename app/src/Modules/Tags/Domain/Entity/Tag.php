@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tags\Domain\Entity;
 
 use App\Modules\Tags\Domain\ValueObject\TagText;
-use App\Modules\Tags\Repository\TagRepository;
+use App\Modules\Tags\Infrastructure\Persistence\Cycle\Repository\CycleTagRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Shared\Domain\ValueObject\UserId;
@@ -17,7 +17,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'tag',
     table: 'tags',
-    repository: TagRepository::class,
+    repository: CycleTagRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Tag

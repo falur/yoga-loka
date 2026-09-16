@@ -6,7 +6,7 @@ namespace App\Modules\Access\Domain\Entity;
 
 use App\Modules\Access\Domain\ValueObject\PermissionId;
 use App\Modules\Access\Domain\ValueObject\PermissionSlug;
-use App\Modules\Access\Repository\PermissionRepository;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Repository\CyclePermissionRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -16,7 +16,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'permission',
     table: 'permissions',
-    repository: PermissionRepository::class,
+    repository: CyclePermissionRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Permission

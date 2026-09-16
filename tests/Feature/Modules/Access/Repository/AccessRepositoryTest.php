@@ -14,10 +14,9 @@ use App\Modules\Access\Domain\Entity\RolePermission;
 use App\Modules\Access\Domain\Entity\UserRole;
 use App\Modules\Access\Domain\ValueObject\PermissionSlug;
 use App\Modules\Access\Domain\ValueObject\RoleSlug;
-use App\Modules\Access\Repository\PermissionRepository;
-use App\Modules\Access\Repository\RolePermissionRepository;
-use App\Modules\Access\Repository\RoleRepository;
-use App\Modules\Access\Repository\UserRoleRepository;
+use App\Modules\Access\Domain\Repository\PermissionRepository;
+use App\Modules\Access\Domain\Repository\RoleRepository;
+use App\Modules\Access\Domain\Repository\UserRoleRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
@@ -75,12 +74,12 @@ final class AccessRepositoryTest extends DatabaseTestCase
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
-        $rolePermissions = $this->rolePermissionRepository()->findByRoleId($role->id);
+        $rolePermissions = $this->roleRepository()->findPermissions($role->id);
         $userRoles = $this->userRoleRepository()->findByUserId($user->id);
 
         self::assertInstanceOf(RolePermissionCollection::class, $rolePermissions);
         self::assertCount(1, $rolePermissions);
-        self::assertTrue($this->rolePermissionRepository()->exists(roleId: $role->id, permissionId: $permission->id));
+        self::assertTrue($this->roleRepository()->hasPermission(roleId: $role->id, permissionId: $permission->id));
         self::assertInstanceOf(UserRoleCollection::class, $userRoles);
         self::assertCount(1, $userRoles);
         self::assertTrue($this->userRoleRepository()->exists(userId: $user->id, roleId: $role->id));
@@ -159,11 +158,6 @@ final class AccessRepositoryTest extends DatabaseTestCase
     private function permissionRepository(): PermissionRepository
     {
         return $this->getContainer()->get(PermissionRepository::class);
-    }
-
-    private function rolePermissionRepository(): RolePermissionRepository
-    {
-        return $this->getContainer()->get(RolePermissionRepository::class);
     }
 
     private function userRoleRepository(): UserRoleRepository

@@ -19,7 +19,7 @@ use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\UserBioTypecast;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\UserDeletionTypecast;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\UserLocationTypecast;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\UserSpiritualNameTypecast;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Repository\CycleUserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
@@ -31,7 +31,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'user',
     table: 'users',
-    repository: UserRepository::class,
+    repository: CycleUserRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class User

@@ -6,7 +6,7 @@ namespace App\Modules\User\Application\Query\GetUserPublicProfiles;
 
 use App\Modules\User\Application\Dto\UserPublicProfileCollection;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 

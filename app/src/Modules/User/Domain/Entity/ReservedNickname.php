@@ -8,7 +8,7 @@ use App\Modules\User\Domain\ValueObject\ReservedNicknameHolder;
 use App\Modules\User\Domain\ValueObject\ReservedNicknameId;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Typecast\ReservedNicknameHolderTypecast;
-use App\Modules\User\Repository\ReservedNicknameRepository;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Repository\CycleReservedNicknameRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -19,7 +19,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'reserved_nickname',
     table: 'reserved_nicknames',
-    repository: ReservedNicknameRepository::class,
+    repository: CycleReservedNicknameRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class ReservedNickname

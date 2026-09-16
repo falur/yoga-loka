@@ -12,10 +12,11 @@ use App\Modules\User\Domain\Enum\UserStatus;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\User\Repository\ReservedNicknameRepository;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\User\Domain\Exception\EmailAlreadyTakenException;
+use App\Modules\User\Domain\Exception\NicknameAlreadyTakenException;
 use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 use App\Shared\Domain\ValueObject\UserId;
@@ -70,7 +71,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
     {
         $this->persist($this->createUser(email: 'taken@example.com', nickname: 'someone'));
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(EmailAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.email_taken');
 
         $this->handler()->handle(new CreateUserCommand(
@@ -85,7 +86,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
     {
         $this->persist($this->createUser(email: 'owner@example.com', nickname: 'busy.nick'));
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(NicknameAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.nickname_taken');
 
         $this->handler()->handle(new CreateUserCommand(
@@ -100,7 +101,7 @@ final class CreateUserHandlerTest extends DatabaseTestCase
     {
         $this->persist(ReservedNickname::create(UserNickname::fromString('reserved')));
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(NicknameAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.nickname_taken');
 
         $this->handler()->handle(new CreateUserCommand(
@@ -116,7 +117,6 @@ final class CreateUserHandlerTest extends DatabaseTestCase
         return new CreateUserHandler(
             userRepository: $this->userRepository(),
             reservedNicknameRepository: $this->reservedNicknameRepository(),
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
             localeResolver: $this->getContainer()->get(LocaleResolver::class),
         );

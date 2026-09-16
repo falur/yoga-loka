@@ -6,7 +6,7 @@ namespace App\Modules\Access\Domain\Entity;
 
 use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Modules\Access\Domain\ValueObject\RoleSlug;
-use App\Modules\Access\Repository\RoleRepository;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Repository\CycleRoleRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -16,7 +16,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'role',
     table: 'roles',
-    repository: RoleRepository::class,
+    repository: CycleRoleRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Role

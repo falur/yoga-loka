@@ -6,8 +6,8 @@ namespace App\Modules\User\Application\Query\GetUserPublicProfile;
 
 use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
-use App\Modules\User\Repository\UserRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\User\Domain\Repository\UserRepository;
+use App\Modules\User\Domain\Exception\UserNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
@@ -25,7 +25,7 @@ final readonly class GetUserPublicProfileHandler
     public function handle(GetUserPublicProfileQuery $query): UserPublicProfileView
     {
         $user = $this->userRepository->findById(UserId::fromString($query->userId))
-            ?? throw new NotFoundException('app.user.not_found');
+            ?? throw new UserNotFoundException();
 
         return $this->assembler->fromUser($user);
     }

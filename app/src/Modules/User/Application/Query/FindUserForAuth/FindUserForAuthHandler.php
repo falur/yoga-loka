@@ -6,7 +6,7 @@ namespace App\Modules\User\Application\Query\FindUserForAuth;
 
 use App\Modules\User\Application\Dto\UserAuthView;
 use App\Modules\User\Domain\ValueObject\Email;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 
 final readonly class FindUserForAuthHandler
 {

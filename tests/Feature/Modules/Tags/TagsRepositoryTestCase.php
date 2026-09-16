@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Tags;
 
-use App\Modules\Tags\Repository\TagRepository;
+use App\Modules\Tags\Domain\Repository\TagRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;

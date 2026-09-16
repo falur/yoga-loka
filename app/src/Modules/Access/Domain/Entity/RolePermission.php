@@ -7,7 +7,6 @@ namespace App\Modules\Access\Domain\Entity;
 use App\Modules\Access\Domain\ValueObject\PermissionId;
 use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Modules\Access\Domain\ValueObject\RolePermissionId;
-use App\Modules\Access\Repository\RolePermissionRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
@@ -16,7 +15,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'role_permission',
     table: 'role_permissions',
-    repository: RolePermissionRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class RolePermission

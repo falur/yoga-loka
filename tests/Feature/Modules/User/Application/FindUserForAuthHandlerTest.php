@@ -11,7 +11,7 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;

@@ -6,7 +6,7 @@ namespace App\Modules\Access\Domain\Entity;
 
 use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Modules\Access\Domain\ValueObject\UserRoleId;
-use App\Modules\Access\Repository\UserRoleRepository;
+use App\Modules\Access\Infrastructure\Persistence\Cycle\Repository\CycleUserRoleRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -16,7 +16,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'user_role',
     table: 'user_roles',
-    repository: UserRoleRepository::class,
+    repository: CycleUserRoleRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class UserRole

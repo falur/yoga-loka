@@ -2,19 +2,21 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Access\Repository;
+namespace App\Modules\Access\Infrastructure\Persistence\Cycle\Repository;
 
 use App\Modules\Access\Domain\Collection\UserRoleCollection;
 use App\Modules\Access\Domain\Entity\UserRole;
+use App\Modules\Access\Domain\Repository\UserRoleRepository;
 use App\Modules\Access\Domain\ValueObject\RoleId;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\Select\Repository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 
 /**
- * @extends Repository<UserRole>
+ * @extends AbstractRepository<UserRole>
  */
-final class UserRoleRepository extends Repository
+final class CycleUserRoleRepository extends AbstractRepository implements UserRoleRepository
 {
+    #[\Override]
     public function findByUserId(UserId $userId): UserRoleCollection
     {
         return new UserRoleCollection(
@@ -24,6 +26,7 @@ final class UserRoleRepository extends Repository
         );
     }
 
+    #[\Override]
     public function exists(UserId $userId, RoleId $roleId): bool
     {
         return $this->findOne([

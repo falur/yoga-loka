@@ -8,6 +8,7 @@ use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use App\Modules\Auth\Application\Contract\TokenGeneratorContract;
+use App\Modules\Auth\Application\Contract\TranslatorContract;
 use App\Modules\Auth\Domain\Repository\AuthTokenRepository;
 use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
 use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;
@@ -27,6 +28,7 @@ use App\Modules\Auth\Infrastructure\Spiral\Auth\UserActorProvider;
 use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
+use App\Modules\Auth\Infrastructure\Spiral\Translation\SpiralTranslator;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
 use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
@@ -64,6 +66,7 @@ final class AuthBootloader extends Bootloader
         TokenGeneratorContract::class => RandomTokenGenerator::class,
         AuthTokenStorageContract::class => AuthTokenIssuer::class,
         LoginCodeMailerContract::class => SpiralLoginCodeMailer::class,
+        TranslatorContract::class => SpiralTranslator::class,
     ];
 
     /**

@@ -6,8 +6,7 @@ namespace Tests\Feature\Modules\Auth\Application;
 
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsHandler;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsQuery;
-use App\Modules\Auth\Application\View\SessionView;
-use App\Modules\Auth\Application\View\SessionViewAssembler;
+use App\Modules\Auth\Application\Result\SessionResult;
 use App\Modules\Auth\Domain\Entity\AuthToken;
 use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use App\Modules\Auth\Domain\ValueObject\AuthTokenId;
@@ -38,7 +37,7 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
         self::assertCount(2, $sessions);
 
         $ips = (new Collection($sessions->all()))
-            ->map(static fn(SessionView $session): string|null => $session->ip)
+            ->map(static fn(SessionResult $session): string|null => $session->ip)
             ->all();
         self::assertEqualsCanonicalizing(['203.0.113.1', '203.0.113.2'], $ips);
 
@@ -100,7 +99,7 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
 
         self::assertCount(1, $sessions);
         $session = $sessions->first();
-        self::assertInstanceOf(SessionView::class, $session);
+        self::assertInstanceOf(SessionResult::class, $session);
         self::assertSame($sessionId->value(), $session->id);
         self::assertSame('203.0.113.5', $session->ip);
         self::assertTrue($session->current);
@@ -110,7 +109,6 @@ final class GetUserSessionsHandlerTest extends AuthApplicationTestCase
     {
         return new GetUserSessionsHandler(
             authTokenRepository: $this->authTokenRepository(),
-            sessionViewAssembler: new SessionViewAssembler(),
             logger: new NullLogger(),
         );
     }

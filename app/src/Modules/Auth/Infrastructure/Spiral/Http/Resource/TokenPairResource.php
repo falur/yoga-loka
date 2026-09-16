@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 final readonly class TokenPairResource extends AbstractResource

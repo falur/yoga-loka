@@ -6,8 +6,8 @@ namespace Tests\Feature\Modules\Auth\Application;
 
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeCommand;
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeHandler;
+use App\Modules\Auth\Application\Contract\TranslatorContract;
 use App\Shared\Domain\Locale\LocaleResolver;
-use Spiral\Translator\TranslatorInterface;
 use Tests\Feature\Modules\Auth\Application\Fixture\RecordingLoginCodeMailer;
 use Tests\TestCase;
 
@@ -51,7 +51,7 @@ final class SendLoginCodeHandlerTest extends TestCase
     {
         return new SendLoginCodeHandler(
             loginCodeMailer: $loginCodeMailer,
-            translator: $this->getContainer()->get(TranslatorInterface::class),
+            translator: $this->getContainer()->get(TranslatorContract::class),
             localeResolver: $this->getContainer()->get(LocaleResolver::class),
         );
     }

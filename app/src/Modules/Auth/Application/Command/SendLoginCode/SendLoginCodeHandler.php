@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Command\SendLoginCode;
 
 use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
+use App\Modules\Auth\Application\Contract\TranslatorContract;
 use App\Shared\Domain\Locale\LocaleResolver;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
-use Spiral\Translator\TranslatorInterface;
 
 /**
  * Отправка письма с кодом входа. Выполняется в очереди (per-request локали нет), поэтому язык
@@ -19,7 +19,7 @@ final readonly class SendLoginCodeHandler
 {
     public function __construct(
         private LoginCodeMailerContract $loginCodeMailer,
-        private TranslatorInterface $translator,
+        private TranslatorContract $translator,
         private LocaleResolver $localeResolver,
     ) {}
 

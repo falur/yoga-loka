@@ -6,7 +6,7 @@ namespace App\Modules\Auth\Application\Command\CompleteRegistration;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\Repository\RegistrationTicketRepository;

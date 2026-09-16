@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Application\View;
+namespace App\Modules\Auth\Application\Result;
 
 /**
  * Read-model одной сессии пользователя для ответа API: проекция группы токенов одной сессии
  * (access + refresh). createdAt — самый ранний выпуск, expiresAt — самый поздний срок (refresh,
  * ~60 дней). ip/device — null, если устройство неизвестно. current — это текущая сессия запроса.
- * Собирается SessionViewAssembler.
+ * Собирается GetUserSessionsHandler.
  */
-final readonly class SessionView
+final readonly class SessionResult
 {
     public function __construct(
         public string $id,

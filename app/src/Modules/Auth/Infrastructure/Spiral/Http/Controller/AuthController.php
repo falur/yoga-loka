@@ -20,7 +20,7 @@ use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeCommand;
 use App\Modules\Auth\Application\Command\VerifyLoginCode\VerifyLoginCodeHandler;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsHandler;
 use App\Modules\Auth\Application\Query\GetUserSessions\GetUserSessionsQuery;
-use App\Modules\Auth\Application\View\SessionView;
+use App\Modules\Auth\Application\Result\SessionResult;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\ListSessionsFilter;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\LogoutFilter;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Filter\RefreshFilter;
@@ -223,7 +223,7 @@ final readonly class AuthController
         );
 
         $sessionResources = $userSessions->mapToList(
-            static fn(SessionView $session): SessionResource => SessionResource::fromView($session),
+            static fn(SessionResult $session): SessionResource => SessionResource::fromResult($session),
         );
 
         return new CollectionResponse($sessionResources);

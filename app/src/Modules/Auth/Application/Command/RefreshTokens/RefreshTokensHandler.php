@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Command\RefreshTokens;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;

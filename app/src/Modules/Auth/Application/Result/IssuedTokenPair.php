@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Application\Dto;
+namespace App\Modules\Auth\Application\Result;
 
 final readonly class IssuedTokenPair
 {

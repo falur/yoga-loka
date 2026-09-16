@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Application\Command\VerifyLoginCode;
 
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 
 /**
  * Результат проверки кода: существующему пользователю — пара токенов (needsProfile=false),

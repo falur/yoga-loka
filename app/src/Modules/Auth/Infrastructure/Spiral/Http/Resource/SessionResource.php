@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Auth\Application\View\SessionView;
+use App\Modules\Auth\Application\Result\SessionResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
@@ -23,7 +23,7 @@ final readonly class SessionResource extends AbstractResource
         public bool $current,
     ) {}
 
-    public static function fromView(SessionView $session): self
+    public static function fromResult(SessionResult $session): self
     {
         return new self(
             id: $session->id,

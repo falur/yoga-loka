@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Infrastructure\Spiral\Auth;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 use App\Modules\Auth\Domain\Enum\AuthTokenType;
 use App\Modules\Auth\Domain\Exception\InvalidRefreshTokenException;
 use App\Modules\Auth\Domain\Exception\SessionNotFoundException;

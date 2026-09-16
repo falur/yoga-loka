@@ -7,9 +7,9 @@ namespace App\Modules\Notifications\Application\Command\Realtime\PublishRealtime
 use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Notifications\Application\Dto\RealtimeActorPayload;
-use App\Modules\Notifications\Application\Dto\RealtimeMediaPayload;
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeActorPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeMediaPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use Psr\Log\LoggerInterface;
 

@@ -8,9 +8,9 @@ use App\Modules\Notifications\Application\Command\Push\SendPushNotification\Send
 use App\Modules\Notifications\Application\Command\Push\SendPushNotification\SendPushNotificationHandler;
 use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
-use App\Modules\Notifications\Application\Dto\FcmPushResult;
+use App\Modules\Notifications\Application\Contract\FcmPushResult;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Notifications\Application\Dto\NotificationPush;
+use App\Modules\Notifications\Application\Contract\NotificationPush;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;

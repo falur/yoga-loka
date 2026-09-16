@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Application\Dto;
+namespace App\Modules\Notifications\Application\Contract;
 
 /**
  * Результат отправки push: список значений токенов, которые FCM признал невалидными

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Application\Dto;
+namespace App\Modules\Notifications\Application\Contract;
 
 use App\Modules\Media\Public\Dto\MediaConversionDto;
 use App\Modules\Media\Public\Dto\MediaDto;

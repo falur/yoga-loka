@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Application\Dto;
+namespace App\Modules\Notifications\Application\Contract;
 
 /**
  * Автор-инициатор в push-payload (FCM). FCM data — плоская строковая карта, поэтому аватар здесь одна

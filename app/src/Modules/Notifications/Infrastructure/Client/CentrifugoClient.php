@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Client;
 
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoPresenceException;
 use App\Shared\Infrastructure\Spiral\Configuration\Centrifugo\CentrifugoConfig;

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Client;
 
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
-use App\Modules\Notifications\Application\Dto\NotificationPush;
-use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
+use App\Modules\Notifications\Application\Contract\NotificationPush;
+use App\Modules\Notifications\Application\Contract\NotificationPushActorPayload;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
 use App\Modules\Notifications\Infrastructure\Client\KreaitFcmPushSender;
 use Kreait\Firebase\Contract\Messaging;

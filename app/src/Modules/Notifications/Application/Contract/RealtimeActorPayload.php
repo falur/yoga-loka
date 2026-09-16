@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Notifications\Application\Dto;
+namespace App\Modules\Notifications\Application\Contract;
 
 /**
  * Автор-инициатор в realtime-payload (Centrifugo): id, имя и аватар одним медиа (RealtimeMediaPayload)

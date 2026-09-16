@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Infrastructure\Spiral\Registry;
 
 use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
-use App\Modules\Notifications\Application\Dto\NotificationTypeDefinitionCollection;
+use App\Modules\Notifications\Application\Contract\NotificationTypeDefinitionCollection;
 use App\Modules\Notifications\Application\Exception\NotificationTypeRegistryException;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;

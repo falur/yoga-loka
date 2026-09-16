@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Query\Setting\GetNotificationSettings;
 
-use App\Modules\Notifications\Application\Dto\NotificationSettingViewCollection;
-use App\Modules\Notifications\Application\Service\NotificationSettingsViewFactory;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
+use App\Modules\Notifications\Application\Result\NotificationSettingResultCollection;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Shared\Domain\ValueObject\UserId;
 
 final readonly class GetNotificationSettingsHandler
 {
     public function __construct(
-        private NotificationSettingsViewFactory $settingsViewFactory,
+        private NotificationSettingRepository $notificationSettingRepository,
+        private NotificationTypeCatalogContract $typeCatalog,
     ) {}
 
-    public function handle(GetNotificationSettingsQuery $query): NotificationSettingViewCollection
+    public function handle(GetNotificationSettingsQuery $query): NotificationSettingResultCollection
     {
-        return $this->settingsViewFactory->build(UserId::fromString($query->userId));
+        $userId = UserId::fromString($query->userId);
+
+        return NotificationSettingResultCollection::build(
+            definitions: $this->typeCatalog->all(),
+            settings: $this->notificationSettingRepository->findForUser($userId),
+        );
     }
 }

@@ -319,7 +319,8 @@ realtime - публикация в Centrifugo.
 ```
 
 Матрицу настроек (все зарегистрированные виды × все каналы, наложенные на персональные строки)
-строит `NotificationSettingsViewFactory`. Она же отдаётся клиенту на экран настроек: для каждой
+строит `NotificationSettingResultCollection::build()`, вызываемый из `GetNotificationSettingsHandler`
+и `UpdateNotificationSettingsHandler`. Она же отдаётся клиенту на экран настроек: для каждой
 ячейки видно текущее значение `enabled` и значение по умолчанию `default`.
 
 ## HTTP API

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Notifications\Application\Dto\NotificationSettingView;
+use App\Modules\Notifications\Application\Result\NotificationSettingResult;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
@@ -21,13 +21,13 @@ final readonly class NotificationSettingResource extends AbstractResource
         public bool $default,
     ) {}
 
-    public static function fromView(NotificationSettingView $view): self
+    public static function fromResult(NotificationSettingResult $setting): self
     {
         return new self(
-            type: $view->type->value(),
-            channel: $view->channel,
-            enabled: $view->enabled,
-            default: $view->default,
+            type: $setting->type->value(),
+            channel: $setting->channel,
+            enabled: $setting->enabled,
+            default: $setting->default,
         );
     }
 }

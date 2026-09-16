@@ -11,7 +11,7 @@ use App\Modules\Notifications\Application\Command\Realtime\PublishRealtimeNotifi
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;

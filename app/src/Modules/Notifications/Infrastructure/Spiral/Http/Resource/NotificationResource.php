@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Notifications\Application\View\NotificationView;
+use App\Modules\Notifications\Application\Result\NotificationResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
@@ -25,15 +25,15 @@ final readonly class NotificationResource extends AbstractResource
         public \DateTimeImmutable $createdAt,
     ) {}
 
-    public static function fromView(NotificationView $notification): self
+    public static function fromResult(NotificationResult $notification): self
     {
         return new self(
             id: $notification->id,
             type: $notification->type,
             title: $notification->title,
             body: $notification->body,
-            action: $notification->action === null ? null : NotificationActionResource::fromView($notification->action),
-            actor: $notification->actor === null ? null : NotificationActorResource::fromView($notification->actor),
+            action: $notification->action === null ? null : NotificationActionResource::fromResult($notification->action),
+            actor: $notification->actor === null ? null : NotificationActorResource::fromResult($notification->actor),
             read: $notification->read,
             createdAt: $notification->createdAt,
         );

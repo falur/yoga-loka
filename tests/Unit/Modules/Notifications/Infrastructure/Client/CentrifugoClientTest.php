@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Notifications\Infrastructure\Client;
 
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
-use App\Modules\Notifications\Application\Dto\RealtimeActorPayload;
-use App\Modules\Notifications\Application\Dto\RealtimeMediaOriginalPayload;
-use App\Modules\Notifications\Application\Dto\RealtimeMediaPayload;
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeActorPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeMediaOriginalPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeMediaPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoClient;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoPresenceException;

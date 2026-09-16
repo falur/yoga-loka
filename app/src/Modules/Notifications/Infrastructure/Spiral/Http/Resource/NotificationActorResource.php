@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Notifications\Application\View\NotificationActorView;
+use App\Modules\Notifications\Application\Result\NotificationActorResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
@@ -21,7 +21,7 @@ final readonly class NotificationActorResource extends AbstractResource
         public MediaResource|null $avatar,
     ) {}
 
-    public static function fromView(NotificationActorView $actor): self
+    public static function fromResult(NotificationActorResult $actor): self
     {
         return new self(
             id: $actor->id,

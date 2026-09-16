@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Infrastructure\Client;
 
 use App\Modules\Notifications\Application\Contract\CentrifugoServiceContract;
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
+use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 
 /**
  * Реализация контракта realtime-доставки поверх CentrifugoClient.

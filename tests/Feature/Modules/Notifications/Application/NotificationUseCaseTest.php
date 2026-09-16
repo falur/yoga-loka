@@ -16,7 +16,7 @@ use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSett
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsCommand;
 use App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings\UpdateNotificationSettingsHandler;
 use App\Modules\Notifications\Public\Contract\NotificationTypeRegistryContract;
-use App\Modules\Notifications\Application\Dto\NotificationSettingView;
+use App\Modules\Notifications\Application\Result\NotificationSettingResult;
 use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetUnreadCountHandler;
 use App\Modules\Notifications\Application\Query\Notification\GetUnreadCount\GetUnreadCountQuery;
 use App\Modules\Notifications\Application\Query\Notification\ListNotifications\ListNotificationsHandler;
@@ -24,7 +24,7 @@ use App\Modules\Notifications\Application\Query\Notification\ListNotifications\L
 use App\Modules\Notifications\Application\Query\Notification\ListNotifications\ListNotificationsResult;
 use App\Modules\Notifications\Application\Query\Setting\GetNotificationSettings\GetNotificationSettingsHandler;
 use App\Modules\Notifications\Application\Query\Setting\GetNotificationSettings\GetNotificationSettingsQuery;
-use App\Modules\Notifications\Application\View\NotificationView;
+use App\Modules\Notifications\Application\Result\NotificationResult;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
@@ -71,7 +71,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
             handler: $this->getContainer()->get(MarkNotificationReadHandler::class)->handle(...),
         );
 
-        self::assertInstanceOf(NotificationView::class, $marked);
+        self::assertInstanceOf(NotificationResult::class, $marked);
         self::assertTrue($marked->read);
         self::assertSame(0, $this->notificationRepository()->countUnreadForRecipient($userId));
     }
@@ -235,7 +235,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
 
         // Матрица содержит все зарегистрированные виды; у фикстурного вида ровно три канала.
         $fixtureViews = $views->filter(
-            static fn(NotificationSettingView $view): bool => $view->type->value() === self::TYPE,
+            static fn(NotificationSettingResult $view): bool => $view->type->value() === self::TYPE,
         );
         self::assertCount(3, $fixtureViews);
         self::assertTrue($this->viewFor($views->all(), NotificationChannel::Push)->enabled);
@@ -251,7 +251,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
         );
     }
 
-    private function pushView(UserId $userId): NotificationSettingView
+    private function pushView(UserId $userId): NotificationSettingResult
     {
         $views = $this->getContainer()->get(GetNotificationSettingsHandler::class)->handle(
             new GetNotificationSettingsQuery(userId: $userId->value()),
@@ -261,9 +261,9 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     }
 
     /**
-     * @param list<NotificationSettingView> $views
+     * @param list<NotificationSettingResult> $views
      */
-    private function viewFor(array $views, NotificationChannel $channel): NotificationSettingView
+    private function viewFor(array $views, NotificationChannel $channel): NotificationSettingResult
     {
         foreach ($views as $view) {
             if ($view->channel === $channel && $view->type->value() === self::TYPE) {
@@ -335,13 +335,13 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     }
 
     /**
-     * @param list<NotificationView> $views
+     * @param list<NotificationResult> $views
      *
      * @return list<string>
      */
     private function viewIdsOf(array $views): array
     {
-        return \array_map(static fn(NotificationView $view): string => $view->id, $views);
+        return \array_map(static fn(NotificationResult $view): string => $view->id, $views);
     }
 
     private function commandBus(): CommandBusInterface

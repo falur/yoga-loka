@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Application\Command\Setting\UpdateNotificationSettings;
 
 use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
-use App\Modules\Notifications\Application\Dto\NotificationSettingViewCollection;
-use App\Modules\Notifications\Application\Service\NotificationSettingsViewFactory;
+use App\Modules\Notifications\Application\Result\NotificationSettingResultCollection;
 use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
@@ -31,13 +30,12 @@ final readonly class UpdateNotificationSettingsHandler
     public function __construct(
         private NotificationSettingRepository $notificationSettingRepository,
         private NotificationTypeCatalogContract $typeCatalog,
-        private NotificationSettingsViewFactory $settingsViewFactory,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(UpdateNotificationSettingsCommand $command): NotificationSettingViewCollection
+    public function handle(UpdateNotificationSettingsCommand $command): NotificationSettingResultCollection
     {
         $userId = UserId::fromString($command->userId);
         $notificationSettings = new NotificationSettingCollection();
@@ -54,7 +52,10 @@ final readonly class UpdateNotificationSettingsHandler
             'count' => \count($command->updates),
         ]);
 
-        return $this->settingsViewFactory->build($userId);
+        return NotificationSettingResultCollection::build(
+            definitions: $this->typeCatalog->all(),
+            settings: $this->notificationSettingRepository->findForUser($userId),
+        );
     }
 
     private function applyUpdate(UserId $userId, NotificationSettingUpdate $update): NotificationSetting

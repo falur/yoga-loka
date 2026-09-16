@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Contract;
 
-use App\Modules\Notifications\Application\Dto\NotificationTypeDefinitionCollection;
 use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 

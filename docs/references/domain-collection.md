@@ -42,8 +42,12 @@ use App\Shared\Domain\Collection\TypedCollection;
 final class PostDataCollection extends TypedCollection
 {
     /**
+     * Карта «запись -> список идентификаторов» держит значением объект `PostRelatedIds`,
+     * а не `list<string>` напрямую: тип контракта проекта не допускает вложенные массивы
+     * (`array<string, list<string>>` не проходит правило `noNestedArrayType`).
+     *
      * @param iterable<array-key, array<non-empty-string, scalar|null>> $rows
-     * @param array<string, list<string>> $mediaIdsByPost
+     * @param array<string, PostRelatedIds> $mediaIdsByPost
      */
     public static function fromDatabaseRows(iterable $rows, array $mediaIdsByPost): self
     {
@@ -52,7 +56,7 @@ final class PostDataCollection extends TypedCollection
         foreach ($rows as $row) {
             $postDataCollection->push(PostData::fromDatabaseRow(
                 row: $row,
-                mediaIds: $mediaIdsByPost[(string) $row['id']] ?? [],
+                mediaIds: ($mediaIdsByPost[(string) $row['id']] ?? new PostRelatedIds(ids: []))->ids,
             ));
         }
 

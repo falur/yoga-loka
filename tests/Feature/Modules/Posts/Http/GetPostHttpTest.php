@@ -219,8 +219,7 @@ final class GetPostHttpTest extends PostsHttpTestCase
         $media = $this->getContainer()->get(MediaRepository::class)->findById($mediaId);
         self::assertNotNull($media);
         $media->markReadyOriginalRemoved();
-        $this->entityManager()->persist($media);
-        $this->entityManager()->run();
+        $this->persist($media);
         $this->cleanOrmHeap();
     }
 

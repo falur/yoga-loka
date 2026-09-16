@@ -66,7 +66,7 @@ final class CommentEntityTest extends TestCase
         self::assertSame($deletedAt, $comment->deletedAt->value());
         self::assertSame('Спам', $comment->deletionReason->value());
 
-        $comment->restore();
+        $comment->undelete();
 
         self::assertFalse($comment->isDeleted());
         self::assertTrue($comment->deletedBy->isEmpty());

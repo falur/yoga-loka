@@ -18,9 +18,14 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Entity\CycleMediaImageConversionEntity;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaImageConversionMapper;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\Post;
+use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
@@ -31,14 +36,26 @@ use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Posts\Domain\Repository\CommentRepository;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CycleCommentEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostMediaEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Mapper\CommentMapper;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Mapper\PostMapper;
+use App\Modules\Tags\Domain\Entity\Tag;
+use App\Modules\Tags\Infrastructure\Persistence\Cycle\Entity\CycleTagEntity;
+use App\Modules\Tags\Infrastructure\Persistence\Cycle\Mapper\TagMapper;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
+use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
+use Cycle\ORM\ORMInterface;
+use Cycle\ORM\Select;
 use Spiral\Testing\Http\TestResponse;
 use Tests\DatabaseTestCase;
 use Tests\Support\Notifications\RecordingOutboxEventStore;
@@ -173,15 +190,77 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
         ));
     }
 
+    /**
+     * User, Media, MediaImageConversion, Tag и Post/Comment/PostMedia модуля Posts — чистые
+     * доменные сущности без Cycle-разметки, поэтому не могут быть сохранены через generic
+     * entityManager()->persist(): EntityManager не знает их роль. Хелпер переводит их в Cycle
+     * Entity через Mapper соответствующего модуля перед постановкой в очередь EntityManager — тот
+     * же приём, что PostsRepositoryTestCase (Repository-тесты того же модуля). Существующая строка
+     * ищется по PK перед каждым сохранением, чтобы повторный persist() (например, обновление
+     * счётчика) выполнял UPDATE, а не падал на дубликате первичного ключа.
+     */
     protected function persist(object $entity): void
     {
-        $this->entityManager()->persist($entity);
+        $this->entityManager()->persist($this->toCycleEntity($entity));
         $this->entityManager()->run();
     }
 
     protected function entityManager(): EntityManagerInterface
     {
         return $this->getContainer()->get(EntityManagerInterface::class);
+    }
+
+    private function toCycleEntity(object $entity): object
+    {
+        return match (true) {
+            $entity instanceof User => $this->getContainer()->get(UserMapper::class)->toCycleEntity(
+                user: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleUserEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof Media => $this->getContainer()->get(MediaMapper::class)->toCycleEntity(
+                media: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleMediaEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof MediaImageConversion => $this->getContainer()->get(MediaImageConversionMapper::class)->toCycleEntity(
+                imageConversion: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleMediaImageConversionEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof Tag => $this->getContainer()->get(TagMapper::class)->toCycleEntity(
+                tag: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleTagEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof Post => $this->getContainer()->get(PostMapper::class)->toCycleEntity(
+                post: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CyclePostEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof Comment => $this->getContainer()->get(CommentMapper::class)->toCycleEntity(
+                comment: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CycleCommentEntity::class, $entity->id->value()),
+            ),
+            $entity instanceof PostMedia => $this->getContainer()->get(PostMapper::class)->toPostMediaCycleEntity(
+                postMedia: $entity,
+                cycleEntity: $this->findCycleEntityByClass(CyclePostMediaEntity::class, $entity->id->value()),
+            ),
+            default => throw new \LogicException(\sprintf('Не настроено сохранение сущности %s в тестах.', $entity::class)),
+        };
+    }
+
+    /**
+     * @template TCycleEntity of object
+     *
+     * @param class-string<TCycleEntity> $cycleClass
+     *
+     * @return TCycleEntity|null
+     */
+    private function findCycleEntityByClass(string $cycleClass, string $id): object|null
+    {
+        /** @var ORMInterface $orm */
+        $orm = $this->getContainer()->get(ORMInterface::class);
+
+        /** @var Select<TCycleEntity> $select */
+        $select = new Select($orm, $cycleClass);
+
+        return $select->wherePK($id)->fetchOne();
     }
 
     protected function postRepository(): PostRepository

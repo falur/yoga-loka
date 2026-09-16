@@ -13,57 +13,32 @@ use App\Modules\Posts\Domain\ValueObject\CommentText;
 use App\Modules\Posts\Domain\ValueObject\LikesCount;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\RepliesCount;
-use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletedAtTypecast;
-use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletedByTypecast;
-use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletionReasonTypecast;
-use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentParentTypecast;
-use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CycleCommentRepository;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
+use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'comment',
-    table: 'comments',
-    repository: CycleCommentRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class Comment
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: CommentId::class)]
     public private(set) CommentId $id;
 
-    #[Column(type: 'uuid', name: 'post_id', typecast: PostId::class)]
     public private(set) PostId $postId;
 
-    #[Column(type: 'uuid', name: 'user_id', typecast: UserId::class)]
     public private(set) UserId $userId;
 
-    #[Column(type: 'text', typecast: CommentText::class)]
     public private(set) CommentText $text;
 
-    #[Column(type: 'uuid', name: 'parent_comment_id', nullable: true, typecast: CommentParentTypecast::class)]
     public private(set) CommentParent $parent;
 
-    #[Column(type: 'integer', name: 'likes_count', typecast: LikesCount::class)]
     public private(set) LikesCount $likesCount;
 
-    #[Column(type: 'integer', name: 'replies_count', typecast: RepliesCount::class)]
     public private(set) RepliesCount $repliesCount;
 
-    #[Column(type: 'datetime', name: 'deleted_at', nullable: true, typecast: CommentDeletedAtTypecast::class)]
     public private(set) CommentDeletedAt $deletedAt;
 
-    #[Column(type: 'uuid', name: 'deleted_by_id', nullable: true, typecast: CommentDeletedByTypecast::class)]
     public private(set) CommentDeletedBy $deletedBy;
 
-    #[Column(type: 'string(500)', name: 'deletion_reason', nullable: true, typecast: CommentDeletionReasonTypecast::class)]
     public private(set) CommentDeletionReason $deletionReason;
 
     public static function create(PostId $postId, UserId $userId, CommentText $text, CommentParent $parent): self
@@ -84,6 +59,37 @@ final class Comment
         return $comment;
     }
 
+    public static function restore(
+        CommentId $id,
+        PostId $postId,
+        UserId $userId,
+        CommentText $text,
+        CommentParent $parent,
+        LikesCount $likesCount,
+        RepliesCount $repliesCount,
+        CommentDeletedAt $deletedAt,
+        CommentDeletedBy $deletedBy,
+        CommentDeletionReason $deletionReason,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $comment = new self();
+        $comment->id = $id;
+        $comment->postId = $postId;
+        $comment->userId = $userId;
+        $comment->text = $text;
+        $comment->parent = $parent;
+        $comment->likesCount = $likesCount;
+        $comment->repliesCount = $repliesCount;
+        $comment->deletedAt = $deletedAt;
+        $comment->deletedBy = $deletedBy;
+        $comment->deletionReason = $deletionReason;
+        $comment->createdAt = $createdAt;
+        $comment->updatedAt = $updatedAt;
+
+        return $comment;
+    }
+
     public function delete(
         CommentDeletedBy $deletedBy,
         CommentDeletedAt $deletedAt,
@@ -99,7 +105,11 @@ final class Comment
         $this->touch();
     }
 
-    public function restore(): void
+    /**
+     * Отменяет мягкое удаление комментария. Названо undelete(), а не restore(): последнее имя
+     * занято технической фабрикой восстановления из хранения (docs/rules.md, «Именование»).
+     */
+    public function undelete(): void
     {
         $this->deletedAt = CommentDeletedAt::notDeleted();
         $this->deletedBy = CommentDeletedBy::none();

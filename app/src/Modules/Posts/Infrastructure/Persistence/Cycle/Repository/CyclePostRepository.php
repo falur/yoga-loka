@@ -11,13 +11,21 @@ use App\Modules\Posts\Domain\Collection\PostMentionCollection;
 use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostLike;
-use App\Modules\Posts\Domain\Entity\PostMedia;
-use App\Modules\Posts\Domain\Entity\PostMention;
-use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostTagReference;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostColumns;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostLikeColumns;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostMediaColumns;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostMentionColumns;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostTagColumns;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostLikeEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostMediaEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostMentionEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Entity\CyclePostTagEntity;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Mapper\PostMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\WhenSelect;
@@ -27,18 +35,19 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<Post>
+ * @extends AbstractRepository<CyclePostEntity>
  */
 final class CyclePostRepository extends AbstractRepository implements PostRepository
 {
     /**
-     * @param Select<Post> $select
+     * @param Select<CyclePostEntity> $select
      */
     public function __construct(
         Select $select,
         private ORM $orm,
         string $role,
         private EntityManagerInterface $entityManager,
+        private PostMapper $postMapper,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
     }
@@ -46,7 +55,10 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     #[\Override]
     public function findById(PostId $postId): Post|null
     {
-        return $this->findByPK($postId->value());
+        /** @var CyclePostEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($postId->value());
+
+        return $cycleEntity === null ? null : $this->postMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
@@ -56,14 +68,21 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
             return new PostCollection();
         }
 
-        return new PostCollection(
-            $this->select()
-                ->where('id', 'in', new Parameter(\array_map(
-                    static fn(PostId $postId): string => $postId->value(),
-                    $postIds,
-                )))
-                ->fetchAll(),
-        );
+        $postCollection = new PostCollection();
+
+        /** @var iterable<CyclePostEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(PostColumns::ID, 'in', new Parameter(\array_map(
+                static fn(PostId $postId): string => $postId->value(),
+                $postIds,
+            )))
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $postCollection->push($this->postMapper->toDomain($cycleEntity));
+        }
+
+        return $postCollection;
     }
 
     #[\Override]
@@ -75,18 +94,25 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     ): PostCollection {
         $statusValue = $status?->value;
 
-        return new PostCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->when(
-                    condition: $statusValue !== null,
-                    callback: static function (WhenSelect $query) use ($statusValue): void {
-                        $query->where('status', $statusValue);
-                    },
-                )
-                ->cursorById(cursor: $cursor?->value(), limit: $limit)
-                ->fetchAll(),
-        );
+        $postCollection = new PostCollection();
+
+        /** @var iterable<CyclePostEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(PostColumns::USER_ID, $userId->value())
+            ->when(
+                condition: $statusValue !== null,
+                callback: static function (WhenSelect $query) use ($statusValue): void {
+                    $query->where(PostColumns::STATUS, $statusValue);
+                },
+            )
+            ->cursorById(cursor: $cursor?->value(), limit: $limit)
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $postCollection->push($this->postMapper->toDomain($cycleEntity));
+        }
+
+        return $postCollection;
     }
 
     #[\Override]
@@ -100,47 +126,68 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
         $statusValue = $status?->value;
         $excludeStatusValue = $excludeStatus?->value;
 
-        return new PostCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->where('deleted_at', '=', null)
-                ->when(
-                    condition: $statusValue !== null,
-                    callback: static function (WhenSelect $query) use ($statusValue): void {
-                        $query->where('status', $statusValue);
-                    },
-                )
-                ->when(
-                    condition: $excludeStatusValue !== null,
-                    callback: static function (WhenSelect $query) use ($excludeStatusValue): void {
-                        $query->where('status', '!=', $excludeStatusValue);
-                    },
-                )
-                ->cursorById(cursor: $cursor?->value(), limit: $limit)
-                ->fetchAll(),
-        );
+        $postCollection = new PostCollection();
+
+        /** @var iterable<CyclePostEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(PostColumns::USER_ID, $userId->value())
+            ->where(PostColumns::DELETED_AT, '=', null)
+            ->when(
+                condition: $statusValue !== null,
+                callback: static function (WhenSelect $query) use ($statusValue): void {
+                    $query->where(PostColumns::STATUS, $statusValue);
+                },
+            )
+            ->when(
+                condition: $excludeStatusValue !== null,
+                callback: static function (WhenSelect $query) use ($excludeStatusValue): void {
+                    $query->where(PostColumns::STATUS, '!=', $excludeStatusValue);
+                },
+            )
+            ->cursorById(cursor: $cursor?->value(), limit: $limit)
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $postCollection->push($this->postMapper->toDomain($cycleEntity));
+        }
+
+        return $postCollection;
     }
 
     #[\Override]
     public function findRepostsOf(PostId $postId): PostCollection
     {
-        return new PostCollection(
-            $this->select()
-                ->where('parent_post_id', $postId->value())
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->fetchAll(),
-        );
+        $postCollection = new PostCollection();
+
+        /** @var iterable<CyclePostEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(PostColumns::PARENT_POST_ID, $postId->value())
+            ->orderBy(expression: PostColumns::ID, direction: 'DESC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $postCollection->push($this->postMapper->toDomain($cycleEntity));
+        }
+
+        return $postCollection;
     }
 
     #[\Override]
     public function findMediaByPostId(PostId $postId): PostMediaCollection
     {
-        return new PostMediaCollection(
-            $this->mediaSelect()
-                ->where('post_id', $postId->value())
-                ->orderBy(expression: 'position', direction: 'ASC')
-                ->fetchAll(),
-        );
+        $mediaCollection = new PostMediaCollection();
+
+        /** @var iterable<CyclePostMediaEntity> $cycleEntities */
+        $cycleEntities = $this->mediaSelect()
+            ->where(PostMediaColumns::POST_ID, $postId->value())
+            ->orderBy(expression: PostMediaColumns::POSITION, direction: 'ASC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $mediaCollection->push($this->postMapper->toPostMediaDomain($cycleEntity));
+        }
+
+        return $mediaCollection;
     }
 
     #[\Override]
@@ -150,26 +197,40 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
             return new PostMediaCollection();
         }
 
-        return new PostMediaCollection(
-            $this->mediaSelect()
-                ->where('post_id', 'in', new Parameter(\array_map(
-                    static fn(PostId $postId): string => $postId->value(),
-                    $postIds,
-                )))
-                ->orderBy(expression: 'post_id', direction: 'ASC')
-                ->orderBy(expression: 'position', direction: 'ASC')
-                ->fetchAll(),
-        );
+        $mediaCollection = new PostMediaCollection();
+
+        /** @var iterable<CyclePostMediaEntity> $cycleEntities */
+        $cycleEntities = $this->mediaSelect()
+            ->where(PostMediaColumns::POST_ID, 'in', new Parameter(\array_map(
+                static fn(PostId $postId): string => $postId->value(),
+                $postIds,
+            )))
+            ->orderBy(expression: PostMediaColumns::POST_ID, direction: 'ASC')
+            ->orderBy(expression: PostMediaColumns::POSITION, direction: 'ASC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $mediaCollection->push($this->postMapper->toPostMediaDomain($cycleEntity));
+        }
+
+        return $mediaCollection;
     }
 
     #[\Override]
     public function findTagsByPostId(PostId $postId): PostTagCollection
     {
-        return new PostTagCollection(
-            $this->tagSelect()
-                ->where('post_id', $postId->value())
-                ->fetchAll(),
-        );
+        $tagCollection = new PostTagCollection();
+
+        /** @var iterable<CyclePostTagEntity> $cycleEntities */
+        $cycleEntities = $this->tagSelect()
+            ->where(PostTagColumns::POST_ID, $postId->value())
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $tagCollection->push($this->postMapper->toPostTagDomain($cycleEntity));
+        }
+
+        return $tagCollection;
     }
 
     #[\Override]
@@ -179,58 +240,86 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
             return new PostTagCollection();
         }
 
-        return new PostTagCollection(
-            $this->tagSelect()
-                ->where('post_id', 'in', new Parameter(\array_map(
-                    static fn(PostId $postId): string => $postId->value(),
-                    $postIds,
-                )))
-                ->fetchAll(),
-        );
+        $tagCollection = new PostTagCollection();
+
+        /** @var iterable<CyclePostTagEntity> $cycleEntities */
+        $cycleEntities = $this->tagSelect()
+            ->where(PostTagColumns::POST_ID, 'in', new Parameter(\array_map(
+                static fn(PostId $postId): string => $postId->value(),
+                $postIds,
+            )))
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $tagCollection->push($this->postMapper->toPostTagDomain($cycleEntity));
+        }
+
+        return $tagCollection;
     }
 
     #[\Override]
     public function findTagsByTagId(PostTagReference $tagId): PostTagCollection
     {
-        return new PostTagCollection(
-            $this->tagSelect()
-                ->where('tag_id', $tagId->value())
-                ->fetchAll(),
-        );
+        $tagCollection = new PostTagCollection();
+
+        /** @var iterable<CyclePostTagEntity> $cycleEntities */
+        $cycleEntities = $this->tagSelect()
+            ->where(PostTagColumns::TAG_ID, $tagId->value())
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $tagCollection->push($this->postMapper->toPostTagDomain($cycleEntity));
+        }
+
+        return $tagCollection;
     }
 
     #[\Override]
     public function findMentionsByPostId(PostId $postId): PostMentionCollection
     {
-        return new PostMentionCollection(
-            $this->mentionSelect()
-                ->where('post_id', $postId->value())
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->fetchAll(),
-        );
+        $mentionCollection = new PostMentionCollection();
+
+        /** @var iterable<CyclePostMentionEntity> $cycleEntities */
+        $cycleEntities = $this->mentionSelect()
+            ->where(PostMentionColumns::POST_ID, $postId->value())
+            ->orderBy(expression: PostMentionColumns::ID, direction: 'DESC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $mentionCollection->push($this->postMapper->toPostMentionDomain($cycleEntity));
+        }
+
+        return $mentionCollection;
     }
 
     #[\Override]
     public function findMentionsByUserId(UserId $userId): PostMentionCollection
     {
-        return new PostMentionCollection(
-            $this->mentionSelect()
-                ->where('user_id', $userId->value())
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->fetchAll(),
-        );
+        $mentionCollection = new PostMentionCollection();
+
+        /** @var iterable<CyclePostMentionEntity> $cycleEntities */
+        $cycleEntities = $this->mentionSelect()
+            ->where(PostMentionColumns::USER_ID, $userId->value())
+            ->orderBy(expression: PostMentionColumns::ID, direction: 'DESC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $mentionCollection->push($this->postMapper->toPostMentionDomain($cycleEntity));
+        }
+
+        return $mentionCollection;
     }
 
     #[\Override]
     public function findLikeByPostAndUser(PostId $postId, UserId $userId): PostLike|null
     {
-        /** @var PostLike|null $like */
-        $like = $this->likeSelect()->fetchOne([
-            'post_id' => $postId->value(),
-            'user_id' => $userId->value(),
+        /** @var CyclePostLikeEntity|null $cycleEntity */
+        $cycleEntity = $this->likeSelect()->fetchOne([
+            PostLikeColumns::POST_ID => $postId->value(),
+            PostLikeColumns::USER_ID => $userId->value(),
         ]);
 
-        return $like;
+        return $cycleEntity === null ? null : $this->postMapper->toPostLikeDomain($cycleEntity);
     }
 
     #[\Override]
@@ -242,12 +331,19 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     #[\Override]
     public function findLikesByUserId(UserId $userId): PostLikeCollection
     {
-        return new PostLikeCollection(
-            $this->likeSelect()
-                ->where('user_id', $userId->value())
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->fetchAll(),
-        );
+        $likeCollection = new PostLikeCollection();
+
+        /** @var iterable<CyclePostLikeEntity> $cycleEntities */
+        $cycleEntities = $this->likeSelect()
+            ->where(PostLikeColumns::USER_ID, $userId->value())
+            ->orderBy(expression: PostLikeColumns::ID, direction: 'DESC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $likeCollection->push($this->postMapper->toPostLikeDomain($cycleEntity));
+        }
+
+        return $likeCollection;
     }
 
     #[\Override]
@@ -257,55 +353,87 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
             return new PostLikeCollection();
         }
 
-        return new PostLikeCollection(
-            $this->likeSelect()
-                ->where('user_id', $userId->value())
-                ->where('post_id', 'in', new Parameter(\array_map(
-                    static fn(PostId $postId): string => $postId->value(),
-                    $postIds,
-                )))
-                ->fetchAll(),
-        );
+        $likeCollection = new PostLikeCollection();
+
+        /** @var iterable<CyclePostLikeEntity> $cycleEntities */
+        $cycleEntities = $this->likeSelect()
+            ->where(PostLikeColumns::USER_ID, $userId->value())
+            ->where(PostLikeColumns::POST_ID, 'in', new Parameter(\array_map(
+                static fn(PostId $postId): string => $postId->value(),
+                $postIds,
+            )))
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $likeCollection->push($this->postMapper->toPostLikeDomain($cycleEntity));
+        }
+
+        return $likeCollection;
     }
 
     #[\Override]
     public function add(Post $post): void
     {
-        $this->entityManager->persist($post);
+        /** @var CyclePostEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($post->id->value());
+
+        $this->entityManager->persist($this->postMapper->toCycleEntity(post: $post, cycleEntity: $cycleEntity));
     }
 
     #[\Override]
     public function save(Post $post): void
     {
+        /** @var CyclePostEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($post->id->value());
+
         $this->entityManager
-            ->persist($post)
+            ->persist($this->postMapper->toCycleEntity(post: $post, cycleEntity: $cycleEntity))
             ->run();
     }
 
     #[\Override]
     public function saveWithOriginal(Post $post, Post $original): void
     {
+        /** @var CyclePostEntity|null $cyclePost */
+        $cyclePost = $this->findByPK($post->id->value());
+        /** @var CyclePostEntity|null $cycleOriginal */
+        $cycleOriginal = $this->findByPK($original->id->value());
+
         $this->entityManager
-            ->persist($post)
-            ->persist($original)
+            ->persist($this->postMapper->toCycleEntity(post: $post, cycleEntity: $cyclePost))
+            ->persist($this->postMapper->toCycleEntity(post: $original, cycleEntity: $cycleOriginal))
             ->run();
     }
 
     #[\Override]
     public function saveWithLike(Post $post, PostLike $like): void
     {
+        /** @var CyclePostEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($post->id->value());
+
+        // Лайк здесь всегда свежесоздан (PostLike::create() в LikePostHandler) — отдельного
+        // findOne() перед persist() не нужно, как и для внутренних сущностей saveWithAttachments.
         $this->entityManager
-            ->persist($like)
-            ->persist($post)
+            ->persist($this->postMapper->toPostLikeCycleEntity($like))
+            ->persist($this->postMapper->toCycleEntity(post: $post, cycleEntity: $cycleEntity))
             ->run();
     }
 
     #[\Override]
     public function removeLike(PostLike $like, Post $post): void
     {
+        /** @var CyclePostLikeEntity|null $cycleLike */
+        $cycleLike = $this->likeSelect()->where(PostLikeColumns::ID, $like->id->value())->fetchOne();
+
+        if ($cycleLike !== null) {
+            $this->entityManager->delete($cycleLike);
+        }
+
+        /** @var CyclePostEntity|null $cycleEntity */
+        $cycleEntity = $this->findByPK($post->id->value());
+
         $this->entityManager
-            ->delete($like)
-            ->persist($post)
+            ->persist($this->postMapper->toCycleEntity(post: $post, cycleEntity: $cycleEntity))
             ->run();
     }
 
@@ -331,7 +459,10 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     ): void {
         $this->stagePostWithAttachments(post: $post, media: $media, tags: $tags, mentions: $mentions);
 
-        $this->entityManager->persist($original);
+        /** @var CyclePostEntity|null $cycleOriginal */
+        $cycleOriginal = $this->findByPK($original->id->value());
+
+        $this->entityManager->persist($this->postMapper->toCycleEntity(post: $original, cycleEntity: $cycleOriginal));
 
         $this->entityManager->run();
     }
@@ -339,7 +470,10 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     /**
      * Кладёт запись и её внутренние сущности в один прогон EntityManager, но не выполняет его:
      * прогон делает вызвавший публичный метод — сам по себе (создание записи) или после оригинала
-     * репоста, чтобы порядок записи относительно счётчика оригинала остался прежним.
+     * репоста, чтобы порядок записи относительно счётчика оригинала остался прежним. Запись и все
+     * вложения здесь всегда свежесозданы (Post::create() и построение коллекций в
+     * PostContentComposer) — отдельного findOne() перед persist() не нужно, как и для конверсий
+     * Media в CycleMediaRepository::saveWithConversions().
      */
     private function stagePostWithAttachments(
         Post $post,
@@ -347,18 +481,18 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
         PostTagCollection $tags,
         PostMentionCollection $mentions,
     ): void {
-        $this->entityManager->persist($post);
+        $this->entityManager->persist($this->postMapper->toCycleEntity($post));
 
         foreach ($media as $postMedia) {
-            $this->entityManager->persist($postMedia);
+            $this->entityManager->persist($this->postMapper->toPostMediaCycleEntity($postMedia));
         }
 
         foreach ($tags as $postTag) {
-            $this->entityManager->persist($postTag);
+            $this->entityManager->persist($this->postMapper->toPostTagCycleEntity($postTag));
         }
 
         foreach ($mentions as $postMention) {
-            $this->entityManager->persist($postMention);
+            $this->entityManager->persist($this->postMapper->toPostMentionCycleEntity($postMention));
         }
     }
 
@@ -366,35 +500,35 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
      * Выборка по таблице вложений. Собственного репозитория у вложения нет, поэтому запрос строится
      * тем же общим примитивом, что и запрос корня.
      *
-     * @return WhenSelect<PostMedia>
+     * @return WhenSelect<CyclePostMediaEntity>
      */
     private function mediaSelect(): WhenSelect
     {
-        return $this->innerSelect(PostMedia::class);
+        return $this->innerSelect(CyclePostMediaEntity::class);
     }
 
     /**
-     * @return WhenSelect<PostTag>
+     * @return WhenSelect<CyclePostTagEntity>
      */
     private function tagSelect(): WhenSelect
     {
-        return $this->innerSelect(PostTag::class);
+        return $this->innerSelect(CyclePostTagEntity::class);
     }
 
     /**
-     * @return WhenSelect<PostMention>
+     * @return WhenSelect<CyclePostMentionEntity>
      */
     private function mentionSelect(): WhenSelect
     {
-        return $this->innerSelect(PostMention::class);
+        return $this->innerSelect(CyclePostMentionEntity::class);
     }
 
     /**
-     * @return WhenSelect<PostLike>
+     * @return WhenSelect<CyclePostLikeEntity>
      */
     private function likeSelect(): WhenSelect
     {
-        return $this->innerSelect(PostLike::class);
+        return $this->innerSelect(CyclePostLikeEntity::class);
     }
 
     /**

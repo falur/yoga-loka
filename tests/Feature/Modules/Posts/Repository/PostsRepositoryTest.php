@@ -292,8 +292,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         );
         $this->persist($repost);
 
-        $this->entityManager()->delete($original);
-        $this->entityManager()->run();
+        $this->delete($original);
         $this->cleanOrmHeap();
 
         $restoredRepost = $this->postRepository()->findById($repost->id);
@@ -311,8 +310,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->delete($user);
-        $this->entityManager()->run();
+        $this->delete($user);
     }
 
     public function testDeletingPostCascadesAllInnerEntities(): void
@@ -345,8 +343,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
             parent: CommentParent::none(),
         ));
 
-        $this->entityManager()->delete($post);
-        $this->entityManager()->run();
+        $this->delete($post);
         $this->cleanOrmHeap();
 
         self::assertCount(0, $this->postRepository()->findMediaByPostId($post->id));
@@ -395,10 +392,12 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
             $attachments->map(static fn(PostMedia $item): string => $item->mediaId->value())->all(),
         );
 
+        // Post::media у корня, возвращённого findById(), всегда пуст: вложения читаются отдельным
+        // запросом (findMediaByPostId() выше), PostMapper::toDomain() relation-поле не трогает —
+        // иначе безусловное чтение добавило бы лишний SELECT на каждый findById() (см. PostMapper).
         $restoredPost = $this->postRepository()->findById($post->id);
         self::assertInstanceOf(Post::class, $restoredPost);
-        self::assertCount(2, $restoredPost->media);
-        self::assertSame(0, $restoredPost->media->first()?->position->value());
+        self::assertCount(0, $restoredPost->media);
     }
 
     public function testFindMediaByPostIdsBatchesAcrossPostsOrderedByPostAndPosition(): void
@@ -437,28 +436,6 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         self::assertCount(0, $this->postRepository()->findMediaByPostIds());
     }
 
-    public function testPostMediaBelongsToLazyLoadsPost(): void
-    {
-        $user = $this->createUser();
-        $this->persist($user);
-        $media = $this->createMedia($user->id);
-        $this->persist($media);
-        $post = $this->newPost($user->id, attachmentType: AttachmentType::Media);
-        $this->persist($post);
-        $this->persist(PostMedia::create(
-            post: $post,
-            mediaId: PostMediaReference::fromString($media->id->value()),
-            position: MediaPosition::fromInt(0),
-        ));
-        $this->cleanOrmHeap();
-
-        $restored = $this->postRepository()->findMediaByPostId($post->id)->first();
-
-        self::assertInstanceOf(PostMedia::class, $restored);
-        self::assertInstanceOf(Post::class, $restored->post);
-        self::assertTrue($post->id->equals($restored->post->id));
-    }
-
     public function testPostMediaIsUniquePerPostAndMedia(): void
     {
         $user = $this->createUser();
@@ -468,12 +445,12 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $post = $this->newPost($user->id, attachmentType: AttachmentType::Media);
         $this->persist($post);
 
-        $this->entityManager()->persist(PostMedia::create(
+        $this->stage(PostMedia::create(
             post: $post,
             mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(0),
         ));
-        $this->entityManager()->persist(PostMedia::create(
+        $this->stage(PostMedia::create(
             post: $post,
             mediaId: PostMediaReference::fromString($media->id->value()),
             position: MediaPosition::fromInt(1),
@@ -503,8 +480,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
             position: MediaPosition::fromInt(0),
         ));
 
-        $this->entityManager()->delete($media);
-        $this->entityManager()->run();
+        $this->delete($media);
         $this->cleanOrmHeap();
 
         $attachments = $this->postRepository()->findMediaByPostId($post->id);
@@ -549,7 +525,13 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         self::assertCount(2, $links);
     }
 
-    public function testPostHasManyTagsHydratesFromDatabase(): void
+    /**
+     * Post::tags у корня, возвращённого findById(), всегда пуст: метки читаются отдельным запросом
+     * (findTagsByPostId()/findTagsByPostIds()), PostMapper::toDomain() relation-поле не трогает —
+     * иначе безусловное чтение lazy-ghost HasMany добавило бы лишний SELECT на каждый findById()
+     * (тот же урок, что и у Media, решения №26/№33/№34 фазы 7 волны E).
+     */
+    public function testPostHasManyTagsDoesNotHydrateFromFindById(): void
     {
         $user = $this->createUser();
         $this->persist($user);
@@ -567,7 +549,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         self::assertInstanceOf(Post::class, $restoredPost);
         self::assertInstanceOf(PostTagCollection::class, $restoredPost->tags);
-        self::assertCount(2, $restoredPost->tags);
+        self::assertCount(0, $restoredPost->tags);
+        self::assertCount(2, $this->postRepository()->findTagsByPostId($post->id));
     }
 
     public function testPostTagIsUniquePerPostAndTag(): void
@@ -578,8 +561,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
         $this->persist($tag);
 
-        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
-        $this->entityManager()->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
+        $this->stage(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
+        $this->stage(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
 
         $this->expectException(\Throwable::class);
 
@@ -597,8 +580,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->delete($tag);
-        $this->entityManager()->run();
+        $this->delete($tag);
     }
 
     // --- Post: лайки и упоминания (внутренние сущности) ---
@@ -627,8 +609,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->persist($user);
         $post = $this->createPostFor($user->id);
 
-        $this->entityManager()->persist(PostLike::create(postId: $post->id, userId: $user->id));
-        $this->entityManager()->persist(PostLike::create(postId: $post->id, userId: $user->id));
+        $this->stage(PostLike::create(postId: $post->id, userId: $user->id));
+        $this->stage(PostLike::create(postId: $post->id, userId: $user->id));
 
         $this->expectException(\Throwable::class);
 
@@ -673,8 +655,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->persist($user);
         $post = $this->createPostFor($user->id);
 
-        $this->entityManager()->persist(PostMention::create(postId: $post->id, userId: $user->id));
-        $this->entityManager()->persist(PostMention::create(postId: $post->id, userId: $user->id));
+        $this->stage(PostMention::create(postId: $post->id, userId: $user->id));
+        $this->stage(PostMention::create(postId: $post->id, userId: $user->id));
 
         $this->expectException(\Throwable::class);
 
@@ -869,8 +851,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         );
         $this->persist($reply);
 
-        $this->entityManager()->delete($parent);
-        $this->entityManager()->run();
+        $this->delete($parent);
         $this->cleanOrmHeap();
 
         $restoredReply = $this->commentRepository()->findById($reply->id);
@@ -890,8 +871,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->persist(CommentLike::create(commentId: $comment->id, userId: $user->id));
         $this->persist(CommentMention::create(commentId: $comment->id, userId: $user->id));
 
-        $this->entityManager()->delete($comment);
-        $this->entityManager()->run();
+        $this->delete($comment);
         $this->cleanOrmHeap();
 
         self::assertFalse($this->commentRepository()->existsLikeByCommentAndUser($comment->id, $user->id));
@@ -910,8 +890,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->delete($commenter);
-        $this->entityManager()->run();
+        $this->delete($commenter);
     }
 
     // --- Comment: лайки и упоминания (внутренние сущности) ---
@@ -945,8 +924,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $comment = $this->newComment($post->id, $user->id);
         $this->persist($comment);
 
-        $this->entityManager()->persist(CommentLike::create(commentId: $comment->id, userId: $user->id));
-        $this->entityManager()->persist(CommentLike::create(commentId: $comment->id, userId: $user->id));
+        $this->stage(CommentLike::create(commentId: $comment->id, userId: $user->id));
+        $this->stage(CommentLike::create(commentId: $comment->id, userId: $user->id));
 
         $this->expectException(\Throwable::class);
 
@@ -997,8 +976,8 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $comment = $this->newComment($post->id, $user->id);
         $this->persist($comment);
 
-        $this->entityManager()->persist(CommentMention::create(commentId: $comment->id, userId: $user->id));
-        $this->entityManager()->persist(CommentMention::create(commentId: $comment->id, userId: $user->id));
+        $this->stage(CommentMention::create(commentId: $comment->id, userId: $user->id));
+        $this->stage(CommentMention::create(commentId: $comment->id, userId: $user->id));
 
         $this->expectException(\Throwable::class);
 
@@ -1090,8 +1069,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         );
         $this->persist($block);
 
-        $this->entityManager()->delete($unblocker);
-        $this->entityManager()->run();
+        $this->delete($unblocker);
         $this->cleanOrmHeap();
 
         $restored = $this->postBlockRepository()->findById($block->id);
@@ -1117,8 +1095,7 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->delete($blocker);
-        $this->entityManager()->run();
+        $this->delete($blocker);
     }
 
     // --- Хелперы ---

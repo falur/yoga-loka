@@ -43,7 +43,6 @@ final class JoinEntityTest extends TestCase
         self::assertTrue($post->id->equals($postMedia->postId));
         self::assertSame($mediaUuid, $postMedia->mediaId->value());
         self::assertSame(0, $postMedia->position->value());
-        self::assertSame($post, $postMedia->post);
     }
 
     public function testPostLikeCreate(): void

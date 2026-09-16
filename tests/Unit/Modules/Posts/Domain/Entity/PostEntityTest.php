@@ -67,7 +67,7 @@ final class PostEntityTest extends TestCase
         self::assertSame($deletedAt, $post->deletion->value());
         self::assertSame($deletedAt, $post->updatedAt);
 
-        $post->restore();
+        $post->undelete();
         self::assertFalse($post->deletion->isDeleted());
     }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Tags\Application\Dto;
+namespace App\Modules\Tags\Application\Query\GetTags;
 
 use App\Shared\Domain\Collection\TypedCollection;
 
@@ -13,4 +13,4 @@ use App\Shared\Domain\Collection\TypedCollection;
  *
  * @extends TypedCollection<string, string>
  */
-final class TagTextCollection extends TypedCollection {}
+final class GetTagsResult extends TypedCollection {}

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Tags\Application\Query\GetTags;
 
-use App\Modules\Tags\Application\Dto\TagTextCollection;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\Repository\TagRepository;
 use App\Modules\Tags\Domain\ValueObject\TagId;
@@ -21,14 +20,14 @@ final readonly class GetTagsHandler
     ) {}
 
     #[LogOperation]
-    public function handle(GetTagsQuery $query): TagTextCollection
+    public function handle(GetTagsQuery $query): GetTagsResult
     {
         $tagIds = \array_map(
             static fn(string $tagId): TagId => TagId::fromString($tagId),
             $query->tagIds,
         );
 
-        return new TagTextCollection(
+        return new GetTagsResult(
             $this->tagRepository->findByIds(...$tagIds)
                 ->toBase()
                 ->keyBy(static fn(Tag $tag): string => $tag->id->value())

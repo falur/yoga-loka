@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\PublishPost;
 
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\View\PostView;
-use App\Modules\Posts\Application\View\PostViewAssembler;
+use App\Modules\Posts\Application\Command\CreatePost\PostContentComposer;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\Repository\PostRepository;
@@ -26,13 +24,12 @@ final readonly class PublishPostHandler
     public function __construct(
         private PostRepository $postRepository,
         private PostContentComposer $composer,
-        private PostViewAssembler $postViewAssembler,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(PublishPostCommand $command): PostView
+    public function handle(PublishPostCommand $command): PublishPostResult
     {
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
             ?? throw new PostNotFoundException();
@@ -53,6 +50,6 @@ final readonly class PublishPostHandler
             $this->logger->debug(message: 'Запись опубликована.', context: ['postId' => $post->id->value()]);
         }
 
-        return $this->postViewAssembler->fromPost(post: $post, viewer: UserId::fromString($command->authUserId));
+        return new PublishPostResult(postId: $post->id->value());
     }
 }

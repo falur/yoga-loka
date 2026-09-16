@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\LikePost;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
+use App\Modules\Posts\Application\Command\CreatePost\PostContentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\PostLike;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;

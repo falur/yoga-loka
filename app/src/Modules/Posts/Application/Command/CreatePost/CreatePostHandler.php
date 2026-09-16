@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\CreatePost;
 
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\View\PostView;
-use App\Modules\Posts\Application\View\PostViewAssembler;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
@@ -31,13 +28,12 @@ final readonly class CreatePostHandler
     public function __construct(
         private PostRepository $postRepository,
         private PostContentComposer $composer,
-        private PostViewAssembler $postViewAssembler,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(CreatePostCommand $command): PostView
+    public function handle(CreatePostCommand $command): CreatePostResult
     {
         $authUserId = UserId::fromString($command->authUserId);
         $tagIds = $this->composer->resolveTags(texts: $command->tags, creatorUserId: $command->authUserId);
@@ -63,6 +59,6 @@ final readonly class CreatePostHandler
             'status' => $post->status->value,
         ]);
 
-        return $this->postViewAssembler->fromPost(post: $post, viewer: $authUserId);
+        return new CreatePostResult(postId: $post->id->value());
     }
 }

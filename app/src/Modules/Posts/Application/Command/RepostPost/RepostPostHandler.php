@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\RepostPost;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\PostView;
-use App\Modules\Posts\Application\View\PostViewAssembler;
+use App\Modules\Posts\Application\Command\CreatePost\PostContentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
@@ -18,6 +15,7 @@ use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -34,13 +32,12 @@ final readonly class RepostPostHandler
     public function __construct(
         private PostRepository $postRepository,
         private PostContentComposer $composer,
-        private PostViewAssembler $postViewAssembler,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(RepostPostCommand $command): PostView
+    public function handle(RepostPostCommand $command): RepostPostResult
     {
         $authUserId = UserId::fromString($command->authUserId);
 
@@ -83,6 +80,6 @@ final readonly class RepostPostHandler
             'originalPostId' => $original->id->value(),
         ]);
 
-        return $this->postViewAssembler->fromPost(post: $post, viewer: $authUserId);
+        return new RepostPostResult(postId: $post->id->value());
     }
 }

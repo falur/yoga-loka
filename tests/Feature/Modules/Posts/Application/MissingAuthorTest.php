@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Posts\Application;
 
 use App\Modules\Media\Public\Contract\MediaContract;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
-use App\Modules\Posts\Application\View\PostViewAssembler;
-use App\Modules\Posts\Domain\Collection\CommentCollection;
-use App\Modules\Posts\Domain\Collection\PostCollection;
+use App\Modules\Posts\Application\Contract\CommentViewerReader;
+use App\Modules\Posts\Application\Contract\PostReader;
+use App\Modules\Posts\Application\Contract\PostViewerReader;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedHandler;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedQuery;
+use App\Modules\Posts\Application\Query\GetPostComments\GetPostCommentsHandler;
+use App\Modules\Posts\Application\Query\GetPostComments\GetPostCommentsQuery;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
@@ -23,7 +26,6 @@ use App\Modules\Tags\Public\Contract\TagsContract;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Public\Dto\UserProfileDtoCollection;
 use App\Modules\Posts\Domain\Exception\PostAuthorNotFoundException;
-use App\Shared\Domain\ValueObject\UserId;
 use Tests\Feature\Modules\Posts\PostsRepositoryTestCase;
 
 /**
@@ -53,10 +55,11 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
         $this->expectException(PostAuthorNotFoundException::class);
         $this->expectExceptionMessage('app.posts.author_not_found');
 
-        $this->postViewAssembler()->fromPosts(
-            posts: new PostCollection([$post]),
-            viewer: $user->id,
-        );
+        $this->getMyFeedHandler()->handle(new GetMyFeedQuery(
+            authUserId: $user->id->value(),
+            cursor: null,
+            limit: 20,
+        ));
     }
 
     public function testCommentListFailsWithOwnKeyWhenAuthorIsMissingFromProfileBatch(): void
@@ -87,27 +90,33 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
         $this->expectException(PostAuthorNotFoundException::class);
         $this->expectExceptionMessage('app.posts.author_not_found');
 
-        $this->commentViewAssembler()->fromComments(
-            comments: new CommentCollection([$comment]),
-            viewer: $user->id,
-        );
+        $this->getPostCommentsHandler()->handle(new GetPostCommentsQuery(
+            postId: $post->id->value(),
+            authUserId: $user->id->value(),
+            cursor: null,
+            limit: 20,
+        ));
     }
 
-    private function postViewAssembler(): PostViewAssembler
+    private function getMyFeedHandler(): GetMyFeedHandler
     {
-        return new PostViewAssembler(
+        return new GetMyFeedHandler(
+            postReader: $this->getContainer()->get(PostReader::class),
+            postRepository: $this->postRepository(),
             users: $this->usersWithoutProfiles(),
             media: $this->getContainer()->get(MediaContract::class),
             tags: $this->getContainer()->get(TagsContract::class),
-            postRepository: $this->postRepository(),
+            postViewerReader: $this->getContainer()->get(PostViewerReader::class),
         );
     }
 
-    private function commentViewAssembler(): CommentViewAssembler
+    private function getPostCommentsHandler(): GetPostCommentsHandler
     {
-        return new CommentViewAssembler(
-            users: $this->usersWithoutProfiles(),
+        return new GetPostCommentsHandler(
+            postRepository: $this->postRepository(),
             commentRepository: $this->commentRepository(),
+            users: $this->usersWithoutProfiles(),
+            commentViewerReader: $this->getContainer()->get(CommentViewerReader::class),
         );
     }
 

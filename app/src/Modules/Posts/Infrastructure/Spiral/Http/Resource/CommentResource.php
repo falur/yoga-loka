@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Posts\Application\View\CommentView;
+use App\Modules\Posts\Application\Result\CommentResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 final readonly class CommentResource extends AbstractResource
@@ -21,7 +21,7 @@ final readonly class CommentResource extends AbstractResource
         public AuthorResource $author,
     ) {}
 
-    public static function fromView(CommentView $comment): self
+    public static function fromResult(CommentResult $comment): self
     {
         return new self(
             id: $comment->id,
@@ -32,7 +32,7 @@ final readonly class CommentResource extends AbstractResource
             repliesCount: $comment->repliesCount,
             likedByMe: $comment->likedByMe,
             createdAt: $comment->createdAt,
-            author: AuthorResource::fromView($comment->author),
+            author: AuthorResource::fromResult($comment->author),
         );
     }
 }

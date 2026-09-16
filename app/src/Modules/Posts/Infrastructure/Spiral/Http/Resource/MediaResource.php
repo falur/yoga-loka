@@ -6,7 +6,7 @@ namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
 use App\Modules\Media\Public\Dto\MediaConversionDto;
 use App\Modules\Media\Public\Dto\MediaDto;
-use App\Modules\Posts\Application\View\PostMediaView;
+use App\Modules\Posts\Application\Result\PostMediaResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
@@ -32,9 +32,9 @@ final readonly class MediaResource extends AbstractResource
     ) {}
 
     /**
-     * Вложение записи: позицию в наборе вложений даёт представление Posts, ссылки — публичные DTO Media.
+     * Вложение записи: позицию в наборе вложений даёт результат Posts, ссылки — публичные DTO Media.
      */
-    public static function fromView(PostMediaView $media): self
+    public static function fromResult(PostMediaResult $media): self
     {
         return new self(
             id: $media->id,

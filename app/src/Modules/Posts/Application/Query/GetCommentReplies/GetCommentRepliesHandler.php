@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Query\GetCommentReplies;
 
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
+use App\Modules\Posts\Application\Contract\CommentViewerReader;
+use App\Modules\Posts\Application\Result\AuthorResult;
+use App\Modules\Posts\Application\Result\CommentResultCollection;
+use App\Modules\Posts\Domain\Collection\CommentCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\Repository\CommentRepository;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
+use App\Modules\User\Public\Contract\UserContract;
 use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -27,7 +31,8 @@ final readonly class GetCommentRepliesHandler
     public function __construct(
         private CommentRepository $commentRepository,
         private PostRepository $postRepository,
-        private CommentViewAssembler $commentViewAssembler,
+        private UserContract $users,
+        private CommentViewerReader $commentViewerReader,
     ) {}
 
     #[LogOperation]
@@ -63,8 +68,37 @@ final readonly class GetCommentRepliesHandler
         );
 
         return new GetCommentRepliesResult(
-            replies: $this->commentViewAssembler->fromComments(comments: $slice->items, viewer: $viewer),
+            replies: $this->fromComments(comments: $slice->items, viewer: $viewer),
             nextCursor: $slice->nextCursor,
         );
+    }
+
+    private function fromComments(CommentCollection $comments, UserId $viewer): CommentResultCollection
+    {
+        if ($comments->isEmpty()) {
+            return new CommentResultCollection();
+        }
+
+        $authors = AuthorResult::mapFromProfiles($this->users->profilesByIds($this->authorIds($comments)));
+        $commentIds = $comments->mapToList(static fn(Comment $comment): string => $comment->id->value());
+        $likedCommentIds = $this->commentViewerReader->likedByMe(commentIds: $commentIds, viewerId: $viewer->value());
+
+        return CommentResultCollection::fromComments(
+            comments: $comments,
+            authors: $authors,
+            likedCommentIds: $likedCommentIds,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function authorIds(CommentCollection $comments): array
+    {
+        return \array_values($comments
+            ->toBase()
+            ->map(static fn(Comment $comment): string => $comment->userId->value())
+            ->unique()
+            ->all());
     }
 }

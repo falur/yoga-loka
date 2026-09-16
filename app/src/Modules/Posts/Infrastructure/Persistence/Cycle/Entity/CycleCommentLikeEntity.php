@@ -12,7 +12,8 @@ use Cycle\ORM\Parser\Typecast;
 
 /**
  * Внутренняя сущность агрегата Comment: своего Cycle Repository нет, выборку по её таблице ведёт
- * CycleCommentRepository (CommentRepository::findLikeByCommentAndUser()/findLikesByUserAndCommentIds()).
+ * CycleCommentRepository (CommentRepository::findLikeByCommentAndUser()) и CycleCommentViewerReader
+ * (признак likedByMe зрителя по набору комментариев).
  */
 #[Entity(
     role: 'comment_like',

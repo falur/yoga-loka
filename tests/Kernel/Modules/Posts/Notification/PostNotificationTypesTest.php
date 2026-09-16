@@ -7,7 +7,7 @@ namespace Tests\Kernel\Modules\Posts\Notification;
 use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Public\Enum\NotificationChannel;
-use App\Modules\Posts\Application\Notification\PostNotificationType;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use Tests\TestCase;
 
 /**

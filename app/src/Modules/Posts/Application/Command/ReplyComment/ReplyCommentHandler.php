@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\ReplyComment;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\CommentView;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
+use App\Modules\Posts\Application\Command\CommentPost\CommentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
 use App\Modules\Posts\Domain\ValueObject\CommentText;
 use App\Modules\Posts\Domain\Repository\CommentRepository;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
@@ -32,12 +30,11 @@ final readonly class ReplyCommentHandler
         private CommentRepository $commentRepository,
         private PostRepository $postRepository,
         private CommentComposer $composer,
-        private CommentViewAssembler $commentViewAssembler,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(ReplyCommentCommand $command): CommentView
+    public function handle(ReplyCommentCommand $command): ReplyCommentResult
     {
         $authUserId = UserId::fromString($command->authUserId);
 
@@ -78,6 +75,6 @@ final readonly class ReplyCommentHandler
         $parent->incrementReplies();
         $this->commentRepository->save($parent);
 
-        return $this->commentViewAssembler->fromComment(comment: $comment, viewer: $authUserId);
+        return new ReplyCommentResult(commentId: $comment->id->value());
     }
 }

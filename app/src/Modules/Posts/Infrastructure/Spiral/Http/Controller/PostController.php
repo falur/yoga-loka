@@ -17,11 +17,13 @@ use App\Modules\Posts\Application\Command\RepostPost\RepostPostCommand;
 use App\Modules\Posts\Application\Command\RepostPost\RepostPostHandler;
 use App\Modules\Posts\Application\Command\UnlikePost\UnlikePostCommand;
 use App\Modules\Posts\Application\Command\UnlikePost\UnlikePostHandler;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedHandler;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedQuery;
 use App\Modules\Posts\Application\Query\GetPost\GetPostHandler;
 use App\Modules\Posts\Application\Query\GetPost\GetPostQuery;
 use App\Modules\Posts\Application\Query\GetUserFeed\GetUserFeedHandler;
 use App\Modules\Posts\Application\Query\GetUserFeed\GetUserFeedQuery;
-use App\Modules\Posts\Application\View\PostView;
+use App\Modules\Posts\Application\Result\PostResult;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\CreatePostFilter;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\DeletePostFilter;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\GetPostFilter;
@@ -55,8 +57,10 @@ final readonly class PostController
         CreatePostFilter $createPostFilter,
         CommandBusInterface $commandBus,
         CreatePostHandler $createPostHandler,
+        QueryBusInterface $queryBus,
+        GetPostHandler $getPostHandler,
     ): DataResponse {
-        $post = $commandBus->dispatch(
+        $result = $commandBus->dispatch(
             command: new CreatePostCommand(
                 authUserId: $createPostFilter->authUserId,
                 text: $createPostFilter->text,
@@ -68,7 +72,9 @@ final readonly class PostController
             handler: $createPostHandler->handle(...),
         );
 
-        return new DataResponse(PostResource::fromView($post));
+        $post = $this->getPost(postId: $result->postId, authUserId: $createPostFilter->authUserId, queryBus: $queryBus, getPostHandler: $getPostHandler);
+
+        return new DataResponse(PostResource::fromResult($post));
     }
 
     /**
@@ -86,8 +92,10 @@ final readonly class PostController
         PublishPostFilter $publishPostFilter,
         CommandBusInterface $commandBus,
         PublishPostHandler $publishPostHandler,
+        QueryBusInterface $queryBus,
+        GetPostHandler $getPostHandler,
     ): DataResponse {
-        $post = $commandBus->dispatch(
+        $result = $commandBus->dispatch(
             command: new PublishPostCommand(
                 authUserId: $publishPostFilter->authUserId,
                 postId: $publishPostFilter->id,
@@ -95,7 +103,9 @@ final readonly class PostController
             handler: $publishPostHandler->handle(...),
         );
 
-        return new DataResponse(PostResource::fromView($post));
+        $post = $this->getPost(postId: $result->postId, authUserId: $publishPostFilter->authUserId, queryBus: $queryBus, getPostHandler: $getPostHandler);
+
+        return new DataResponse(PostResource::fromResult($post));
     }
 
     /**
@@ -113,8 +123,10 @@ final readonly class PostController
         RepostPostFilter $repostPostFilter,
         CommandBusInterface $commandBus,
         RepostPostHandler $repostPostHandler,
+        QueryBusInterface $queryBus,
+        GetPostHandler $getPostHandler,
     ): DataResponse {
-        $post = $commandBus->dispatch(
+        $result = $commandBus->dispatch(
             command: new RepostPostCommand(
                 authUserId: $repostPostFilter->authUserId,
                 postId: $repostPostFilter->id,
@@ -126,7 +138,9 @@ final readonly class PostController
             handler: $repostPostHandler->handle(...),
         );
 
-        return new DataResponse(PostResource::fromView($post));
+        $post = $this->getPost(postId: $result->postId, authUserId: $repostPostFilter->authUserId, queryBus: $queryBus, getPostHandler: $getPostHandler);
+
+        return new DataResponse(PostResource::fromResult($post));
     }
 
     #[Route(
@@ -217,15 +231,9 @@ final readonly class PostController
         GetPostHandler $getPostHandler,
         QueryBusInterface $queryBus,
     ): DataResponse {
-        $post = $queryBus->dispatch(
-            query: new GetPostQuery(
-                postId: $getPostFilter->id,
-                authUserId: $getPostFilter->authUserId,
-            ),
-            handler: $getPostHandler->handle(...),
-        );
+        $post = $this->getPost(postId: $getPostFilter->id, authUserId: $getPostFilter->authUserId, queryBus: $queryBus, getPostHandler: $getPostHandler);
 
-        return new DataResponse(PostResource::fromView($post));
+        return new DataResponse(PostResource::fromResult($post));
     }
 
     /**
@@ -241,26 +249,49 @@ final readonly class PostController
     public function userFeed(
         string $id,
         GetUserFeedFilter $getUserFeedFilter,
+        GetMyFeedHandler $getMyFeedHandler,
         GetUserFeedHandler $getUserFeedHandler,
         QueryBusInterface $queryBus,
     ): PaginationResponse {
-        $result = $queryBus->dispatch(
-            query: new GetUserFeedQuery(
-                ownerUserId: $getUserFeedFilter->id,
-                authUserId: $getUserFeedFilter->authUserId,
-                cursor: $getUserFeedFilter->cursor,
-                limit: $getUserFeedFilter->limit,
-            ),
-            handler: $getUserFeedHandler->handle(...),
-        );
+        // Один и тот же маршрут обслуживает оба случая — контроллер решает по совпадению <id> пути
+        // с текущим авторизованным пользователем, какой из двух Query вызвать; JSON-форма и правила
+        // видимости в обоих случаях не меняются.
+        if ($getUserFeedFilter->id === $getUserFeedFilter->authUserId) {
+            $result = $queryBus->dispatch(
+                query: new GetMyFeedQuery(
+                    authUserId: $getUserFeedFilter->authUserId,
+                    cursor: $getUserFeedFilter->cursor,
+                    limit: $getUserFeedFilter->limit,
+                ),
+                handler: $getMyFeedHandler->handle(...),
+            );
+        } else {
+            $result = $queryBus->dispatch(
+                query: new GetUserFeedQuery(
+                    ownerUserId: $getUserFeedFilter->id,
+                    authUserId: $getUserFeedFilter->authUserId,
+                    cursor: $getUserFeedFilter->cursor,
+                    limit: $getUserFeedFilter->limit,
+                ),
+                handler: $getUserFeedHandler->handle(...),
+            );
+        }
 
         $resources = $result->posts->mapToList(
-            static fn(PostView $post): PostResource => PostResource::fromView($post),
+            static fn(PostResult $post): PostResource => PostResource::fromResult($post),
         );
 
         return new PaginationResponse(
             data: $resources,
             meta: new PaginationMetaResponse(nextCursor: $result->nextCursor, limit: $getUserFeedFilter->limit),
+        );
+    }
+
+    private function getPost(string $postId, string $authUserId, QueryBusInterface $queryBus, GetPostHandler $getPostHandler): PostResult
+    {
+        return $queryBus->dispatch(
+            query: new GetPostQuery(postId: $postId, authUserId: $authUserId),
+            handler: $getPostHandler->handle(...),
         );
     }
 }

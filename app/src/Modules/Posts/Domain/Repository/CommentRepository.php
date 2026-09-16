@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Domain\Repository;
 
 use App\Modules\Posts\Domain\Collection\CommentCollection;
-use App\Modules\Posts\Domain\Collection\CommentLikeCollection;
 use App\Modules\Posts\Domain\Collection\CommentMentionCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\CommentLike;
@@ -38,11 +37,6 @@ interface CommentRepository
     public function findLikeByCommentAndUser(CommentId $commentId, UserId $userId): CommentLike|null;
 
     public function existsLikeByCommentAndUser(CommentId $commentId, UserId $userId): bool;
-
-    /**
-     * Лайки пользователя по набору комментариев — для флага likedByMe в листингах без N+1.
-     */
-    public function findLikesByUserAndCommentIds(UserId $userId, CommentId ...$commentIds): CommentLikeCollection;
 
     /**
      * Упоминания комментария — внутренняя сущность агрегата.

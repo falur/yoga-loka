@@ -6,8 +6,8 @@ namespace Tests\Kernel\Modules\Posts\Notification;
 
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Posts\Application\Notification\NotificationContentBuilder;
-use App\Modules\Posts\Application\Notification\PostNotificationType;
+use App\Modules\Posts\Application\Command\CreatePost\NotificationContentBuilder;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Tests\TestCase;

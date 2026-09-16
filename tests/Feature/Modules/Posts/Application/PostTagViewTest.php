@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\Posts\Application;
 
 use App\Modules\Media\Public\Contract\MediaContract;
-use App\Modules\Posts\Application\View\PostViewAssembler;
+use App\Modules\Posts\Application\Contract\PostReader;
+use App\Modules\Posts\Application\Contract\PostViewerReader;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedHandler;
+use App\Modules\Posts\Application\Query\GetMyFeed\GetMyFeedQuery;
+use App\Modules\Posts\Application\Query\GetPost\GetPostHandler;
+use App\Modules\Posts\Application\Query\GetPost\GetPostQuery;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
@@ -24,9 +29,10 @@ use App\Modules\User\Public\Contract\UserContract;
 use Tests\Feature\Modules\Posts\PostsRepositoryTestCase;
 
 /**
- * Метки записи собираются по публичному контракту Tags: перебираются связи самой записи, а метка
- * берётся из батча по идентификатору. Проверяются три случая набора: метка есть, метки у соседа нет
- * (связь пропускается, 500 не возникает) и связей нет вовсе (к соседу не ходим).
+ * Метки записи собираются по публичному контракту Tags: метка берётся из батча по идентификатору —
+ * по связям записи (Entity-путь GetPost) или по набору идентификаторов из PostData (Reader-путь
+ * ленты). Проверяются случаи набора: метка есть, метки у соседа нет (связь пропускается, 500 не
+ * возникает — оба пути) и связей нет вовсе (к соседу не ходим).
  */
 final class PostTagViewTest extends PostsRepositoryTestCase
 {
@@ -43,12 +49,12 @@ final class PostTagViewTest extends PostsRepositoryTestCase
         ));
         $this->cleanOrmHeap();
 
-        $view = $this->postViewAssembler($this->getContainer()->get(TagsContract::class))
-            ->fromPost(post: $post, viewer: $user->id);
+        $result = $this->getPostHandler($this->getContainer()->get(TagsContract::class))
+            ->handle(new GetPostQuery(postId: $post->id->value(), authUserId: $user->id->value()));
 
-        self::assertCount(1, $view->tags);
-        self::assertSame($tag->id->value(), $view->tags[0]->id);
-        self::assertSame('йога', $view->tags[0]->text);
+        self::assertCount(1, $result->tags);
+        self::assertSame($tag->id->value(), $result->tags[0]->id);
+        self::assertSame('йога', $result->tags[0]->text);
     }
 
     public function testTagMissingFromContractBatchIsOmittedFromView(): void
@@ -67,9 +73,10 @@ final class PostTagViewTest extends PostsRepositoryTestCase
         $tags = $this->createStub(TagsContract::class);
         $tags->method('textsByIds')->willReturn(new TagDtoCollection());
 
-        $view = $this->postViewAssembler($tags)->fromPost(post: $post, viewer: $user->id);
+        $result = $this->getPostHandler($tags)
+            ->handle(new GetPostQuery(postId: $post->id->value(), authUserId: $user->id->value()));
 
-        self::assertSame([], $view->tags);
+        self::assertSame([], $result->tags);
     }
 
     public function testPostWithoutTagsDoesNotCallTagsContract(): void
@@ -82,9 +89,37 @@ final class PostTagViewTest extends PostsRepositoryTestCase
         $tags = $this->createMock(TagsContract::class);
         $tags->expects(self::never())->method('textsByIds');
 
-        $view = $this->postViewAssembler($tags)->fromPost(post: $post, viewer: $user->id);
+        $result = $this->getPostHandler($tags)
+            ->handle(new GetPostQuery(postId: $post->id->value(), authUserId: $user->id->value()));
 
-        self::assertSame([], $view->tags);
+        self::assertSame([], $result->tags);
+    }
+
+    /**
+     * Лента читает метки по набору идентификаторов из PostData (Reader-путь), а не по связям
+     * записи, поэтому пропуск отсутствующей у соседа метки проверяется отдельно от GetPost.
+     */
+    public function testTagMissingFromContractBatchIsOmittedFromFeed(): void
+    {
+        $user = $this->createUser();
+        $this->persist($user);
+        $post = $this->persistPost($user);
+        $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
+        $this->persist($tag);
+        $this->persist(PostTag::create(
+            postId: $post->id,
+            tagId: PostTagReference::fromString($tag->id->value()),
+        ));
+        $this->cleanOrmHeap();
+
+        $tags = $this->createStub(TagsContract::class);
+        $tags->method('textsByIds')->willReturn(new TagDtoCollection());
+
+        $result = $this->getMyFeedHandler($tags)
+            ->handle(new GetMyFeedQuery(authUserId: $user->id->value(), cursor: null, limit: 10));
+
+        self::assertCount(1, $result->posts);
+        self::assertSame([], $result->posts->first()?->tags);
     }
 
     private function persistPost(User $user): Post
@@ -103,13 +138,26 @@ final class PostTagViewTest extends PostsRepositoryTestCase
         return $post;
     }
 
-    private function postViewAssembler(TagsContract $tags): PostViewAssembler
+    private function getMyFeedHandler(TagsContract $tags): GetMyFeedHandler
     {
-        return new PostViewAssembler(
+        return new GetMyFeedHandler(
+            postReader: $this->getContainer()->get(PostReader::class),
+            postRepository: $this->postRepository(),
             users: $this->getContainer()->get(UserContract::class),
             media: $this->getContainer()->get(MediaContract::class),
             tags: $tags,
+            postViewerReader: $this->getContainer()->get(PostViewerReader::class),
+        );
+    }
+
+    private function getPostHandler(TagsContract $tags): GetPostHandler
+    {
+        return new GetPostHandler(
             postRepository: $this->postRepository(),
+            users: $this->getContainer()->get(UserContract::class),
+            media: $this->getContainer()->get(MediaContract::class),
+            tags: $tags,
+            postViewerReader: $this->getContainer()->get(PostViewerReader::class),
         );
     }
 }

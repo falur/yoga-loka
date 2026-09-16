@@ -116,45 +116,6 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
     }
 
     #[\Override]
-    public function findVisibleByUserId(
-        UserId $userId,
-        PostStatus|null $status,
-        PostStatus|null $excludeStatus,
-        PostId|null $cursor,
-        int $limit,
-    ): PostCollection {
-        $statusValue = $status?->value;
-        $excludeStatusValue = $excludeStatus?->value;
-
-        $postCollection = new PostCollection();
-
-        /** @var iterable<CyclePostEntity> $cycleEntities */
-        $cycleEntities = $this->select()
-            ->where(PostColumns::USER_ID, $userId->value())
-            ->where(PostColumns::DELETED_AT, '=', null)
-            ->when(
-                condition: $statusValue !== null,
-                callback: static function (WhenSelect $query) use ($statusValue): void {
-                    $query->where(PostColumns::STATUS, $statusValue);
-                },
-            )
-            ->when(
-                condition: $excludeStatusValue !== null,
-                callback: static function (WhenSelect $query) use ($excludeStatusValue): void {
-                    $query->where(PostColumns::STATUS, '!=', $excludeStatusValue);
-                },
-            )
-            ->cursorById(cursor: $cursor?->value(), limit: $limit)
-            ->fetchAll();
-
-        foreach ($cycleEntities as $cycleEntity) {
-            $postCollection->push($this->postMapper->toDomain($cycleEntity));
-        }
-
-        return $postCollection;
-    }
-
-    #[\Override]
     public function findRepostsOf(PostId $postId): PostCollection
     {
         $postCollection = new PostCollection();
@@ -337,31 +298,6 @@ final class CyclePostRepository extends AbstractRepository implements PostReposi
         $cycleEntities = $this->likeSelect()
             ->where(PostLikeColumns::USER_ID, $userId->value())
             ->orderBy(expression: PostLikeColumns::ID, direction: 'DESC')
-            ->fetchAll();
-
-        foreach ($cycleEntities as $cycleEntity) {
-            $likeCollection->push($this->postMapper->toPostLikeDomain($cycleEntity));
-        }
-
-        return $likeCollection;
-    }
-
-    #[\Override]
-    public function findLikesByUserAndPostIds(UserId $userId, PostId ...$postIds): PostLikeCollection
-    {
-        if ($postIds === []) {
-            return new PostLikeCollection();
-        }
-
-        $likeCollection = new PostLikeCollection();
-
-        /** @var iterable<CyclePostLikeEntity> $cycleEntities */
-        $cycleEntities = $this->likeSelect()
-            ->where(PostLikeColumns::USER_ID, $userId->value())
-            ->where(PostLikeColumns::POST_ID, 'in', new Parameter(\array_map(
-                static fn(PostId $postId): string => $postId->value(),
-                $postIds,
-            )))
             ->fetchAll();
 
         foreach ($cycleEntities as $cycleEntity) {

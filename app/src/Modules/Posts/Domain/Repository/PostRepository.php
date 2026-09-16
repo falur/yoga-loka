@@ -42,20 +42,6 @@ interface PostRepository
         int $limit,
     ): PostCollection;
 
-    /**
-     * Видимая лента автора: как findByUserId, но скрывает мягко удалённые записи. Статус опционален:
-     * вызывающий передаёт Published для чужой ленты и null (все статусы) для своей. excludeStatus
-     * исключает один статус из выборки — для своей ленты это Blocked, чтобы заблокированная
-     * модерацией запись не была видна никому.
-     */
-    public function findVisibleByUserId(
-        UserId $userId,
-        PostStatus|null $status,
-        PostStatus|null $excludeStatus,
-        PostId|null $cursor,
-        int $limit,
-    ): PostCollection;
-
     public function findRepostsOf(PostId $postId): PostCollection;
 
     /**
@@ -95,11 +81,6 @@ interface PostRepository
     public function existsLikeByPostAndUser(PostId $postId, UserId $userId): bool;
 
     public function findLikesByUserId(UserId $userId): PostLikeCollection;
-
-    /**
-     * Лайки пользователя по набору записей — для флага likedByMe в листингах без N+1.
-     */
-    public function findLikesByUserAndPostIds(UserId $userId, PostId ...$postIds): PostLikeCollection;
 
     /**
      * Ставит запись в текущую единицу работы без прогона: она уйдёт в базу тем прогоном, которым

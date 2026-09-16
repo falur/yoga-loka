@@ -48,7 +48,7 @@ use App\Shared\Domain\ValueObject\UserId;
  * findMediaByPostId()/findTagsByPostId() и их варианты ходят в mediaSelect()/tagSelect()
  * отдельным запросом. Post::restore() поэтому всегда получает пустые коллекции — как и раньше,
  * ни один потребитель Application не читает $post->media/$post->tags после findById() (подтверждено
- * grep, PostResource работает с App\Modules\Posts\Application\View\PostView, а не с доменным Post).
+ * grep, PostResource работает с App\Modules\Posts\Application\Result\PostResult, а не с доменным Post).
  */
 final readonly class PostMapper
 {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\LikeComment;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
+use App\Modules\Posts\Application\Command\CommentPost\CommentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\CommentLike;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\Repository\CommentRepository;

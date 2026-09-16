@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository;
 
 use App\Modules\Posts\Domain\Collection\CommentCollection;
-use App\Modules\Posts\Domain\Collection\CommentLikeCollection;
 use App\Modules\Posts\Domain\Collection\CommentMentionCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\CommentLike;
@@ -22,7 +21,6 @@ use App\Modules\Posts\Infrastructure\Persistence\Cycle\Mapper\CommentMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\WhenSelect;
-use Cycle\Database\Injection\Parameter;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
@@ -127,31 +125,6 @@ final class CycleCommentRepository extends AbstractRepository implements Comment
     public function existsLikeByCommentAndUser(CommentId $commentId, UserId $userId): bool
     {
         return $this->findLikeByCommentAndUser(commentId: $commentId, userId: $userId) !== null;
-    }
-
-    #[\Override]
-    public function findLikesByUserAndCommentIds(UserId $userId, CommentId ...$commentIds): CommentLikeCollection
-    {
-        if ($commentIds === []) {
-            return new CommentLikeCollection();
-        }
-
-        $likeCollection = new CommentLikeCollection();
-
-        /** @var iterable<CycleCommentLikeEntity> $cycleEntities */
-        $cycleEntities = $this->likeSelect()
-            ->where(CommentLikeColumns::USER_ID, $userId->value())
-            ->where(CommentLikeColumns::COMMENT_ID, 'in', new Parameter(\array_map(
-                static fn(CommentId $commentId): string => $commentId->value(),
-                $commentIds,
-            )))
-            ->fetchAll();
-
-        foreach ($cycleEntities as $cycleEntity) {
-            $likeCollection->push($this->commentMapper->toCommentLikeDomain($cycleEntity));
-        }
-
-        return $likeCollection;
     }
 
     #[\Override]

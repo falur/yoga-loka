@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Posts\Repository;
 
-use App\Modules\Posts\Domain\Collection\CommentLikeCollection;
 use App\Modules\Posts\Domain\Collection\PostMediaCollection;
 use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
@@ -184,45 +183,6 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         // Без фильтра статуса возвращаются и Published, и Blocked.
         self::assertCount(4, $this->postRepository()->findByUserId($user->id, null, null, 10));
         self::assertCount(1, $this->postRepository()->findByUserId($user->id, PostStatus::Blocked, null, 10));
-    }
-
-    public function testFindVisibleByUserIdExcludesBlockedAndSoftDeleted(): void
-    {
-        $user = $this->createUser();
-        $this->persist($user);
-
-        $published = $this->newPost($user->id, PostStatus::Published);
-        $this->persist($published);
-        $draft = $this->newPost($user->id, PostStatus::Draft);
-        $this->persist($draft);
-        $this->persist($this->newPost($user->id, PostStatus::Blocked));
-        $softDeleted = $this->newPost($user->id, PostStatus::Published);
-        $softDeleted->softDelete(new \DateTimeImmutable());
-        $this->persist($softDeleted);
-        $this->cleanOrmHeap();
-
-        // Лента владельца: все статусы, кроме Blocked, и без мягко удалённых.
-        $ownerFeed = $this->postRepository()->findVisibleByUserId(
-            userId: $user->id,
-            status: null,
-            excludeStatus: PostStatus::Blocked,
-            cursor: null,
-            limit: 10,
-        );
-        self::assertSame(
-            $this->idsDesc([$published, $draft]),
-            $this->ids($ownerFeed->all()),
-        );
-
-        // Чужая лента: только Published.
-        $strangerFeed = $this->postRepository()->findVisibleByUserId(
-            userId: $user->id,
-            status: PostStatus::Published,
-            excludeStatus: null,
-            cursor: null,
-            limit: 10,
-        );
-        self::assertSame([$published->id->value()], $this->ids($strangerFeed->all()));
     }
 
     public function testFindByIdsReturnsRequestedPosts(): void
@@ -617,22 +577,6 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->entityManager()->run();
     }
 
-    public function testFindLikesByUserAndPostIdsReturnsOnlyLikedPosts(): void
-    {
-        $user = $this->createUser();
-        $this->persist($user);
-        $likedPost = $this->createPostFor($user->id);
-        $otherPost = $this->createPostFor($user->id);
-        $this->persist(PostLike::create(postId: $likedPost->id, userId: $user->id));
-        $this->cleanOrmHeap();
-
-        $likes = $this->postRepository()->findLikesByUserAndPostIds($user->id, $likedPost->id, $otherPost->id);
-
-        self::assertCount(1, $likes);
-        self::assertTrue($likes->first()?->postId->equals($likedPost->id));
-        self::assertCount(0, $this->postRepository()->findLikesByUserAndPostIds($user->id));
-    }
-
     public function testPostMentionLookups(): void
     {
         $author = $this->createUser();
@@ -930,26 +874,6 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->expectException(\Throwable::class);
 
         $this->entityManager()->run();
-    }
-
-    public function testFindLikesByUserAndCommentIdsReturnsOnlyLikedComments(): void
-    {
-        $user = $this->createUser();
-        $this->persist($user);
-        $post = $this->createPostFor($user->id);
-        $likedComment = $this->newComment($post->id, $user->id);
-        $this->persist($likedComment);
-        $otherComment = $this->newComment($post->id, $user->id);
-        $this->persist($otherComment);
-        $this->persist(CommentLike::create(commentId: $likedComment->id, userId: $user->id));
-        $this->cleanOrmHeap();
-
-        $likes = $this->commentRepository()->findLikesByUserAndCommentIds($user->id, $likedComment->id, $otherComment->id);
-
-        self::assertInstanceOf(CommentLikeCollection::class, $likes);
-        self::assertCount(1, $likes);
-        self::assertTrue($likes->first()?->commentId->equals($likedComment->id));
-        self::assertCount(0, $this->commentRepository()->findLikesByUserAndCommentIds($user->id));
     }
 
     public function testCommentMentionLookups(): void

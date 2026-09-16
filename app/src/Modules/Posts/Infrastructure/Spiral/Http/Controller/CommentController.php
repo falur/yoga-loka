@@ -15,11 +15,13 @@ use App\Modules\Posts\Application\Command\ReplyComment\ReplyCommentCommand;
 use App\Modules\Posts\Application\Command\ReplyComment\ReplyCommentHandler;
 use App\Modules\Posts\Application\Command\UnlikeComment\UnlikeCommentCommand;
 use App\Modules\Posts\Application\Command\UnlikeComment\UnlikeCommentHandler;
+use App\Modules\Posts\Application\Query\GetComment\GetCommentHandler;
+use App\Modules\Posts\Application\Query\GetComment\GetCommentQuery;
 use App\Modules\Posts\Application\Query\GetCommentReplies\GetCommentRepliesHandler;
 use App\Modules\Posts\Application\Query\GetCommentReplies\GetCommentRepliesQuery;
 use App\Modules\Posts\Application\Query\GetPostComments\GetPostCommentsHandler;
 use App\Modules\Posts\Application\Query\GetPostComments\GetPostCommentsQuery;
-use App\Modules\Posts\Application\View\CommentView;
+use App\Modules\Posts\Application\Result\CommentResult;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\CommentPostFilter;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\DeleteCommentFilter;
 use App\Modules\Posts\Infrastructure\Spiral\Http\Filter\GetCommentRepliesFilter;
@@ -53,8 +55,10 @@ final readonly class CommentController
         CommentPostFilter $commentPostFilter,
         CommandBusInterface $commandBus,
         CommentPostHandler $commentPostHandler,
+        QueryBusInterface $queryBus,
+        GetCommentHandler $getCommentHandler,
     ): DataResponse {
-        $comment = $commandBus->dispatch(
+        $result = $commandBus->dispatch(
             command: new CommentPostCommand(
                 authUserId: $commentPostFilter->authUserId,
                 postId: $commentPostFilter->id,
@@ -64,7 +68,9 @@ final readonly class CommentController
             handler: $commentPostHandler->handle(...),
         );
 
-        return new DataResponse(CommentResource::fromView($comment));
+        $comment = $this->getComment(commentId: $result->commentId, authUserId: $commentPostFilter->authUserId, queryBus: $queryBus, getCommentHandler: $getCommentHandler);
+
+        return new DataResponse(CommentResource::fromResult($comment));
     }
 
     /**
@@ -82,8 +88,10 @@ final readonly class CommentController
         ReplyCommentFilter $replyCommentFilter,
         CommandBusInterface $commandBus,
         ReplyCommentHandler $replyCommentHandler,
+        QueryBusInterface $queryBus,
+        GetCommentHandler $getCommentHandler,
     ): DataResponse {
-        $comment = $commandBus->dispatch(
+        $result = $commandBus->dispatch(
             command: new ReplyCommentCommand(
                 authUserId: $replyCommentFilter->authUserId,
                 commentId: $replyCommentFilter->id,
@@ -93,7 +101,9 @@ final readonly class CommentController
             handler: $replyCommentHandler->handle(...),
         );
 
-        return new DataResponse(CommentResource::fromView($comment));
+        $comment = $this->getComment(commentId: $result->commentId, authUserId: $replyCommentFilter->authUserId, queryBus: $queryBus, getCommentHandler: $getCommentHandler);
+
+        return new DataResponse(CommentResource::fromResult($comment));
     }
 
     #[Route(
@@ -195,7 +205,7 @@ final readonly class CommentController
         );
 
         $resources = $result->comments->mapToList(
-            static fn(CommentView $comment): CommentResource => CommentResource::fromView($comment),
+            static fn(CommentResult $comment): CommentResource => CommentResource::fromResult($comment),
         );
 
         return new PaginationResponse(
@@ -231,12 +241,20 @@ final readonly class CommentController
         );
 
         $resources = $result->replies->mapToList(
-            static fn(CommentView $comment): CommentResource => CommentResource::fromView($comment),
+            static fn(CommentResult $comment): CommentResource => CommentResource::fromResult($comment),
         );
 
         return new PaginationResponse(
             data: $resources,
             meta: new PaginationMetaResponse(nextCursor: $result->nextCursor, limit: $getCommentRepliesFilter->limit),
+        );
+    }
+
+    private function getComment(string $commentId, string $authUserId, QueryBusInterface $queryBus, GetCommentHandler $getCommentHandler): CommentResult
+    {
+        return $queryBus->dispatch(
+            query: new GetCommentQuery(commentId: $commentId, authUserId: $authUserId),
+            handler: $getCommentHandler->handle(...),
         );
     }
 }

@@ -20,7 +20,8 @@ use App\Shared\Domain\Trait\HasTimestamps;
  * Ссылка на медиа соседнего модуля — собственный объект-значение Posts в колонке media_id,
  * без ORM-связи, навигации и внешнего ключа на таблицу media: чужая таблица принадлежит
  * чужому модулю (docs/arch.md, «Владение данными»). Данные медиа для ответа Posts дочитывает
- * одним пакетным вызовом публичного контракта соседа (PostViewAssembler -> MediaContract::urlsByIds);
+ * одним пакетным вызовом публичного контракта соседа (GetPostHandler/GetMyFeedHandler ->
+ * MediaContract::urlsByIds);
  * недоступное медиа в ответ контракта не приходит и вложение мягко исключается из ответа.
  */
 final class PostMedia

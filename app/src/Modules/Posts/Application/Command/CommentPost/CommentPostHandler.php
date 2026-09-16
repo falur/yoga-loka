@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\CommentPost;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\CommentView;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
 use App\Modules\Posts\Domain\ValueObject\CommentText;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\Repository\CommentRepository;
 use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -31,12 +28,11 @@ final readonly class CommentPostHandler
         private PostRepository $postRepository,
         private CommentRepository $commentRepository,
         private CommentComposer $composer,
-        private CommentViewAssembler $commentViewAssembler,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(CommentPostCommand $command): CommentView
+    public function handle(CommentPostCommand $command): CommentPostResult
     {
         $authUserId = UserId::fromString($command->authUserId);
 
@@ -70,6 +66,6 @@ final readonly class CommentPostHandler
         $this->commentRepository->addWithMentions(comment: $comment, mentions: $mentions);
         $this->postRepository->save($post);
 
-        return $this->commentViewAssembler->fromComment(comment: $comment, viewer: $authUserId);
+        return new CommentPostResult(commentId: $comment->id->value());
     }
 }

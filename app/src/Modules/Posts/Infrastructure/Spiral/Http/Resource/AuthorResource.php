@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Infrastructure\Spiral\Http\Resource;
 
-use App\Modules\Posts\Application\View\AuthorView;
+use App\Modules\Posts\Application\Result\AuthorResult;
 use App\Shared\Infrastructure\Spiral\Http\Resource\AbstractResource;
 
 /**
@@ -20,7 +20,7 @@ final readonly class AuthorResource extends AbstractResource
         public MediaResource|null $avatar,
     ) {}
 
-    public static function fromView(AuthorView $author): self
+    public static function fromResult(AuthorResult $author): self
     {
         return new self(
             userId: $author->userId,

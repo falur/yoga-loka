@@ -38,11 +38,7 @@ use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Modules\Media\Repository\MediaAudioConversionRepository;
-use App\Modules\Media\Repository\MediaImageConversionRepository;
-use App\Modules\Media\Repository\MediaMultipartUploadRepository;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Modules\Media\Repository\MediaVideoConversionRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;
 
@@ -81,10 +77,10 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $this->entityManager()->persist($multipartUpload);
         $this->entityManager()->run();
 
-        $imageConversions = $this->imageConversionRepository()->findByMediaId($media->id);
-        $videoConversions = $this->videoConversionRepository()->findByMediaId($media->id);
-        $audioConversions = $this->audioConversionRepository()->findByMediaId($media->id);
-        $restoredMultipartUpload = $this->multipartUploadRepository()->findByMediaId($media->id);
+        $imageConversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
+        $videoConversions = $this->mediaRepository()->findVideoConversionsByMediaId($media->id);
+        $audioConversions = $this->mediaRepository()->findAudioConversionsByMediaId($media->id);
+        $restoredMultipartUpload = $this->mediaRepository()->findMultipartUploadByMediaId($media->id);
 
         self::assertInstanceOf(MediaImageConversionCollection::class, $imageConversions);
         self::assertInstanceOf(MediaVideoConversionCollection::class, $videoConversions);
@@ -115,7 +111,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
 
         $this->cleanOrmHeap();
 
-        $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        $restoredImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
 
         self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
         self::assertInstanceOf(Media::class, $restoredImageConversion->media);
@@ -166,7 +162,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $this->cleanOrmHeap();
 
         $savedMedia = $this->mediaRepository()->findById($mediaId);
-        $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        $savedImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
 
         self::assertInstanceOf(Media::class, $savedMedia);
         self::assertSame(MediaStatus::Ready, $savedMedia->status);
@@ -188,7 +184,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
 
         $this->cleanOrmHeap();
 
-        $restoredImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        $restoredImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
         self::assertInstanceOf(MediaImageConversion::class, $restoredImageConversion);
         self::assertInstanceOf(Media::class, $restoredImageConversion->media);
         self::assertTrue($mediaId->equals($restoredImageConversion->media->id));
@@ -197,7 +193,7 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $this->entityManager()->run();
         $this->cleanOrmHeap();
 
-        $savedImageConversion = $this->imageConversionRepository()->findByMediaId($mediaId)->first();
+        $savedImageConversion = $this->mediaRepository()->findImageConversionsByMediaId($mediaId)->first();
         self::assertInstanceOf(MediaImageConversion::class, $savedImageConversion);
         self::assertInstanceOf(Media::class, $savedImageConversion->media);
         self::assertTrue($mediaId->equals($savedImageConversion->media->id));
@@ -216,13 +212,13 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $this->entityManager()->persist($mediaWithoutConversions);
         $this->entityManager()->run();
 
-        self::assertTrue($this->imageConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
-        self::assertTrue($this->videoConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
-        self::assertTrue($this->audioConversionRepository()->existsReadyForMediaId($mediaWithConversions->id));
+        self::assertTrue($this->mediaRepository()->hasReadyImageConversion($mediaWithConversions->id));
+        self::assertTrue($this->mediaRepository()->hasReadyVideoConversion($mediaWithConversions->id));
+        self::assertTrue($this->mediaRepository()->hasReadyAudioConversion($mediaWithConversions->id));
 
-        self::assertFalse($this->imageConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
-        self::assertFalse($this->videoConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
-        self::assertFalse($this->audioConversionRepository()->existsReadyForMediaId($mediaWithoutConversions->id));
+        self::assertFalse($this->mediaRepository()->hasReadyImageConversion($mediaWithoutConversions->id));
+        self::assertFalse($this->mediaRepository()->hasReadyVideoConversion($mediaWithoutConversions->id));
+        self::assertFalse($this->mediaRepository()->hasReadyAudioConversion($mediaWithoutConversions->id));
     }
 
     public function testExistsReadyForMediaIdIgnoresNonReadyConversions(): void
@@ -241,9 +237,9 @@ final class MediaRepositoryTest extends DatabaseTestCase
         );
         $this->entityManager()->run();
 
-        self::assertFalse($this->imageConversionRepository()->existsReadyForMediaId($media->id));
-        self::assertFalse($this->videoConversionRepository()->existsReadyForMediaId($media->id));
-        self::assertFalse($this->audioConversionRepository()->existsReadyForMediaId($media->id));
+        self::assertFalse($this->mediaRepository()->hasReadyImageConversion($media->id));
+        self::assertFalse($this->mediaRepository()->hasReadyVideoConversion($media->id));
+        self::assertFalse($this->mediaRepository()->hasReadyAudioConversion($media->id));
     }
 
     public function testFindExpiredReturnsTypedCollection(): void
@@ -313,10 +309,10 @@ final class MediaRepositoryTest extends DatabaseTestCase
         $this->entityManager()->delete($media);
         $this->entityManager()->run();
 
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
-        self::assertCount(0, $this->videoConversionRepository()->findByMediaId($media->id));
-        self::assertCount(0, $this->audioConversionRepository()->findByMediaId($media->id));
-        self::assertNull($this->multipartUploadRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findVideoConversionsByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findAudioConversionsByMediaId($media->id));
+        self::assertNull($this->mediaRepository()->findMultipartUploadByMediaId($media->id));
     }
 
     private function createMedia(
@@ -425,25 +421,5 @@ final class MediaRepositoryTest extends DatabaseTestCase
     private function mediaRepository(): MediaRepository
     {
         return $this->getContainer()->get(MediaRepository::class);
-    }
-
-    private function imageConversionRepository(): MediaImageConversionRepository
-    {
-        return $this->getContainer()->get(MediaImageConversionRepository::class);
-    }
-
-    private function videoConversionRepository(): MediaVideoConversionRepository
-    {
-        return $this->getContainer()->get(MediaVideoConversionRepository::class);
-    }
-
-    private function audioConversionRepository(): MediaAudioConversionRepository
-    {
-        return $this->getContainer()->get(MediaAudioConversionRepository::class);
-    }
-
-    private function multipartUploadRepository(): MediaMultipartUploadRepository
-    {
-        return $this->getContainer()->get(MediaMultipartUploadRepository::class);
     }
 }

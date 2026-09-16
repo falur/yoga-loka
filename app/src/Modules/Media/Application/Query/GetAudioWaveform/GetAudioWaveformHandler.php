@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Query\GetAudioWaveform;
 
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Exception\MediaConversionNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotFinalizedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
-use App\Modules\Media\Repository\MediaAudioConversionRepository;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\NotFoundException;
 
 /**
  * Возвращает волну амплитуд нормализованной аудио-конверсии (числа для прогресса воспроизведения).
@@ -20,27 +21,26 @@ final readonly class GetAudioWaveformHandler
 {
     public function __construct(
         private MediaRepository $mediaRepository,
-        private MediaAudioConversionRepository $mediaAudioConversionRepository,
     ) {}
 
     public function handle(GetAudioWaveformQuery $query): MediaWaveform
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($query->mediaId))
-            ?? throw new NotFoundException('app.media.not_found');
+            ?? throw new MediaNotFoundException();
 
         // Волна — это конверсия, поэтому переживает удаление оригинала (ready и readyOriginalRemoved).
         if (!$media->isFinalized()) {
-            throw new NotFoundException('app.media.not_ready');
+            throw new MediaNotFinalizedException();
         }
 
         if ($media->type !== MediaType::Audio) {
-            throw new NotFoundException('app.media.conversion_not_found');
+            throw new MediaConversionNotFoundException();
         }
 
         // Каталог аудио-типов содержит ровно один профиль (NormalizedAacM4a) и на медиа не больше
         // одной такой конверсии, поэтому берём первую без фильтра по единственному типу.
-        $conversion = $this->mediaAudioConversionRepository->findByMediaId($media->id)->first()
-            ?? throw new NotFoundException('app.media.conversion_not_found');
+        $conversion = $this->mediaRepository->findAudioConversionsByMediaId($media->id)->first()
+            ?? throw new MediaConversionNotFoundException();
 
         return $conversion->waveform;
     }

@@ -10,6 +10,8 @@ use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
 use App\Modules\Media\Application\Contract\MediaUploadPlannerContract;
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
 use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
+use App\Modules\Media\Domain\Repository\MediaRepository;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Repository\CycleMediaRepository;
 use App\Modules\Media\Infrastructure\Spiral\PublicApi\MediaProvider;
 use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Media\Public\Event\MediaUploadedEvent;
@@ -28,6 +30,7 @@ use Spiral\Boot\Bootloader\Bootloader;
 final class MediaBootloader extends Bootloader
 {
     protected const BINDINGS = [
+        MediaRepository::class => CycleMediaRepository::class,
         MediaFileServiceContract::class => S3MediaFileService::class,
         MediaUrlServiceContract::class => MediaUrlService::class,
         MediaUploadPlannerContract::class => MediaUploadPlanner::class,

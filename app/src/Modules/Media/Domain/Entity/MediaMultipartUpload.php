@@ -14,7 +14,6 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadId;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaMultipartPartCollectionTypecast;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use App\Modules\Media\Repository\MediaMultipartUploadRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\Annotated\Annotation\Relation\BelongsTo;
@@ -23,7 +22,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'media_multipart_upload',
     table: 'media_multipart_uploads',
-    repository: MediaMultipartUploadRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class MediaMultipartUpload

@@ -61,7 +61,7 @@ final class ProcessMediaJob extends JobHandler
                 || ($exception instanceof MediaProcessorFailedException && $exception->isTransient());
 
             // Запись ошибки на Media — отдельный сбойный путь: медиа могли конкурентно удалить
-            // (NotFoundException) или короткий сбой БД. Защищаем только этот вызов локальным guard,
+            // (MediaNotFoundException) или короткий сбой БД. Защищаем только этот вызов локальным guard,
             // чтобы вторичный сбой записи не подменил исходную причину и решение повтор/терминальный исход:
             // логируем его как вторичный сбой (ERROR — реальная инфра/инвариант-проблема, rules.md:84)
             // и продолжаем классифицировать по исходному $exception.

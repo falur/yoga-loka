@@ -24,7 +24,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
-use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
 use Cycle\ORM\EntityManagerInterface;

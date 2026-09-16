@@ -19,7 +19,6 @@ use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaWaveformTypecast;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use App\Modules\Media\Repository\MediaAudioConversionRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\Annotated\Annotation\Relation\BelongsTo;
@@ -28,7 +27,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'media_audio_conversion',
     table: 'media_audio_conversions',
-    repository: MediaAudioConversionRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class MediaAudioConversion

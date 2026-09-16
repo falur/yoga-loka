@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Query\CheckMediaIsImage;
 
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
 
 final readonly class CheckMediaIsImageHandler
 {

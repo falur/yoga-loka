@@ -32,11 +32,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
-use App\Modules\Media\Repository\MediaAudioConversionRepository;
-use App\Modules\Media\Repository\MediaImageConversionRepository;
-use App\Modules\Media\Repository\MediaMultipartUploadRepository;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Modules\Media\Repository\MediaVideoConversionRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORMInterface;
@@ -239,25 +235,5 @@ abstract class MediaApplicationTestCase extends TestCase
     protected function mediaRepository(): MediaRepository
     {
         return $this->getContainer()->get(MediaRepository::class);
-    }
-
-    protected function multipartUploadRepository(): MediaMultipartUploadRepository
-    {
-        return $this->getContainer()->get(MediaMultipartUploadRepository::class);
-    }
-
-    protected function imageConversionRepository(): MediaImageConversionRepository
-    {
-        return $this->getContainer()->get(MediaImageConversionRepository::class);
-    }
-
-    protected function videoConversionRepository(): MediaVideoConversionRepository
-    {
-        return $this->getContainer()->get(MediaVideoConversionRepository::class);
-    }
-
-    protected function audioConversionRepository(): MediaAudioConversionRepository
-    {
-        return $this->getContainer()->get(MediaAudioConversionRepository::class);
     }
 }

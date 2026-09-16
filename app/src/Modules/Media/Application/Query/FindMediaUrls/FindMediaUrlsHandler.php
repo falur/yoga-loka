@@ -8,8 +8,8 @@ use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
 use App\Modules\Media\Application\Dto\MediaUrlsResult;
 use App\Modules\Media\Application\Dto\MediaUrlsResultCollection;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
 /**

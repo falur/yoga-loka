@@ -24,8 +24,8 @@ use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaExpirationTypecast;
 use App\Modules\Media\Infrastructure\Persistence\Cycle\Typecast\MediaProcessingErrorTypecast;
+use App\Modules\Media\Infrastructure\Persistence\Cycle\Repository\CycleMediaRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use App\Modules\Media\Repository\MediaRepository;
 use Cycle\Annotated\Annotation\Column;
 use Cycle\Annotated\Annotation\Entity;
 use Cycle\Annotated\Annotation\Relation\HasMany;
@@ -34,7 +34,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'media',
     table: 'media',
-    repository: MediaRepository::class,
+    repository: CycleMediaRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Media

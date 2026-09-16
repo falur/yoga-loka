@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Query\CheckMediaAttachable;
 
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotReadyForAttachmentException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
@@ -31,14 +31,14 @@ final readonly class CheckMediaAttachableHandler
 
         foreach ($query->mediaIds as $mediaId) {
             $media = $this->mediaRepository->findById(MediaId::fromString($mediaId))
-                ?? throw new NotFoundException('app.media.not_found');
+                ?? throw new MediaNotFoundException();
 
             if (!$media->uploadedById->equals($owner)) {
-                throw new ForbiddenException('app.media.access_denied');
+                throw new MediaAccessDeniedException();
             }
 
             if (!$media->isReady()) {
-                throw new ValidationException('app.media.not_ready');
+                throw new MediaNotReadyForAttachmentException();
             }
         }
 

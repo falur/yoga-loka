@@ -28,7 +28,7 @@ use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
+use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Tests\Feature\Modules\Media\Application\MediaApplicationTestCase;
@@ -66,7 +66,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertSame(MediaStatus::Ready, $processedMedia->status);
         self::assertSame(MediaStorage::Public, $processedMedia->storage);
 
-        $conversions = $this->imageConversionRepository()->findByMediaId($media->id);
+        $conversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
         self::assertCount(1, $conversions);
 
         $conversionPath = MediaPath::imageConversion(
@@ -86,7 +86,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
             mediaId: $media->id->value(),
             plan: $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)),
         ));
-        self::assertCount(1, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
     }
 
     public function testProcessingRecoversFromProcessingFailedToReady(): void
@@ -113,7 +113,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertSame(MediaStorage::Public, $readyMedia->storage);
         self::assertTrue($readyMedia->processingError->isEmpty());
 
-        $conversions = $this->imageConversionRepository()->findByMediaId($media->id);
+        $conversions = $this->mediaRepository()->findImageConversionsByMediaId($media->id);
         self::assertCount(1, $conversions);
 
         $conversionPath = MediaPath::imageConversion(
@@ -148,7 +148,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertNotNull($processedMedia);
         self::assertSame(MediaStatus::Ready, $processedMedia->status);
 
-        $videoConversion = $this->videoConversionRepository()->findByMediaId($media->id)->first();
+        $videoConversion = $this->mediaRepository()->findVideoConversionsByMediaId($media->id)->first();
         self::assertNotNull($videoConversion);
 
         $normalizedPath = MediaPath::videoConversion(
@@ -166,7 +166,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         $this->track(MediaStorage::Public, $posterPath);
         $this->track(MediaStorage::Public, $readyPath);
 
-        self::assertCount(1, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(1, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
         self::assertNotNull($this->fileService()->headObject(MediaStorage::Public, $normalizedPath));
         self::assertNotNull($this->fileService()->headObject(MediaStorage::Public, $posterPath));
     }
@@ -188,7 +188,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertNotNull($processedMedia);
         self::assertSame(MediaStatus::Ready, $processedMedia->status);
 
-        $audioConversion = $this->audioConversionRepository()->findByMediaId($media->id)->first();
+        $audioConversion = $this->mediaRepository()->findAudioConversionsByMediaId($media->id)->first();
         self::assertNotNull($audioConversion);
         self::assertCount(48, $audioConversion->waveform->peaks());
 
@@ -223,7 +223,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertSame(MediaStorage::Public, $processedMedia->storage);
 
         // У документа конверсий нет.
-        self::assertCount(0, $this->imageConversionRepository()->findByMediaId($media->id));
+        self::assertCount(0, $this->mediaRepository()->findImageConversionsByMediaId($media->id));
 
         $readyPath = MediaPath::originalReady(storageKey: $media->storageKey, type: MediaType::Document, extension: 'pdf');
         self::assertStringStartsWith('documents/', $readyPath->value());
@@ -252,7 +252,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertSame(MediaStatus::ProcessingFailed, $failedMedia->status);
         self::assertFalse($failedMedia->processingError->isEmpty());
 
-        $outboxEvent = $this->getContainer()->get(OutboxEventRepository::class)->findById($outboxEventId);
+        $outboxEvent = $this->getContainer()->get(StoredOutboxEventRepository::class)->findById($outboxEventId);
         self::assertNotNull($outboxEvent);
         self::assertSame(OutboxEventStatus::Failed, $outboxEvent->status);
     }
@@ -297,7 +297,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
             handler: $this->getContainer()->get(CompleteMediaUploadHandler::class)->handle(...),
         );
 
-        $outboxEvent = $this->getContainer()->get(OutboxEventRepository::class)->findPendingForRelay(
+        $outboxEvent = $this->getContainer()->get(StoredOutboxEventRepository::class)->findPendingForRelay(
             outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
             now: new \DateTimeImmutable(),
         )->first();

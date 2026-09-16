@@ -33,6 +33,21 @@ final class ValueObjectCastTest extends TestCase
         self::assertSame(42, $data['size']->value());
     }
 
+    /**
+     * Драйвер может отдать числовую колонку уже как int (а не строкой), и фабрика fromInt
+     * обязана принять такое значение без промежуточного приведения.
+     */
+    public function testRestoresValueObjectFromIntFactoryWhenDatabaseReturnsInteger(): void
+    {
+        $cast = new ValueObjectCast();
+        $cast->setRules(['size' => ValueObjectCastIntProbe::class]);
+
+        $data = $cast->cast(['size' => 42]);
+
+        self::assertInstanceOf(ValueObjectCastIntProbe::class, $data['size']);
+        self::assertSame(42, $data['size']->value());
+    }
+
     public function testPreparesValueObjectForDatabase(): void
     {
         $cast = new ValueObjectCast();
@@ -65,6 +80,25 @@ final class ValueObjectCastTest extends TestCase
 
         self::assertInstanceOf(ValueObjectCastStringProbe::class, $data['payload']);
         self::assertSame(['payload' => 'ok'], $uncastedData);
+    }
+
+    /**
+     * Typecast составной колонки вправе вернуть в базу \DateTimeInterface: драйвер сам приводит
+     * дату к формату колонки, поэтому значение отдаётся как есть, без приведения к строке.
+     */
+    public function testColumnTypecastMayReturnDateTimeForDatabase(): void
+    {
+        $cast = new ValueObjectCast();
+        $cast->setRules(['expiresAt' => ValueObjectCastDateColumnProbe::class]);
+        $expiresAt = new \DateTimeImmutable('2026-09-16 10:40:00');
+
+        $uncastedData = $cast->uncast(['expiresAt' => ValueObjectCastStringProbe::fromString($expiresAt->format(\DateTimeInterface::ATOM))]);
+
+        self::assertInstanceOf(\DateTimeImmutable::class, $uncastedData['expiresAt']);
+        self::assertSame(
+            $expiresAt->format(\DateTimeInterface::ATOM),
+            $uncastedData['expiresAt']->format(\DateTimeInterface::ATOM),
+        );
     }
 
     public function testUnsupportedObjectFails(): void
@@ -161,5 +195,23 @@ final class ValueObjectCastColumnProbe implements ColumnValueTypecast
         ValueObjectCastStringProbe $value,
     ): string|null {
         return $value->value();
+    }
+}
+
+/**
+ * Typecast колонки-даты: в базу уходит \DateTimeImmutable, а не строка.
+ */
+final class ValueObjectCastDateColumnProbe implements ColumnValueTypecast
+{
+    public static function castDatabaseValue(
+        string $value,
+    ): ValueObjectCastStringProbe {
+        return ValueObjectCastStringProbe::fromString($value);
+    }
+
+    public static function uncastValue(
+        ValueObjectCastStringProbe $value,
+    ): \DateTimeImmutable {
+        return new \DateTimeImmutable($value->value());
     }
 }

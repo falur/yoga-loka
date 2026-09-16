@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostLikeId;
-use App\Modules\Posts\Repository\PostLikeRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -17,7 +16,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post_like',
     table: 'post_likes',
-    repository: PostLikeRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class PostLike

@@ -22,7 +22,7 @@ use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\PostLessonTypeca
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\PostOriginalTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\PostPracticeTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\PostTextTypecast;
-use App\Modules\Posts\Repository\PostRepository;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostRepository;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
@@ -35,7 +35,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post',
     table: 'posts',
-    repository: PostRepository::class,
+    repository: CyclePostRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Post

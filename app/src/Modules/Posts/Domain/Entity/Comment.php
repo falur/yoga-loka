@@ -17,7 +17,7 @@ use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletedAt
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletedByTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentDeletionReasonTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\CommentParentTypecast;
-use App\Modules\Posts\Repository\CommentRepository;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CycleCommentRepository;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
@@ -29,7 +29,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'comment',
     table: 'comments',
-    repository: CommentRepository::class,
+    repository: CycleCommentRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class Comment

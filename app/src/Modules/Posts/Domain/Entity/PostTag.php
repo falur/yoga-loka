@@ -7,7 +7,6 @@ namespace App\Modules\Posts\Domain\Entity;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostTagId;
 use App\Modules\Posts\Domain\ValueObject\PostTagReference;
-use App\Modules\Posts\Repository\PostTagRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -17,7 +16,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post_tag',
     table: 'post_tags',
-    repository: PostTagRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class PostTag

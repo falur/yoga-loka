@@ -9,27 +9,27 @@ use App\Modules\Posts\Application\Notification\PostNotificationAction;
 use App\Modules\Posts\Application\Notification\PostNotificationActionTarget;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
 use App\Modules\Posts\Application\Notification\PostNotifier;
+use App\Modules\Posts\Domain\Collection\CommentMentionCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\CommentMention;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 
 /**
- * Сборка содержимого комментария: сохранение упоминаний и стейджинг уведомлений с дедупликацией по
+ * Сборка содержимого комментария: сборка упоминаний и стейджинг уведомлений с дедупликацией по
  * получателю. На одного получателя уходит ровно одно уведомление с наибольшим приоритетом
  * (mention > comment_reply > post_commented), self-получатель исключается. Все deep-link
- * комментария ведут на сам комментарий.
+ * комментария ведут на сам комментарий. Упоминания только собираются в коллекцию — сохраняет их
+ * вместе с комментарием методом своего интерфейса вызывающий Handler.
  */
 final readonly class CommentComposer
 {
     public function __construct(
         private MentionRecipientResolver $mentionRecipientResolver,
         private PostNotifier $postNotifier,
-        private EntityManagerInterface $entityManager,
     ) {}
 
     /**
-     * Сохраняет упоминания комментария и стейджит уведомления. primaryRecipient — автор записи
+     * Собирает упоминания комментария и стейджит уведомления. primaryRecipient — автор записи
      * (для post_commented у комментария верхнего уровня) либо автор родителя (для comment_reply у
      * ответа); его вид задаёт primaryType. Упоминание перебивает primary при совпадении получателя.
      *
@@ -41,11 +41,13 @@ final readonly class CommentComposer
         string $actorUserId,
         string $primaryRecipientUserId,
         PostNotificationType $primaryType,
-    ): void {
+    ): CommentMentionCollection {
         $uniqueMentions = \array_values(\array_unique($mentionIds));
 
+        $mentions = new CommentMentionCollection();
+
         foreach ($uniqueMentions as $mentionId) {
-            $this->entityManager->persist(
+            $mentions->push(
                 CommentMention::create(
                     commentId: $comment->id,
                     userId: UserId::fromString($mentionId),
@@ -87,6 +89,8 @@ final readonly class CommentComposer
                 ),
             );
         }
+
+        return $mentions;
     }
 
     /**

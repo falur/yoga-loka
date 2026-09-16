@@ -8,7 +8,6 @@ use App\Modules\Posts\Domain\ValueObject\MediaPosition;
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostMediaId;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
-use App\Modules\Posts\Repository\PostMediaRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
 use Cycle\Annotated\Annotation\Column;
@@ -19,7 +18,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post_media',
     table: 'post_media',
-    repository: PostMediaRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class PostMedia

@@ -59,7 +59,7 @@ final class PostReactionHttpTest extends PostsHttpTestCase
         $this->authedJson('DELETE', \sprintf('/api/v1/posts/%s/like', $post->id->value()), $liker->id)->assertNoContent();
 
         self::assertSame(0, $this->reloadPost($post)->likesCount->value());
-        self::assertFalse($this->postLikeRepository()->existsByPostAndUser($post->id, $liker->id));
+        self::assertFalse($this->postRepository()->existsLikeByPostAndUser($post->id, $liker->id));
     }
 
     public function testUnlikeWithoutPriorLikeIsNoOp(): void

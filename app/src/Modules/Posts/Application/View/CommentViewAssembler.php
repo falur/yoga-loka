@@ -7,9 +7,9 @@ namespace App\Modules\Posts\Application\View;
 use App\Modules\Posts\Domain\Collection\CommentCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
-use App\Modules\Posts\Repository\CommentLikeRepository;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
 use App\Modules\User\Public\Contract\UserContract;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Exception\PostAuthorNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**
@@ -20,7 +20,7 @@ final readonly class CommentViewAssembler
 {
     public function __construct(
         private UserContract $users,
-        private CommentLikeRepository $commentLikeRepository,
+        private CommentRepository $commentRepository,
     ) {}
 
     public function fromComment(Comment $comment, UserId $viewer): CommentView
@@ -28,7 +28,7 @@ final readonly class CommentViewAssembler
         return $this->build(
             comment: $comment,
             author: $this->authorView($comment->userId),
-            likedByMe: $this->commentLikeRepository->existsByCommentAndUser(commentId: $comment->id, userId: $viewer),
+            likedByMe: $this->commentRepository->existsLikeByCommentAndUser(commentId: $comment->id, userId: $viewer),
         );
     }
 
@@ -102,7 +102,7 @@ final readonly class CommentViewAssembler
      */
     private function requireAuthor(array $authors, string $userId): AuthorView
     {
-        return $authors[$userId] ?? throw new NotFoundException('app.posts.author_not_found');
+        return $authors[$userId] ?? throw new PostAuthorNotFoundException();
     }
 
     /**
@@ -113,7 +113,7 @@ final readonly class CommentViewAssembler
         $commentIds = $comments->mapToList(static fn(Comment $comment): CommentId => $comment->id);
         $liked = [];
 
-        foreach ($this->commentLikeRepository->findByUserAndCommentIds($viewer, ...$commentIds) as $like) {
+        foreach ($this->commentRepository->findLikesByUserAndCommentIds($viewer, ...$commentIds) as $like) {
             $liked[$like->commentId->value()] = true;
         }
 

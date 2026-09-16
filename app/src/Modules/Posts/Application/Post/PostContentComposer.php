@@ -9,26 +9,28 @@ use App\Modules\Posts\Application\Notification\PostNotificationAction;
 use App\Modules\Posts\Application\Notification\PostNotificationActionTarget;
 use App\Modules\Posts\Application\Notification\PostNotificationType;
 use App\Modules\Posts\Application\Notification\PostNotifier;
+use App\Modules\Posts\Domain\Collection\PostMediaCollection;
+use App\Modules\Posts\Domain\Collection\PostMentionCollection;
+use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\Entity\PostMention;
 use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\Posts\Domain\ValueObject\MediaPosition;
 use App\Modules\Posts\Domain\ValueObject\PostMediaReference;
 use App\Modules\Posts\Domain\ValueObject\PostTagReference;
-use App\Modules\Posts\Repository\PostMentionRepository;
 use App\Modules\Tags\Public\Contract\TagsContract;
 use App\Modules\User\Public\Dto\UserProfileDtoCollection;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 
 /**
  * Общая сборка содержимого записи для сценариев создания и репоста: разрешение тегов, вложение
  * медиа (проверка + перевод в permanent), теги и упоминания, а также стейджинг уведомлений
  * post_mention/post_repost. Все вызовы смежных модулей идут внутри той же транзакции Handler-а
- * (вложенный #[Transactional]-dispatch -> SAVEPOINT), persist выполняет этот сервис, а финальный
- * run() — вызывающий Handler.
+ * (вложенный #[Transactional]-dispatch -> SAVEPOINT). Вложения, теги и упоминания только собираются
+ * в коллекции — сохраняет их вместе с записью методом своего интерфейса вызывающий Handler.
  */
 final readonly class PostContentComposer
 {
@@ -37,8 +39,7 @@ final readonly class PostContentComposer
         private MediaContract $mediaContract,
         private MentionRecipientResolver $mentionRecipientResolver,
         private PostNotifier $postNotifier,
-        private PostMentionRepository $postMentionRepository,
-        private EntityManagerInterface $entityManager,
+        private PostRepository $postRepository,
     ) {}
 
     /**
@@ -64,12 +65,14 @@ final readonly class PostContentComposer
      *
      * @param list<string> $mediaIds
      */
-    public function attachMedia(Post $post, array $mediaIds, string $ownerUserId): void
+    public function attachMedia(Post $post, array $mediaIds, string $ownerUserId): PostMediaCollection
     {
         $uniqueIds = \array_values(\array_unique($mediaIds));
 
+        $media = new PostMediaCollection();
+
         if ($uniqueIds === []) {
-            return;
+            return $media;
         }
 
         $this->mediaContract->ensureAttachable(mediaIds: $uniqueIds, ownerUserId: $ownerUserId);
@@ -78,42 +81,48 @@ final readonly class PostContentComposer
         $position = 0;
 
         foreach ($uniqueIds as $mediaId) {
-            $this->entityManager->persist(PostMedia::create(
+            $media->push(PostMedia::create(
                 post: $post,
                 mediaId: PostMediaReference::fromString($mediaId),
                 position: MediaPosition::fromInt($position),
             ));
             $position++;
         }
+
+        return $media;
     }
 
     /**
      * @param list<string> $tagIds
      */
-    public function attachTags(Post $post, array $tagIds): void
+    public function attachTags(Post $post, array $tagIds): PostTagCollection
     {
+        $tags = new PostTagCollection();
+
         foreach ($tagIds as $tagId) {
-            $this->entityManager->persist(PostTag::create(
+            $tags->push(PostTag::create(
                 postId: $post->id,
                 tagId: PostTagReference::fromString($tagId),
             ));
         }
+
+        return $tags;
     }
 
     /**
-     * Сохраняет упоминания записи и стейджит post_mention каждому упомянутому (кроме автора).
+     * Собирает упоминания записи и стейджит post_mention каждому упомянутому (кроме автора).
      * Дубликаты в списке схлопываются; несуществующий пользователь -> 422. Для черновика
-     * упоминания только сохраняются, без рассылки уведомлений: чужой черновик невидим и deep-link
+     * упоминания только собираются, без рассылки уведомлений: чужой черновик невидим и deep-link
      * вёл бы в 404. Уведомления по сохранённым упоминаниям рассылает publish через notifyPostMentions.
      *
      * @param list<string> $mentionIds
      */
-    public function attachPostMentions(Post $post, array $mentionIds, string $actorUserId): void
+    public function attachPostMentions(Post $post, array $mentionIds, string $actorUserId): PostMentionCollection
     {
         $uniqueIds = \array_values(\array_unique($mentionIds));
 
         if ($uniqueIds === []) {
-            return;
+            return new PostMentionCollection();
         }
 
         // Для черновика рассылки нет, поэтому достаточно дешёвой проверки существования без сборки
@@ -121,26 +130,31 @@ final readonly class PostContentComposer
         // publish через notifyPostMentions, когда запись станет видимой.
         if ($post->status === PostStatus::Draft) {
             $this->mentionRecipientResolver->requireAllExist($uniqueIds);
-            $this->persistMentions(post: $post, mentionIds: $uniqueIds);
 
-            return;
+            return $this->buildMentions(post: $post, mentionIds: $uniqueIds);
         }
 
         // Опубликованная запись: строгое разрешение профилей (проверка полноты -> 422) и сразу
         // рассылка post_mention существующим получателям.
         $recipients = $this->mentionRecipientResolver->resolveRequired($uniqueIds);
-        $this->persistMentions(post: $post, mentionIds: $uniqueIds);
+        $mentions = $this->buildMentions(post: $post, mentionIds: $uniqueIds);
         $this->notifyMentions(post: $post, recipients: $recipients, actorUserId: $actorUserId);
+
+        return $mentions;
     }
 
     /**
      * @param list<string> $mentionIds
      */
-    private function persistMentions(Post $post, array $mentionIds): void
+    private function buildMentions(Post $post, array $mentionIds): PostMentionCollection
     {
+        $mentions = new PostMentionCollection();
+
         foreach ($mentionIds as $mentionId) {
-            $this->entityManager->persist(PostMention::create(postId: $post->id, userId: UserId::fromString($mentionId)));
+            $mentions->push(PostMention::create(postId: $post->id, userId: UserId::fromString($mentionId)));
         }
+
+        return $mentions;
     }
 
     /**
@@ -150,7 +164,7 @@ final readonly class PostContentComposer
      */
     public function notifyPostMentions(Post $post, string $actorUserId): void
     {
-        $recipientIds = $this->postMentionRepository->findByPostId($post->id)
+        $recipientIds = $this->postRepository->findMentionsByPostId($post->id)
             ->mapToList(static fn(PostMention $postMention): string => $postMention->userId->value());
 
         if ($recipientIds === []) {

@@ -8,9 +8,10 @@ use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
 use App\Modules\Posts\Application\View\CommentViewAssembler;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -35,10 +36,10 @@ final readonly class GetCommentRepliesHandler
         $viewer = UserId::fromString($query->authUserId);
 
         $parent = $this->commentRepository->findById(CommentId::fromString($query->commentId))
-            ?? throw new NotFoundException('app.posts.comment_not_found');
+            ?? throw new CommentNotFoundException();
 
         if ($parent->isDeleted()) {
-            throw new NotFoundException('app.posts.comment_not_found');
+            throw new CommentNotFoundException();
         }
 
         // Запись существующего комментария всегда есть (FK), но проверку null оставляем в одном
@@ -46,7 +47,7 @@ final readonly class GetCommentRepliesHandler
         $post = $this->postRepository->findById($parent->postId);
 
         if ($post === null || !PostVisibilityPolicy::isVisibleTo(post: $post, viewer: $viewer)) {
-            throw new NotFoundException('app.posts.not_found');
+            throw new PostNotFoundException();
         }
 
         $cursor = $query->cursor !== null ? CommentId::fromString($query->cursor) : null;

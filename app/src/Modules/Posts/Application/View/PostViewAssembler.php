@@ -14,14 +14,11 @@ use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostLikeRepository;
-use App\Modules\Posts\Repository\PostMediaRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Modules\Posts\Repository\PostTagRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\Tags\Public\Contract\TagsContract;
 use App\Modules\Tags\Public\Dto\TagDtoCollection;
 use App\Modules\User\Public\Contract\UserContract;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Exception\PostAuthorNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**
@@ -43,25 +40,22 @@ final readonly class PostViewAssembler
         private MediaContract $media,
         private TagsContract $tags,
         private PostRepository $postRepository,
-        private PostMediaRepository $postMediaRepository,
-        private PostTagRepository $postTagRepository,
-        private PostLikeRepository $postLikeRepository,
     ) {}
 
     public function fromPost(Post $post, UserId $viewer): PostView
     {
-        $postTags = $this->postTagRepository->findByPostId($post->id);
-        $postMedia = $this->postMediaRepository->findByPostId($post->id);
+        $postTags = $this->postRepository->findTagsByPostId($post->id);
+        $postMedia = $this->postRepository->findMediaByPostId($post->id);
         $original = $this->visibleOriginal(post: $post, viewer: $viewer);
         $originalMedia = $original === null
             ? new PostMediaCollection()
-            : $this->postMediaRepository->findByPostId($original->id);
+            : $this->postRepository->findMediaByPostId($original->id);
         $mediaUrls = $this->mediaUrls($postMedia, $originalMedia);
 
         return $this->build(
             post: $post,
             author: $this->authorView($post->userId),
-            likedByMe: $this->postLikeRepository->existsByPostAndUser(postId: $post->id, userId: $viewer),
+            likedByMe: $this->postRepository->existsLikeByPostAndUser(postId: $post->id, userId: $viewer),
             media: $this->mediaItems(postMedia: $postMedia, urls: $mediaUrls),
             tags: $this->tagViews(postTags: $postTags, tags: $this->tagsByIds($postTags)),
             original: $original === null
@@ -196,7 +190,7 @@ final readonly class PostViewAssembler
      */
     private function requireAuthor(array $authors, string $userId): AuthorView
     {
-        return $authors[$userId] ?? throw new NotFoundException('app.posts.author_not_found');
+        return $authors[$userId] ?? throw new PostAuthorNotFoundException();
     }
 
     /**
@@ -207,7 +201,7 @@ final readonly class PostViewAssembler
         $postIds = $posts->mapToList(static fn(Post $post): PostId => $post->id);
         $liked = [];
 
-        foreach ($this->postLikeRepository->findByUserAndPostIds($viewer, ...$postIds) as $like) {
+        foreach ($this->postRepository->findLikesByUserAndPostIds($viewer, ...$postIds) as $like) {
             $liked[$like->postId->value()] = true;
         }
 
@@ -226,7 +220,7 @@ final readonly class PostViewAssembler
     {
         $byPost = [];
 
-        foreach ($this->postMediaRepository->findByPostIds(...$postIds) as $postMedia) {
+        foreach ($this->postRepository->findMediaByPostIds(...$postIds) as $postMedia) {
             $byPost[$postMedia->postId->value()] ??= new PostMediaCollection();
             $byPost[$postMedia->postId->value()]->push($postMedia);
         }
@@ -245,7 +239,7 @@ final readonly class PostViewAssembler
     {
         $byPost = [];
 
-        foreach ($this->postTagRepository->findByPostIds(...$postIds) as $postTag) {
+        foreach ($this->postRepository->findTagsByPostIds(...$postIds) as $postTag) {
             $byPost[$postTag->postId->value()] ??= new PostTagCollection();
             $byPost[$postTag->postId->value()]->push($postTag);
         }
@@ -404,12 +398,12 @@ final readonly class PostViewAssembler
         PostMediaCollection $postMedia,
         MediaDtoCollection $urls,
     ): PostView {
-        $postTags = $this->postTagRepository->findByPostId($original->id);
+        $postTags = $this->postRepository->findTagsByPostId($original->id);
 
         return $this->build(
             post: $original,
             author: $this->authorView($original->userId),
-            likedByMe: $this->postLikeRepository->existsByPostAndUser(postId: $original->id, userId: $viewer),
+            likedByMe: $this->postRepository->existsLikeByPostAndUser(postId: $original->id, userId: $viewer),
             media: $this->mediaItems(postMedia: $postMedia, urls: $urls),
             tags: $this->tagViews(postTags: $postTags, tags: $this->tagsByIds($postTags)),
             original: null,

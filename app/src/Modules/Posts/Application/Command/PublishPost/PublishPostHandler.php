@@ -9,11 +9,10 @@ use App\Modules\Posts\Application\View\PostView;
 use App\Modules\Posts\Application\View\PostViewAssembler;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\NotAuthorException;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -28,7 +27,6 @@ final readonly class PublishPostHandler
         private PostRepository $postRepository,
         private PostContentComposer $composer,
         private PostViewAssembler $postViewAssembler,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -37,21 +35,20 @@ final readonly class PublishPostHandler
     public function handle(PublishPostCommand $command): PostView
     {
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
         if ($post->deletion->isDeleted() || $post->status === PostStatus::Blocked) {
-            throw new NotFoundException('app.posts.not_found');
+            throw new PostNotFoundException();
         }
 
         if (!$post->userId->equals(UserId::fromString($command->authUserId))) {
-            throw new ForbiddenException('app.posts.forbidden');
+            throw new NotAuthorException();
         }
 
         if ($post->status === PostStatus::Draft) {
             $post->publish();
-            $this->entityManager->persist($post);
+            $this->postRepository->save($post);
             $this->composer->notifyPostMentions(post: $post, actorUserId: $command->authUserId);
-            $this->entityManager->run();
 
             $this->logger->debug(message: 'Запись опубликована.', context: ['postId' => $post->id->value()]);
         }

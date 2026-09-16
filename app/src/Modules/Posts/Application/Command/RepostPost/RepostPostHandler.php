@@ -17,10 +17,9 @@ use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -36,7 +35,6 @@ final readonly class RepostPostHandler
         private PostRepository $postRepository,
         private PostContentComposer $composer,
         private PostViewAssembler $postViewAssembler,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -47,10 +45,10 @@ final readonly class RepostPostHandler
         $authUserId = UserId::fromString($command->authUserId);
 
         $original = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
         if (!PostVisibilityPolicy::isActionable($original)) {
-            throw new NotFoundException('app.posts.not_found');
+            throw new PostNotFoundException();
         }
 
         $tagIds = $this->composer->resolveTags(texts: $command->tags, creatorUserId: $command->authUserId);
@@ -64,14 +62,14 @@ final readonly class RepostPostHandler
             practice: PostPractice::none(),
             original: PostOriginal::pointingTo($original->id->value()),
         );
-        $this->entityManager->persist($post);
 
-        $this->composer->attachMedia(post: $post, mediaIds: $command->mediaIds, ownerUserId: $command->authUserId);
-        $this->composer->attachTags(post: $post, tagIds: $tagIds);
-        $this->composer->attachPostMentions(post: $post, mentionIds: $command->mentions, actorUserId: $command->authUserId);
+        $media = $this->composer->attachMedia(post: $post, mediaIds: $command->mediaIds, ownerUserId: $command->authUserId);
+        $tags = $this->composer->attachTags(post: $post, tagIds: $tagIds);
+        $mentions = $this->composer->attachPostMentions(post: $post, mentionIds: $command->mentions, actorUserId: $command->authUserId);
 
         $original->incrementReposts();
-        $this->entityManager->persist($original);
+
+        $this->postRepository->saveRepost(post: $post, media: $media, tags: $tags, mentions: $mentions, original: $original);
 
         $this->composer->notifyPostAuthor(
             type: PostNotificationType::PostRepost,
@@ -79,8 +77,6 @@ final readonly class RepostPostHandler
             actorUserId: $command->authUserId,
             postId: $post->id->value(),
         );
-
-        $this->entityManager->run();
 
         $this->logger->debug(message: 'Создан репост.', context: [
             'postId' => $post->id->value(),

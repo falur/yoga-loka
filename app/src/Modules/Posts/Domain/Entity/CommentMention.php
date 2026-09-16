@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\CommentMentionId;
-use App\Modules\Posts\Repository\CommentMentionRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -17,7 +16,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'comment_mention',
     table: 'comment_mentions',
-    repository: CommentMentionRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class CommentMention

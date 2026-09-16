@@ -29,12 +29,8 @@ use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
-use App\Modules\Posts\Repository\CommentLikeRepository;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Modules\Posts\Repository\PostLikeRepository;
-use App\Modules\Posts\Repository\PostMentionRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Modules\Posts\Repository\PostTagRepository;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
@@ -193,21 +189,6 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
         return $this->getContainer()->get(PostRepository::class);
     }
 
-    protected function postTagRepository(): PostTagRepository
-    {
-        return $this->getContainer()->get(PostTagRepository::class);
-    }
-
-    protected function postMentionRepository(): PostMentionRepository
-    {
-        return $this->getContainer()->get(PostMentionRepository::class);
-    }
-
-    protected function postLikeRepository(): PostLikeRepository
-    {
-        return $this->getContainer()->get(PostLikeRepository::class);
-    }
-
     protected function persistPost(
         UserId $author,
         PostStatus $status = PostStatus::Published,
@@ -293,11 +274,6 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
     protected function commentRepository(): CommentRepository
     {
         return $this->getContainer()->get(CommentRepository::class);
-    }
-
-    protected function commentLikeRepository(): CommentLikeRepository
-    {
-        return $this->getContainer()->get(CommentLikeRepository::class);
     }
 
     private function newMedia(UserId $owner, MediaVisibility $visibility): Media

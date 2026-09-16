@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostMentionId;
-use App\Modules\Posts\Repository\PostMentionRepository;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
@@ -17,7 +16,6 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post_mention',
     table: 'post_mentions',
-    repository: PostMentionRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class PostMention

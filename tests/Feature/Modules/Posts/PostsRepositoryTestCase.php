@@ -12,15 +12,9 @@ use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Modules\Posts\Repository\CommentLikeRepository;
-use App\Modules\Posts\Repository\CommentMentionRepository;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Modules\Posts\Repository\PostBlockRepository;
-use App\Modules\Posts\Repository\PostLikeRepository;
-use App\Modules\Posts\Repository\PostMediaRepository;
-use App\Modules\Posts\Repository\PostMentionRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Modules\Posts\Repository\PostTagRepository;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostBlockRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
@@ -91,38 +85,8 @@ abstract class PostsRepositoryTestCase extends DatabaseTestCase
         return $this->getContainer()->get(CommentRepository::class);
     }
 
-    protected function postMediaRepository(): PostMediaRepository
-    {
-        return $this->getContainer()->get(PostMediaRepository::class);
-    }
-
-    protected function postLikeRepository(): PostLikeRepository
-    {
-        return $this->getContainer()->get(PostLikeRepository::class);
-    }
-
-    protected function postMentionRepository(): PostMentionRepository
-    {
-        return $this->getContainer()->get(PostMentionRepository::class);
-    }
-
-    protected function postTagRepository(): PostTagRepository
-    {
-        return $this->getContainer()->get(PostTagRepository::class);
-    }
-
     protected function postBlockRepository(): PostBlockRepository
     {
         return $this->getContainer()->get(PostBlockRepository::class);
-    }
-
-    protected function commentLikeRepository(): CommentLikeRepository
-    {
-        return $this->getContainer()->get(CommentLikeRepository::class);
-    }
-
-    protected function commentMentionRepository(): CommentMentionRepository
-    {
-        return $this->getContainer()->get(CommentMentionRepository::class);
     }
 }

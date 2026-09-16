@@ -64,7 +64,7 @@ final class CommentReactionHttpTest extends PostsHttpTestCase
         $this->authedJson('DELETE', \sprintf('/api/v1/posts/comments/%s/like', $comment->id->value()), $liker->id)->assertNoContent();
 
         self::assertSame(0, $this->reloadComment($comment)->likesCount->value());
-        self::assertFalse($this->commentLikeRepository()->existsByCommentAndUser($comment->id, $liker->id));
+        self::assertFalse($this->commentRepository()->existsLikeByCommentAndUser($comment->id, $liker->id));
     }
 
     public function testUnlikeWithoutPriorLikeIsNoOp(): void

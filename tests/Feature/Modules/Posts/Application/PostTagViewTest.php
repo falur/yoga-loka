@@ -110,9 +110,6 @@ final class PostTagViewTest extends PostsRepositoryTestCase
             media: $this->getContainer()->get(MediaContract::class),
             tags: $tags,
             postRepository: $this->postRepository(),
-            postMediaRepository: $this->postMediaRepository(),
-            postTagRepository: $this->postTagRepository(),
-            postLikeRepository: $this->postLikeRepository(),
         );
     }
 }

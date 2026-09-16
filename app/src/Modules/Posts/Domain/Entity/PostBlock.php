@@ -13,7 +13,7 @@ use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\BlockUnblockedAtTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\BlockUnblockedByTypecast;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Typecast\BlockUnblockedReasonTypecast;
-use App\Modules\Posts\Repository\PostBlockRepository;
+use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostBlockRepository;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
@@ -25,7 +25,7 @@ use Cycle\ORM\Parser\Typecast;
 #[Entity(
     role: 'post_block',
     table: 'post_blocks',
-    repository: PostBlockRepository::class,
+    repository: CyclePostBlockRepository::class,
     typecast: [Typecast::class, ValueObjectCast::class],
 )]
 final class PostBlock

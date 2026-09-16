@@ -207,7 +207,7 @@ final class CreatePostHttpTest extends PostsHttpTestCase
         $postId = $this->json($response)['data']['id'];
 
         self::assertCount(0, $this->stagedNotifications('posts.post_mention'));
-        self::assertCount(1, $this->postMentionRepository()->findByPostId(PostId::fromString($postId)));
+        self::assertCount(1, $this->postRepository()->findMentionsByPostId(PostId::fromString($postId)));
     }
 
     public function testDoesNotNotifySelfMention(): void

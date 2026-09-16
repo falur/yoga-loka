@@ -6,7 +6,7 @@ namespace Tests\Feature\Modules\Posts\Http;
 
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostMedia;
 use App\Modules\Posts\Domain\Enum\PostStatus;

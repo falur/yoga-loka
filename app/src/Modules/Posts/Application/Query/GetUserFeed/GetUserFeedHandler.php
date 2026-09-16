@@ -8,7 +8,7 @@ use App\Modules\Posts\Application\View\PostViewAssembler;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Shared\Domain\Pagination\CursorSlice;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;

@@ -6,7 +6,7 @@ namespace App\Modules\Outbox\Infrastructure\Spiral\Queue;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use Spiral\Queue\Config\QueueConfig;

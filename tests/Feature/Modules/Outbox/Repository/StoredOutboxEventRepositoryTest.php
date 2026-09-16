@@ -7,7 +7,7 @@ namespace Tests\Feature\Modules\Outbox\Repository;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\Collection\OutboxEventCollection;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;

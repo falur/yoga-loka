@@ -7,7 +7,7 @@ namespace Tests\Unit\Modules\Outbox\Application\Message;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
 use App\Modules\Outbox\Application\Exception\OutboxMessageSerializationException;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
 use CuyZ\Valinor\Mapper\MappingError;
 use PHPUnit\Framework\TestCase;

@@ -14,7 +14,7 @@ final readonly class RelayOutboxHandler
         private OutboxRelayWorkerContract $outboxRelayWorker,
     ) {}
 
-    public function handle(RelayOutboxCommand $relayOutboxCommand): int
+    public function handle(RelayOutboxCommand $relayOutboxCommand): RelayOutboxResult
     {
         $outboxRelayBatchSize = OutboxRelayBatchSize::fromInt($relayOutboxCommand->batchSize);
 
@@ -25,6 +25,8 @@ final readonly class RelayOutboxHandler
             );
         }
 
-        return $this->outboxRelayWorker->runOnce($outboxRelayBatchSize);
+        return new RelayOutboxResult(
+            processedCount: $this->outboxRelayWorker->runOnce($outboxRelayBatchSize),
+        );
     }
 }

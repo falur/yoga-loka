@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Application\Dto;
+namespace App\Modules\Outbox\Application\Contract;
 
 final readonly class SerializedOutboxMessage
 {

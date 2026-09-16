@@ -7,7 +7,7 @@ namespace Tests\Feature\Modules\Outbox\Application;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Exception\OutboxMessageLoadingException;
 use App\Modules\Outbox\Public\Event\OutboxDebugLogRequestedEvent;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Application\Query\LoadIntegrationEvent\LoadIntegrationEventHandler;
 use App\Modules\Outbox\Domain\Entity\StoredOutboxEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;

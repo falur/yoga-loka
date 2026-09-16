@@ -34,7 +34,7 @@ final class OutboxRelayCommand extends Command
     ): int {
         // Команда — тонкая обёртка: Spiral приводит CLI-ввод к типам свойств,
         // а диапазон значений валидируют доменные VO внутри RelayOutboxHandler.
-        $publishedCount = $commandBus->dispatch(
+        $relayOutboxResult = $commandBus->dispatch(
             command: new RelayOutboxCommand(
                 batchSize: $this->limit,
                 loop: $this->loop,
@@ -43,7 +43,7 @@ final class OutboxRelayCommand extends Command
             handler: $relayOutboxHandler->handle(...),
         );
 
-        $this->info(\sprintf('Outbox relay обработал событий: %d', $publishedCount));
+        $this->info(\sprintf('Outbox relay обработал событий: %d', $relayOutboxResult->processedCount));
 
         return SymfonyCommand::SUCCESS;
     }

@@ -6,7 +6,7 @@ namespace App\Modules\Outbox\Application\Query\LoadIntegrationEvent;
 
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Exception\OutboxMessageLoadingException;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 

@@ -6,7 +6,7 @@ namespace App\Modules\Outbox\Infrastructure\Serializer;
 
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Application\Exception\OutboxMessageSerializationException;
-use App\Modules\Outbox\Application\Dto\SerializedOutboxMessage;
+use App\Modules\Outbox\Application\Contract\SerializedOutboxMessage;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use CuyZ\Valinor\Mapper\Source\Source;
 use CuyZ\Valinor\Mapper\TreeMapper;

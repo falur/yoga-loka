@@ -8,6 +8,9 @@ use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollectio
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Columns\NotificationDeviceTokenColumns;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Entity\CycleNotificationDeviceTokenEntity;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Mapper\NotificationDeviceTokenMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\ORM\EntityManagerInterface;
@@ -15,17 +18,18 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<NotificationDeviceToken>
+ * @extends AbstractRepository<CycleNotificationDeviceTokenEntity>
  */
 final class CycleNotificationDeviceTokenRepository extends AbstractRepository implements NotificationDeviceTokenRepository
 {
     /**
-     * @param Select<NotificationDeviceToken> $select
+     * @param Select<CycleNotificationDeviceTokenEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private NotificationDeviceTokenMapper $notificationDeviceTokenMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -37,39 +41,68 @@ final class CycleNotificationDeviceTokenRepository extends AbstractRepository im
     #[\Override]
     public function findAllForUser(UserId $userId): NotificationDeviceTokenCollection
     {
-        return new NotificationDeviceTokenCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->orderBy(expression: 'id', direction: 'DESC')
-                ->fetchAll(),
-        );
+        $notificationDeviceTokenCollection = new NotificationDeviceTokenCollection();
+
+        /** @var iterable<CycleNotificationDeviceTokenEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(NotificationDeviceTokenColumns::USER_ID, $userId->value())
+            ->orderBy(expression: NotificationDeviceTokenColumns::ID, direction: 'DESC')
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $notificationDeviceTokenCollection->push($this->notificationDeviceTokenMapper->toDomain($cycleEntity));
+        }
+
+        return $notificationDeviceTokenCollection;
     }
 
     #[\Override]
     public function findByToken(DeviceToken $token): NotificationDeviceToken|null
     {
-        return $this->findOne(['token' => $token->value()]);
+        /** @var CycleNotificationDeviceTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([NotificationDeviceTokenColumns::TOKEN => $token->value()]);
+
+        return $cycleEntity === null ? null : $this->notificationDeviceTokenMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function findByTokenForUser(DeviceToken $token, UserId $userId): NotificationDeviceToken|null
     {
-        return $this->findOne(['token' => $token->value(), 'user_id' => $userId->value()]);
+        /** @var CycleNotificationDeviceTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([
+            NotificationDeviceTokenColumns::TOKEN => $token->value(),
+            NotificationDeviceTokenColumns::USER_ID => $userId->value(),
+        ]);
+
+        return $cycleEntity === null ? null : $this->notificationDeviceTokenMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function save(NotificationDeviceToken $notificationDeviceToken): void
     {
+        /** @var CycleNotificationDeviceTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([NotificationDeviceTokenColumns::ID => $notificationDeviceToken->id->value()]);
+
         $this->entityManager
-            ->persist($notificationDeviceToken)
+            ->persist($this->notificationDeviceTokenMapper->toCycleEntity(
+                notificationDeviceToken: $notificationDeviceToken,
+                cycleEntity: $cycleEntity,
+            ))
             ->run();
     }
 
     #[\Override]
     public function delete(NotificationDeviceToken $notificationDeviceToken): void
     {
+        /** @var CycleNotificationDeviceTokenEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([NotificationDeviceTokenColumns::ID => $notificationDeviceToken->id->value()]);
+
+        if ($cycleEntity === null) {
+            return;
+        }
+
         $this->entityManager
-            ->delete($notificationDeviceToken)
+            ->delete($cycleEntity)
             ->run();
     }
 
@@ -77,7 +110,14 @@ final class CycleNotificationDeviceTokenRepository extends AbstractRepository im
     public function deleteAll(NotificationDeviceTokenCollection $notificationDeviceTokens): void
     {
         foreach ($notificationDeviceTokens as $notificationDeviceToken) {
-            $this->entityManager->delete($notificationDeviceToken);
+            /** @var CycleNotificationDeviceTokenEntity|null $cycleEntity */
+            $cycleEntity = $this->findOne([NotificationDeviceTokenColumns::ID => $notificationDeviceToken->id->value()]);
+
+            if ($cycleEntity === null) {
+                continue;
+            }
+
+            $this->entityManager->delete($cycleEntity);
         }
 
         $this->entityManager->run();

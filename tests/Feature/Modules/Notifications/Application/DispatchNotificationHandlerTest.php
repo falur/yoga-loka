@@ -13,6 +13,7 @@ use App\Modules\Notifications\Application\Exception\NotificationTypeRegistryExce
 use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
 use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
 use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
+use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
@@ -24,7 +25,6 @@ use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
 use Tests\Support\Notifications\FixtureNotificationTypeDefinition;
@@ -231,13 +231,8 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
             channel: $channel,
             status: $status,
         );
-        $this->entityManager()->persist($setting);
-        $this->entityManager()->run();
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return $this->getContainer()->get(EntityManagerInterface::class);
+        $this->getContainer()->get(NotificationSettingRepository::class)
+            ->saveAll(new NotificationSettingCollection([$setting]));
     }
 
     private function notificationRepository(): NotificationRepository

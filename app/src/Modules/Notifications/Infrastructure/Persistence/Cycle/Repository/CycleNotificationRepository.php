@@ -9,6 +9,9 @@ use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\ValueObject\NotificationId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Columns\NotificationColumns;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Entity\CycleNotificationEntity;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Mapper\NotificationMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\ORM\EntityManagerInterface;
@@ -16,17 +19,18 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<Notification>
+ * @extends AbstractRepository<CycleNotificationEntity>
  */
 final class CycleNotificationRepository extends AbstractRepository implements NotificationRepository
 {
     /**
-     * @param Select<Notification> $select
+     * @param Select<CycleNotificationEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private NotificationMapper $notificationMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -35,13 +39,22 @@ final class CycleNotificationRepository extends AbstractRepository implements No
     #[\Override]
     public function findByOutboxId(NotificationOutboxId $outboxId): Notification|null
     {
-        return $this->findOne(['outbox_id' => $outboxId->value()]);
+        /** @var CycleNotificationEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([NotificationColumns::OUTBOX_ID => $outboxId->value()]);
+
+        return $cycleEntity === null ? null : $this->notificationMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function findByIdForRecipient(NotificationId $id, UserId $userId): Notification|null
     {
-        return $this->findOne(['id' => $id->value(), 'user_id' => $userId->value()]);
+        /** @var CycleNotificationEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([
+            NotificationColumns::ID => $id->value(),
+            NotificationColumns::USER_ID => $userId->value(),
+        ]);
+
+        return $cycleEntity === null ? null : $this->notificationMapper->toDomain($cycleEntity);
     }
 
     /**
@@ -51,28 +64,41 @@ final class CycleNotificationRepository extends AbstractRepository implements No
     #[\Override]
     public function findPageForRecipient(UserId $userId, NotificationId|null $cursor, int $limit): NotificationCollection
     {
-        return new NotificationCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->cursorById(cursor: $cursor?->value(), limit: $limit)
-                ->fetchAll(),
-        );
+        $notificationCollection = new NotificationCollection();
+
+        /** @var iterable<CycleNotificationEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(NotificationColumns::USER_ID, $userId->value())
+            ->cursorById(cursor: $cursor?->value(), limit: $limit)
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $notificationCollection->push($this->notificationMapper->toDomain($cycleEntity));
+        }
+
+        return $notificationCollection;
     }
 
     #[\Override]
     public function countUnreadForRecipient(UserId $userId): int
     {
         return $this->select()
-            ->where('user_id', $userId->value())
-            ->where('read_at', '=', null)
+            ->where(NotificationColumns::USER_ID, $userId->value())
+            ->where(NotificationColumns::READ_AT, '=', null)
             ->count();
     }
 
     #[\Override]
     public function save(Notification $notification): void
     {
+        /** @var CycleNotificationEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([NotificationColumns::ID => $notification->id->value()]);
+
         $this->entityManager
-            ->persist($notification)
+            ->persist($this->notificationMapper->toCycleEntity(
+                notification: $notification,
+                cycleEntity: $cycleEntity,
+            ))
             ->run();
     }
 
@@ -80,7 +106,13 @@ final class CycleNotificationRepository extends AbstractRepository implements No
     public function saveAll(NotificationCollection $notifications): void
     {
         foreach ($notifications as $notification) {
-            $this->entityManager->persist($notification);
+            /** @var CycleNotificationEntity|null $cycleEntity */
+            $cycleEntity = $this->findOne([NotificationColumns::ID => $notification->id->value()]);
+
+            $this->entityManager->persist($this->notificationMapper->toCycleEntity(
+                notification: $notification,
+                cycleEntity: $cycleEntity,
+            ));
         }
 
         $this->entityManager->run();

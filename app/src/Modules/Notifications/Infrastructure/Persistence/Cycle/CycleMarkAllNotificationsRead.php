@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Notifications\Infrastructure\Persistence\Cycle;
 
 use App\Modules\Notifications\Application\Contract\MarkAllNotificationsReadContract;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Columns\NotificationColumns;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
 use App\Shared\Infrastructure\Persistence\Cycle\SetBasedWrite;
@@ -29,10 +30,10 @@ final readonly class CycleMarkAllNotificationsRead implements MarkAllNotificatio
     public function markAllReadForRecipient(UserId $userId, \DateTimeImmutable $readAt): int
     {
         return $this->database
-            ->update('notifications')
-            ->set(column: 'read_at', value: $readAt->format(DatabaseDateTimeFormat::WITH_MICROSECONDS))
-            ->where('user_id', $userId->value())
-            ->where('read_at', '=', null)
+            ->update(NotificationColumns::TABLE)
+            ->set(column: NotificationColumns::READ_AT, value: $readAt->format(DatabaseDateTimeFormat::WITH_MICROSECONDS))
+            ->where(NotificationColumns::USER_ID, $userId->value())
+            ->where(NotificationColumns::READ_AT, '=', null)
             ->run();
     }
 }

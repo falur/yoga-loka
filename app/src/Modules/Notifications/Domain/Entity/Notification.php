@@ -14,60 +14,35 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationReadState;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationActionIdTypecast;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationActionTypeTypecast;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationActorTypecast;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Typecast\NotificationReadStateTypecast;
-use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Repository\CycleNotificationRepository;
-use App\Shared\Infrastructure\Persistence\Cycle\HasTimestamps;
+use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Persistence\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
 /**
  * Строка инбокса (канал database) — создаётся фоновой рассылкой. Deep-link хранится в двух
  * nullable-колонках action_type/action_id и собирается доменным методом action().
  */
-#[Entity(
-    role: 'notification',
-    table: 'notifications',
-    repository: CycleNotificationRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class Notification
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: NotificationId::class)]
     public private(set) NotificationId $id;
 
-    #[Column(type: 'uuid', name: 'outbox_id', typecast: NotificationOutboxId::class)]
     public private(set) NotificationOutboxId $outboxId;
 
-    #[Column(type: 'uuid', name: 'user_id', typecast: UserId::class)]
     public private(set) UserId $userId;
 
-    #[Column(type: 'string(255)', typecast: NotificationTypeCode::class)]
     public private(set) NotificationTypeCode $type;
 
-    #[Column(type: 'string(255)', typecast: NotificationTitle::class)]
     public private(set) NotificationTitle $title;
 
-    #[Column(type: 'text', typecast: NotificationBody::class)]
     public private(set) NotificationBody $body;
 
-    #[Column(type: 'string(255)', name: 'action_type', nullable: true, typecast: NotificationActionTypeTypecast::class)]
     public private(set) NotificationActionType $actionType;
 
-    #[Column(type: 'string(255)', name: 'action_id', nullable: true, typecast: NotificationActionIdTypecast::class)]
     public private(set) NotificationActionId $actionId;
 
-    #[Column(type: 'json', name: 'actor', nullable: true, typecast: NotificationActorTypecast::class)]
     public private(set) NotificationActor $actor;
 
-    #[Column(type: 'datetime', name: 'read_at', nullable: true, typecast: NotificationReadStateTypecast::class)]
     public private(set) NotificationReadState $readState;
 
     public static function create(
@@ -92,6 +67,37 @@ final class Notification
         $notification->actor = $actor;
         $notification->readState = NotificationReadState::unread();
         $notification->initializeTimestamps($triggeredAt);
+
+        return $notification;
+    }
+
+    public static function restore(
+        NotificationId $id,
+        NotificationOutboxId $outboxId,
+        UserId $userId,
+        NotificationTypeCode $type,
+        NotificationTitle $title,
+        NotificationBody $body,
+        NotificationActionType $actionType,
+        NotificationActionId $actionId,
+        NotificationActor $actor,
+        NotificationReadState $readState,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $notification = new self();
+        $notification->id = $id;
+        $notification->outboxId = $outboxId;
+        $notification->userId = $userId;
+        $notification->type = $type;
+        $notification->title = $title;
+        $notification->body = $body;
+        $notification->actionType = $actionType;
+        $notification->actionId = $actionId;
+        $notification->actor = $actor;
+        $notification->readState = $readState;
+        $notification->createdAt = $createdAt;
+        $notification->updatedAt = $updatedAt;
 
         return $notification;
     }

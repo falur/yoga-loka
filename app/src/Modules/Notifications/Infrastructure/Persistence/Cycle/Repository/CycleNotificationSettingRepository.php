@@ -9,6 +9,9 @@ use App\Modules\Notifications\Domain\Entity\NotificationSetting;
 use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Columns\NotificationSettingColumns;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Entity\CycleNotificationSettingEntity;
+use App\Modules\Notifications\Infrastructure\Persistence\Cycle\Mapper\NotificationSettingMapper;
 use App\Shared\Domain\ValueObject\UserId;
 use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\ORM\EntityManagerInterface;
@@ -16,17 +19,18 @@ use Cycle\ORM\ORM;
 use Cycle\ORM\Select;
 
 /**
- * @extends AbstractRepository<NotificationSetting>
+ * @extends AbstractRepository<CycleNotificationSettingEntity>
  */
 final class CycleNotificationSettingRepository extends AbstractRepository implements NotificationSettingRepository
 {
     /**
-     * @param Select<NotificationSetting> $select
+     * @param Select<CycleNotificationSettingEntity> $select
      */
     public function __construct(
         Select $select,
         ORM $orm,
         string $role,
+        private NotificationSettingMapper $notificationSettingMapper,
         private EntityManagerInterface $entityManager,
     ) {
         parent::__construct(select: $select, orm: $orm, role: $role);
@@ -35,22 +39,36 @@ final class CycleNotificationSettingRepository extends AbstractRepository implem
     #[\Override]
     public function findForUserAndType(UserId $userId, NotificationTypeCode $type): NotificationSettingCollection
     {
-        return new NotificationSettingCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->where('type', $type->value())
-                ->fetchAll(),
-        );
+        $notificationSettingCollection = new NotificationSettingCollection();
+
+        /** @var iterable<CycleNotificationSettingEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(NotificationSettingColumns::USER_ID, $userId->value())
+            ->where(NotificationSettingColumns::TYPE, $type->value())
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $notificationSettingCollection->push($this->notificationSettingMapper->toDomain($cycleEntity));
+        }
+
+        return $notificationSettingCollection;
     }
 
     #[\Override]
     public function findForUser(UserId $userId): NotificationSettingCollection
     {
-        return new NotificationSettingCollection(
-            $this->select()
-                ->where('user_id', $userId->value())
-                ->fetchAll(),
-        );
+        $notificationSettingCollection = new NotificationSettingCollection();
+
+        /** @var iterable<CycleNotificationSettingEntity> $cycleEntities */
+        $cycleEntities = $this->select()
+            ->where(NotificationSettingColumns::USER_ID, $userId->value())
+            ->fetchAll();
+
+        foreach ($cycleEntities as $cycleEntity) {
+            $notificationSettingCollection->push($this->notificationSettingMapper->toDomain($cycleEntity));
+        }
+
+        return $notificationSettingCollection;
     }
 
     #[\Override]
@@ -59,18 +77,27 @@ final class CycleNotificationSettingRepository extends AbstractRepository implem
         NotificationTypeCode $type,
         NotificationChannel $channel,
     ): NotificationSetting|null {
-        return $this->findOne([
-            'user_id' => $userId->value(),
-            'type' => $type->value(),
-            'channel' => $channel->value,
+        /** @var CycleNotificationSettingEntity|null $cycleEntity */
+        $cycleEntity = $this->findOne([
+            NotificationSettingColumns::USER_ID => $userId->value(),
+            NotificationSettingColumns::TYPE => $type->value(),
+            NotificationSettingColumns::CHANNEL => $channel->value,
         ]);
+
+        return $cycleEntity === null ? null : $this->notificationSettingMapper->toDomain($cycleEntity);
     }
 
     #[\Override]
     public function saveAll(NotificationSettingCollection $notificationSettings): void
     {
         foreach ($notificationSettings as $notificationSetting) {
-            $this->entityManager->persist($notificationSetting);
+            /** @var CycleNotificationSettingEntity|null $cycleEntity */
+            $cycleEntity = $this->findOne([NotificationSettingColumns::ID => $notificationSetting->id->value()]);
+
+            $this->entityManager->persist($this->notificationSettingMapper->toCycleEntity(
+                notificationSetting: $notificationSetting,
+                cycleEntity: $cycleEntity,
+            ));
         }
 
         $this->entityManager->run();

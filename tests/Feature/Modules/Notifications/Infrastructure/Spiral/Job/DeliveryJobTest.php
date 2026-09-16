@@ -27,7 +27,6 @@ use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\NullLogger;
 use Spiral\Queue\Exception\RetryException;
@@ -165,13 +164,11 @@ final class DeliveryJobTest extends DatabaseTestCase
 
     private function persistToken(UserId $userId): void
     {
-        $entityManager = $this->getContainer()->get(EntityManagerInterface::class);
-        $entityManager->persist(NotificationDeviceToken::create(
+        $this->getContainer()->get(NotificationDeviceTokenRepository::class)->save(NotificationDeviceToken::create(
             userId: $userId,
             token: DeviceToken::fromString('fcm-token'),
             platform: DevicePlatform::Ios,
         ));
-        $entityManager->run();
     }
 
     /**

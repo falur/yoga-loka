@@ -19,7 +19,6 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Testing\Http\TestResponse;
 use Tests\DatabaseTestCase;
@@ -451,25 +450,18 @@ final class NotificationHttpTest extends DatabaseTestCase
             actor: $actor ?? NotificationActor::none(),
             triggeredAt: new \DateTimeImmutable('2026-06-13 10:00:00'),
         );
-        $this->persist($notification);
+        $this->notificationRepository()->save($notification);
 
         return $notification;
     }
 
     private function persistToken(UserId $userId, string $token): void
     {
-        $this->persist(NotificationDeviceToken::create(
+        $this->deviceTokenRepository()->save(NotificationDeviceToken::create(
             userId: $userId,
             token: DeviceToken::fromString($token),
             platform: DevicePlatform::Ios,
         ));
-    }
-
-    private function persist(object $entity): void
-    {
-        $entityManager = $this->getContainer()->get(EntityManagerInterface::class);
-        $entityManager->persist($entity);
-        $entityManager->run();
     }
 
     private function notificationRepository(): NotificationRepository

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Notifications\Repository;
 
+use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollection;
+use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
@@ -21,7 +23,6 @@ use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepositor
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use Tests\DatabaseTestCase;
 
 final class NotificationRepositoryTest extends DatabaseTestCase
@@ -155,12 +156,11 @@ final class NotificationRepositoryTest extends DatabaseTestCase
     {
         $outboxId = NotificationOutboxId::generate();
 
-        $this->entityManager()->persist($this->createNotification(userId: UserId::generate(), outboxId: $outboxId));
-        $this->entityManager()->persist($this->createNotification(userId: UserId::generate(), outboxId: $outboxId));
+        $this->notificationRepository()->save($this->createNotification(userId: UserId::generate(), outboxId: $outboxId));
 
         $this->expectException(\Throwable::class);
 
-        $this->entityManager()->run();
+        $this->notificationRepository()->save($this->createNotification(userId: UserId::generate(), outboxId: $outboxId));
     }
 
     public function testSettingRoundTripAndLookups(): void
@@ -205,22 +205,21 @@ final class NotificationRepositoryTest extends DatabaseTestCase
         $userId = UserId::generate();
         $type = NotificationTypeCode::fromString('chat.message_received');
 
-        $this->entityManager()->persist(NotificationSetting::create(
+        $this->settingRepository()->saveAll(new NotificationSettingCollection([NotificationSetting::create(
             userId: $userId,
             type: $type,
             channel: NotificationChannel::Push,
             status: NotificationSettingStatus::Enabled,
-        ));
-        $this->entityManager()->persist(NotificationSetting::create(
+        )]));
+
+        $this->expectException(\Throwable::class);
+
+        $this->settingRepository()->saveAll(new NotificationSettingCollection([NotificationSetting::create(
             userId: $userId,
             type: $type,
             channel: NotificationChannel::Push,
             status: NotificationSettingStatus::Disabled,
-        ));
-
-        $this->expectException(\Throwable::class);
-
-        $this->entityManager()->run();
+        )]));
     }
 
     public function testDeviceTokenRoundTripReassignAndLookups(): void
@@ -258,20 +257,50 @@ final class NotificationRepositoryTest extends DatabaseTestCase
     {
         $token = DeviceToken::fromString('fcm-token');
 
-        $this->entityManager()->persist(NotificationDeviceToken::create(
+        $this->deviceTokenRepository()->save(NotificationDeviceToken::create(
             userId: UserId::generate(),
             token: $token,
             platform: DevicePlatform::Ios,
         ));
-        $this->entityManager()->persist(NotificationDeviceToken::create(
+
+        $this->expectException(\Throwable::class);
+
+        $this->deviceTokenRepository()->save(NotificationDeviceToken::create(
             userId: UserId::generate(),
             token: $token,
             platform: DevicePlatform::Android,
         ));
+    }
 
-        $this->expectException(\Throwable::class);
+    /**
+     * Токен устройства мог быть снят параллельно (переустановка приложения, отзыв другим
+     * устройством) между чтением и удалением: домен больше не несёт разметку Cycle, поэтому
+     * репозиторий сам ищет строку перед удалением и молча пропускает отсутствующую — как
+     * для одиночного delete(), так и для каждого элемента deleteAll().
+     */
+    public function testDeleteAndDeleteAllIgnoreDeviceTokensMissingInDatabase(): void
+    {
+        $storedToken = NotificationDeviceToken::create(
+            userId: UserId::generate(),
+            token: DeviceToken::fromString('stored-token'),
+            platform: DevicePlatform::Ios,
+        );
+        $this->persist($storedToken);
+        $this->cleanOrmHeap();
 
-        $this->entityManager()->run();
+        $missingToken = NotificationDeviceToken::create(
+            userId: UserId::generate(),
+            token: DeviceToken::fromString('missing-token'),
+            platform: DevicePlatform::Android,
+        );
+
+        $this->deviceTokenRepository()->delete($missingToken);
+        $this->deviceTokenRepository()->deleteAll(new NotificationDeviceTokenCollection([$missingToken, $storedToken]));
+        $this->cleanOrmHeap();
+
+        // Отсутствующий токен пропущен без ошибки, существующий — удалён.
+        self::assertNull($this->deviceTokenRepository()->findByToken(DeviceToken::fromString('missing-token')));
+        self::assertNull($this->deviceTokenRepository()->findByToken(DeviceToken::fromString('stored-token')));
     }
 
     private function createNotification(
@@ -315,15 +344,20 @@ final class NotificationRepositoryTest extends DatabaseTestCase
         return \array_map(static fn(Notification $notification): string => $notification->id->value(), $notifications);
     }
 
-    private function persist(object $entity): void
+    /**
+     * Notification/NotificationSetting/NotificationDeviceToken — чистые доменные сущности без
+     * Cycle-разметки: персист в тестах идёт через настоящий Repository, как в production-коде,
+     * а не напрямую через EntityManager — save()/saveAll() сами находят существующую строку
+     * по id перед persist(), поэтому повторный persist() уже сохранённой (и затем изменённой)
+     * сущности корректно превращается в UPDATE, а не в повторный INSERT.
+     */
+    private function persist(Notification|NotificationSetting|NotificationDeviceToken $entity): void
     {
-        $this->entityManager()->persist($entity);
-        $this->entityManager()->run();
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return $this->getContainer()->get(EntityManagerInterface::class);
+        match (true) {
+            $entity instanceof Notification => $this->notificationRepository()->save($entity),
+            $entity instanceof NotificationSetting => $this->settingRepository()->saveAll(new NotificationSettingCollection([$entity])),
+            $entity instanceof NotificationDeviceToken => $this->deviceTokenRepository()->save($entity),
+        };
     }
 
     private function notificationRepository(): NotificationRepository

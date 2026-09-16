@@ -16,7 +16,6 @@ use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
 use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
 use Tests\Support\Media\PersistsMedia;
@@ -226,13 +225,11 @@ final class SendPushNotificationHandlerTest extends DatabaseTestCase
 
     private function persistToken(UserId $userId, string $token): void
     {
-        $entityManager = $this->getContainer()->get(EntityManagerInterface::class);
-        $entityManager->persist(NotificationDeviceToken::create(
+        $this->deviceTokenRepository()->save(NotificationDeviceToken::create(
             userId: $userId,
             token: DeviceToken::fromString($token),
             platform: DevicePlatform::Ios,
         ));
-        $entityManager->run();
     }
 
     private function deviceTokenRepository(): NotificationDeviceTokenRepository

@@ -43,7 +43,6 @@ use App\Modules\Notifications\Domain\Exception\UnknownDevicePlatformException;
 use App\Modules\Notifications\Domain\Exception\UnknownNotificationChannelException;
 use App\Modules\Notifications\Domain\Exception\UnknownNotificationTypeException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Tests\DatabaseTestCase;
@@ -215,8 +214,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
         $this->persistNotification($userId);
         $read = $this->persistNotification($userId);
         $read->markRead(new \DateTimeImmutable('2026-06-13 11:00:00'));
-        $this->entityManager()->persist($read);
-        $this->entityManager()->run();
+        $this->notificationRepository()->save($read);
 
         $result = $this->queryBus()->dispatch(
             query: new GetUnreadCountQuery(userId: $userId->value()),
@@ -308,8 +306,7 @@ final class NotificationUseCaseTest extends DatabaseTestCase
             actor: NotificationActor::none(),
             triggeredAt: new \DateTimeImmutable('2026-06-13 10:00:00'),
         );
-        $this->entityManager()->persist($notification);
-        $this->entityManager()->run();
+        $this->notificationRepository()->save($notification);
 
         return $notification;
     }
@@ -355,11 +352,6 @@ final class NotificationUseCaseTest extends DatabaseTestCase
     private function queryBus(): QueryBusInterface
     {
         return $this->getContainer()->get(QueryBusInterface::class);
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return $this->getContainer()->get(EntityManagerInterface::class);
     }
 
     private function notificationRepository(): NotificationRepository

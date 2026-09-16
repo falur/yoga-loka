@@ -13,7 +13,8 @@ use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\InvalidLoginCodeException;
+use App\Modules\Auth\Domain\Exception\SignInNotAllowedException;
 use Tests\Feature\Modules\Auth\Application\AuthApplicationTestCase;
 
 final class LoginCodeVerificationTest extends AuthApplicationTestCase
@@ -54,8 +55,8 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
 
         try {
             $this->verifyHandler()->handle(new VerifyLoginCodeCommand(email: 'user@example.com', code: '000000'));
-            self::fail('Ожидалось AuthenticationException.');
-        } catch (AuthenticationException $authenticationException) {
+            self::fail('Ожидалось InvalidLoginCodeException.');
+        } catch (InvalidLoginCodeException $authenticationException) {
             self::assertSame('app.auth.invalid_code', $authenticationException->getMessage());
         }
 
@@ -70,7 +71,7 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
     {
         $this->persistLoginCode('user@example.com', '123456', failedAttempts: 5);
 
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidLoginCodeException::class);
 
         $this->verifyHandler()->handle(new VerifyLoginCodeCommand(email: 'user@example.com', code: '123456'));
     }
@@ -83,14 +84,14 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
             expiration: Expiration::fromDateTime((new \DateTimeImmutable())->sub(new \DateInterval('PT1H'))),
         );
 
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidLoginCodeException::class);
 
         $this->verifyHandler()->handle(new VerifyLoginCodeCommand(email: 'user@example.com', code: '123456'));
     }
 
     public function testMissingCodeThrows(): void
     {
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidLoginCodeException::class);
 
         $this->verifyHandler()->handle(new VerifyLoginCodeCommand(email: 'absent@example.com', code: '123456'));
     }
@@ -102,8 +103,8 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
 
         try {
             $this->verifyHandler()->handle(new VerifyLoginCodeCommand(email: 'banned@example.com', code: '123456'));
-            self::fail('Ожидалось AuthenticationException.');
-        } catch (AuthenticationException $authenticationException) {
+            self::fail('Ожидалось SignInNotAllowedException.');
+        } catch (SignInNotAllowedException $authenticationException) {
             self::assertSame('app.auth.sign_in_not_allowed', $authenticationException->getMessage());
         }
 
@@ -121,7 +122,7 @@ final class LoginCodeVerificationTest extends AuthApplicationTestCase
                 tokenGenerator: new RandomTokenGenerator(),
                 authTokenStorage: $this->tokenStorage(),
                 users: $this->users(),
-                entityManager: $this->entityManager(),
+                registrationTicketRepository: $this->registrationTicketRepository(),
             ),
         );
     }

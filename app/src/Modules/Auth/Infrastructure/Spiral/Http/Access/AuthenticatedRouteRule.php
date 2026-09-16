@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Infrastructure\Spiral\Http\Access;
 
 use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\UnauthenticatedException;
 use App\Shared\Infrastructure\Spiral\Http\Access\AccessRule;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -22,7 +22,7 @@ final readonly class AuthenticatedRouteRule implements AccessRule
     public function check(object $declaration, ServerRequestInterface $request): void
     {
         if ($request->getAttribute(AuthContextAttributeMiddleware::ATTRIBUTE_USER_ID) === null) {
-            throw new AuthenticationException('app.auth.unauthenticated');
+            throw new UnauthenticatedException();
         }
     }
 }

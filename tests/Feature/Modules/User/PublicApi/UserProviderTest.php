@@ -6,8 +6,8 @@ namespace Tests\Feature\Modules\User\PublicApi;
 
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Shared\Domain\Enum\Locale;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\User\Domain\Exception\EmailAlreadyTakenException;
+use App\Modules\User\Domain\Exception\UserNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Tests\Feature\Modules\User\Application\UserApplicationTestCase;
 
@@ -40,7 +40,7 @@ final class UserProviderTest extends UserApplicationTestCase
         $existing = $this->persistUser();
         $this->cleanOrmHeap();
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(EmailAlreadyTakenException::class);
         $this->expectExceptionMessage('app.user.email_taken');
 
         $this->userProvider()->createUser(
@@ -102,7 +102,7 @@ final class UserProviderTest extends UserApplicationTestCase
 
     public function testProfileThrowsNotFoundForUnknownUser(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(UserNotFoundException::class);
         $this->expectExceptionMessage('app.user.not_found');
 
         $this->userProvider()->profile(UserId::generate()->value());

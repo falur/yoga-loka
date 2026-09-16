@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\System\Infrastructure\Spiral\Http\Controller;
 
 use App\Modules\Auth\Public\Attribute\PublicRoute;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\System\Application\Exception\OpenApiSpecificationNotGeneratedException;
+use App\Modules\System\Application\Exception\SwaggerUiDisabledException;
 use App\Modules\System\Infrastructure\Spiral\Http\View\SwaggerView;
 use App\Shared\Infrastructure\Spiral\Configuration\OpenApi\OpenApiConfig;
 use App\Shared\Infrastructure\Spiral\DirectoryAlias;
@@ -30,7 +31,7 @@ final readonly class SwaggerController
     public function index(): HtmlResponse
     {
         if (!$this->openApiConfig->swaggerEnabled) {
-            throw new NotFoundException('app.system.swagger_ui_disabled');
+            throw new SwaggerUiDisabledException();
         }
 
         return new HtmlResponse(html: $this->swaggerView->render());
@@ -42,7 +43,7 @@ final readonly class SwaggerController
     public function spec(): FileContentResponse
     {
         if (!$this->openApiConfig->swaggerEnabled) {
-            throw new NotFoundException('app.system.swagger_ui_disabled');
+            throw new SwaggerUiDisabledException();
         }
 
         $openApiFile = $this->openApiConfig->outputFile(
@@ -50,7 +51,7 @@ final readonly class SwaggerController
         );
 
         if (!\is_file($openApiFile)) {
-            throw new NotFoundException('app.system.openapi_yaml_not_generated');
+            throw new OpenApiSpecificationNotGeneratedException();
         }
 
         return new FileContentResponse(

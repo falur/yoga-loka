@@ -10,7 +10,7 @@ use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfile
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Shared\Domain\Enum\Locale;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\User\Domain\Exception\UserNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 
 final class GetUserPublicProfileHandlerTest extends UserApplicationTestCase
@@ -88,7 +88,7 @@ final class GetUserPublicProfileHandlerTest extends UserApplicationTestCase
 
     public function testThrowsWhenUserNotFound(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(UserNotFoundException::class);
 
         $this->handler()->handle(new GetUserPublicProfileQuery(UserId::generate()->value()));
     }

@@ -8,7 +8,7 @@ use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionComm
 use App\Modules\Auth\Application\Command\RevokeUserSession\RevokeUserSessionHandler;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Auth\Domain\Exception\SessionNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Ramsey\Uuid\Uuid;
@@ -38,7 +38,7 @@ final class RevokeUserSessionHandlerTest extends AuthApplicationTestCase
         $accessView = $this->tokenStorage()->load($pair->accessToken);
         self::assertInstanceOf(TokenInterface::class, $accessView);
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(SessionNotFoundException::class);
 
         $this->handler()->handle(new RevokeUserSessionCommand(
             userId: UserId::generate()->value(),
@@ -48,7 +48,7 @@ final class RevokeUserSessionHandlerTest extends AuthApplicationTestCase
 
     public function testThrowsForUnknownSession(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(SessionNotFoundException::class);
 
         $this->handler()->handle(new RevokeUserSessionCommand(
             userId: UserId::generate()->value(),
@@ -58,7 +58,7 @@ final class RevokeUserSessionHandlerTest extends AuthApplicationTestCase
 
     public function testThrowsForNonUuidV7SessionWithoutServerError(): void
     {
-        $this->expectException(NotFoundException::class);
+        $this->expectException(SessionNotFoundException::class);
 
         $this->handler()->handle(new RevokeUserSessionCommand(
             userId: UserId::generate()->value(),

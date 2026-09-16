@@ -11,8 +11,8 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
-use App\Shared\Domain\Exception\AuthenticationException;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Auth\Domain\Exception\InvalidRegistrationTicketException;
+use App\Modules\User\Domain\Exception\NicknameAlreadyTakenException;
 use Psr\Log\NullLogger;
 
 final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
@@ -44,7 +44,7 @@ final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
 
     public function testRejectsUnknownTicket(): void
     {
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRegistrationTicketException::class);
 
         $this->handler()->handle(new CompleteRegistrationCommand(
             ticket: 'unknown-ticket',
@@ -62,7 +62,7 @@ final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
             expiration: Expiration::fromDateTime((new \DateTimeImmutable())->sub(new \DateInterval('PT1H'))),
         );
 
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRegistrationTicketException::class);
 
         $this->handler()->handle(new CompleteRegistrationCommand(
             ticket: 'ticket-raw-2',
@@ -84,8 +84,8 @@ final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
                 nickname: 'taken.nick',
                 requestLocale: 'ru',
             ));
-            self::fail('Ожидалось ValidationException.');
-        } catch (ValidationException $validationException) {
+            self::fail('Ожидалось NicknameAlreadyTakenException.');
+        } catch (NicknameAlreadyTakenException $validationException) {
             self::assertSame('app.user.nickname_taken', $validationException->getMessage());
         }
 
@@ -103,7 +103,6 @@ final class CompleteRegistrationHandlerTest extends AuthApplicationTestCase
             secretHasher: $this->secretHasher(),
             authTokenStorage: $this->tokenStorage(),
             users: $this->users(),
-            entityManager: $this->entityManager(),
             logger: new NullLogger(),
         );
     }

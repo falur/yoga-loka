@@ -7,7 +7,7 @@ namespace App\Modules\Posts\Application\Post;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Public\Dto\UserProfileDto;
 use App\Modules\User\Public\Dto\UserProfileDtoCollection;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\Posts\Domain\Exception\MentionedUserNotFoundException;
 
 /**
  * Разрешение получателей упоминаний и сборка профилей для сценариев записей и комментариев.
@@ -21,12 +21,11 @@ use App\Shared\Domain\Exception\ValidationException;
  *   создании, к моменту рассылки кого-то могло не стать -> недоступные тихо пропускаются без 422
  *   (resolveExisting()). Так публикация черновика не падает на строгой проверке полноты.
  *
- * Ключ перевода ошибки упоминания и правило проверки полноты живут здесь, в одном месте.
+ * Правило проверки полноты живёт здесь, в одном месте; причину отказа называет
+ * MentionedUserNotFoundException, который несёт свой ключ перевода и статус.
  */
 final readonly class MentionRecipientResolver
 {
-    private const string MENTION_USER_NOT_FOUND_KEY = 'app.posts.mention_user_not_found';
-
     public function __construct(
         private UserContract $users,
     ) {}
@@ -41,7 +40,7 @@ final readonly class MentionRecipientResolver
     public function requireAllExist(array $userIds): void
     {
         if (!$this->users->existsAll($userIds)) {
-            throw new ValidationException(self::MENTION_USER_NOT_FOUND_KEY);
+            throw new MentionedUserNotFoundException();
         }
     }
 
@@ -60,7 +59,7 @@ final readonly class MentionRecipientResolver
         $recipients = $this->profiles($userIds);
 
         if ($recipients->count() !== \count($userIds)) {
-            throw new ValidationException(self::MENTION_USER_NOT_FOUND_KEY);
+            throw new MentionedUserNotFoundException();
         }
 
         return $recipients;

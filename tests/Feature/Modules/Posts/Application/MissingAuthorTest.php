@@ -22,7 +22,7 @@ use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Tags\Public\Contract\TagsContract;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Public\Dto\UserProfileDtoCollection;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Exception\PostAuthorNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
 use Tests\Feature\Modules\Posts\PostsRepositoryTestCase;
 
@@ -50,7 +50,7 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
         $this->persist($post);
         $this->cleanOrmHeap();
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(PostAuthorNotFoundException::class);
         $this->expectExceptionMessage('app.posts.author_not_found');
 
         $this->postViewAssembler()->fromPosts(
@@ -84,7 +84,7 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
         $this->persist($comment);
         $this->cleanOrmHeap();
 
-        $this->expectException(NotFoundException::class);
+        $this->expectException(PostAuthorNotFoundException::class);
         $this->expectExceptionMessage('app.posts.author_not_found');
 
         $this->commentViewAssembler()->fromComments(
@@ -100,9 +100,6 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
             media: $this->getContainer()->get(MediaContract::class),
             tags: $this->getContainer()->get(TagsContract::class),
             postRepository: $this->postRepository(),
-            postMediaRepository: $this->postMediaRepository(),
-            postTagRepository: $this->postTagRepository(),
-            postLikeRepository: $this->postLikeRepository(),
         );
     }
 
@@ -110,7 +107,7 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
     {
         return new CommentViewAssembler(
             users: $this->usersWithoutProfiles(),
-            commentLikeRepository: $this->commentLikeRepository(),
+            commentRepository: $this->commentRepository(),
         );
     }
 

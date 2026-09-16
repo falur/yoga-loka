@@ -9,7 +9,7 @@ use App\Modules\Auth\Infrastructure\Spiral\Http\Access\PublicRouteRule;
 use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeMiddleware;
 use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Auth\Public\Attribute\PublicRoute;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\UnauthenticatedException;
 use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
@@ -42,7 +42,7 @@ final class AuthRouteAccessRuleTest extends TestCase
 
         try {
             $rule->check(declaration: new AuthenticatedRoute(), request: $request);
-        } catch (AuthenticationException $exception) {
+        } catch (UnauthenticatedException $exception) {
             self::assertSame('app.auth.unauthenticated', $exception->translationKey());
             self::assertSame('auth', $exception->translationDomain());
             self::assertSame(401, $exception->getCode());

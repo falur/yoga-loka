@@ -7,7 +7,8 @@ namespace App\Modules\Auth\Application\Command\VerifyLoginCode;
 use App\Modules\Auth\Application\Command\ResolveLoginCode\LoginCodeOutcome;
 use App\Modules\Auth\Application\Command\ResolveLoginCode\ResolveLoginCodeCommand;
 use App\Modules\Auth\Application\Command\ResolveLoginCode\ResolveLoginCodeHandler;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\InvalidLoginCodeException;
+use App\Modules\Auth\Domain\Exception\SignInNotAllowedException;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 
@@ -47,11 +48,11 @@ final readonly class VerifyLoginCodeHandler
                 tokens: null,
                 registrationTicket: $resolution->registrationTicket,
             ),
-            LoginCodeOutcome::NotAllowed => throw new AuthenticationException('app.auth.sign_in_not_allowed'),
+            LoginCodeOutcome::NotAllowed => throw new SignInNotAllowedException(),
             LoginCodeOutcome::NoCode,
             LoginCodeOutcome::Expired,
             LoginCodeOutcome::Exhausted,
-            LoginCodeOutcome::Wrong => throw new AuthenticationException('app.auth.invalid_code'),
+            LoginCodeOutcome::Wrong => throw new InvalidLoginCodeException(),
         };
     }
 }

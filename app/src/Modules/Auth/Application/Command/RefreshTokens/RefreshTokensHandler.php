@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Обновление пары токенов: ротация refresh-токена (удаление старой пары сессии и выдача новой).
- * Невалидный/истёкший/не-refresh токен → AuthenticationException (401) из хранилища.
+ * Невалидный/истёкший/не-refresh токен → InvalidRefreshTokenException (401) из хранилища.
  */
 final readonly class RefreshTokensHandler
 {

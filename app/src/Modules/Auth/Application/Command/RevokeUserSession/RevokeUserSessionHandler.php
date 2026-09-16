@@ -6,7 +6,7 @@ namespace App\Modules\Auth\Application\Command\RevokeUserSession;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
 use App\Modules\Auth\Domain\ValueObject\SessionId;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Auth\Domain\Exception\SessionNotFoundException;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
@@ -30,7 +30,7 @@ final readonly class RevokeUserSessionHandler
     public function handle(RevokeUserSessionCommand $command): void
     {
         if (!AbstractUuidV7Id::isUuidV7($command->sessionId)) {
-            throw new NotFoundException('app.auth.session_not_found');
+            throw new SessionNotFoundException();
         }
 
         $this->authTokenStorage->revokeUserSession(

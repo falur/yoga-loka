@@ -9,7 +9,7 @@ use App\Modules\Auth\Application\Command\Logout\LogoutHandler;
 use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensCommand;
 use App\Modules\Auth\Application\Command\RefreshTokens\RefreshTokensHandler;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
-use App\Shared\Domain\Exception\AuthenticationException;
+use App\Modules\Auth\Domain\Exception\InvalidRefreshTokenException;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Spiral\Auth\TokenInterface;
@@ -30,7 +30,7 @@ final class RefreshTokensAndLogoutTest extends AuthApplicationTestCase
 
     public function testRefreshRejectsInvalidToken(): void
     {
-        $this->expectException(AuthenticationException::class);
+        $this->expectException(InvalidRefreshTokenException::class);
 
         $this->refreshHandler()->handle(new RefreshTokensCommand(refreshToken: 'invalid-token'));
     }

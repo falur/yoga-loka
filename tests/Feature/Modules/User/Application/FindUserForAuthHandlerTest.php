@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\User\Application;
 
-use App\Modules\User\Application\Dto\UserAuthView;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthQuery;
+use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthResult;
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
@@ -27,7 +27,7 @@ final class FindUserForAuthHandlerTest extends DatabaseTestCase
 
         $view = $this->handler()->handle(new FindUserForAuthQuery(email: 'ACTIVE@example.com'));
 
-        self::assertInstanceOf(UserAuthView::class, $view);
+        self::assertInstanceOf(FindUserForAuthResult::class, $view);
         self::assertSame($activeUser->id->value(), $view->userId);
         self::assertTrue($view->canSignIn);
     }
@@ -41,7 +41,7 @@ final class FindUserForAuthHandlerTest extends DatabaseTestCase
 
         $view = $this->handler()->handle(new FindUserForAuthQuery(email: 'banned@example.com'));
 
-        self::assertInstanceOf(UserAuthView::class, $view);
+        self::assertInstanceOf(FindUserForAuthResult::class, $view);
         self::assertFalse($view->canSignIn);
     }
 
@@ -54,7 +54,7 @@ final class FindUserForAuthHandlerTest extends DatabaseTestCase
 
         $view = $this->handler()->handle(new FindUserForAuthQuery(email: 'deleted@example.com'));
 
-        self::assertInstanceOf(UserAuthView::class, $view);
+        self::assertInstanceOf(FindUserForAuthResult::class, $view);
         self::assertFalse($view->canSignIn);
     }
 

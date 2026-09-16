@@ -97,7 +97,7 @@ final class GetUserPublicProfileHandlerTest extends UserApplicationTestCase
     {
         return new GetUserPublicProfileHandler(
             userRepository: $this->userRepository(),
-            assembler: $this->profileHandlerAssembler(),
+            media: $this->mediaContract(),
         );
     }
 }

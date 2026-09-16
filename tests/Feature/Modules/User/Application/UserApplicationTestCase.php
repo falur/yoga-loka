@@ -9,6 +9,7 @@ use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentH
 use App\Modules\Media\Application\Query\CheckMediaAttachable\CheckMediaAttachableHandler;
 use App\Modules\Media\Application\Query\FindMediaUrls\FindMediaUrlsHandler;
 use App\Modules\Media\Infrastructure\Spiral\PublicApi\MediaProvider;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
@@ -27,7 +28,6 @@ use App\Modules\Media\Infrastructure\Persistence\Cycle\Mapper\MediaMapper;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
-use App\Modules\User\Application\Profile\UserPublicProfileAssembler;
 use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileHandler;
@@ -53,7 +53,7 @@ use Tests\DatabaseTestCase;
 
 /**
  * Общая основа feature-тестов публичного профиля: создаёт пользователей и медиа, собирает
- * UserPublicProfileAssembler со стабом файлового сервиса (URL предсказуем, без обращения к S3).
+ * MediaContract со стабом файлового сервиса (URL предсказуем, без обращения к S3).
  */
 abstract class UserApplicationTestCase extends DatabaseTestCase
 {
@@ -158,25 +158,23 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
         return $conversion;
     }
 
-    protected function profileHandlerAssembler(): UserPublicProfileAssembler
+    protected function mediaContract(): MediaContract
     {
         $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('publicUrl')->willReturn(self::STUBBED_AVATAR_URL);
 
-        return new UserPublicProfileAssembler(
-            media: new MediaProvider(
-                commandBus: $this->getContainer()->get(CommandBusInterface::class),
-                queryBus: $this->getContainer()->get(QueryBusInterface::class),
-                findMediaUrlsHandler: new FindMediaUrlsHandler(
-                    mediaRepository: $this->getContainer()->get(MediaRepository::class),
-                    mediaUrlService: new MediaUrlService(
-                        mediaFileService: $fileService,
-                        mediaConfig: $this->getContainer()->get(MediaConfig::class),
-                    ),
+        return new MediaProvider(
+            commandBus: $this->getContainer()->get(CommandBusInterface::class),
+            queryBus: $this->getContainer()->get(QueryBusInterface::class),
+            findMediaUrlsHandler: new FindMediaUrlsHandler(
+                mediaRepository: $this->getContainer()->get(MediaRepository::class),
+                mediaUrlService: new MediaUrlService(
+                    mediaFileService: $fileService,
+                    mediaConfig: $this->getContainer()->get(MediaConfig::class),
                 ),
-                checkMediaAttachableHandler: $this->getContainer()->get(CheckMediaAttachableHandler::class),
-                makeMediaPermanentHandler: $this->getContainer()->get(MakeMediaPermanentHandler::class),
             ),
+            checkMediaAttachableHandler: $this->getContainer()->get(CheckMediaAttachableHandler::class),
+            makeMediaPermanentHandler: $this->getContainer()->get(MakeMediaPermanentHandler::class),
         );
     }
 
@@ -186,7 +184,7 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
      */
     protected function userProvider(): UserProvider
     {
-        $assembler = $this->profileHandlerAssembler();
+        $media = $this->mediaContract();
 
         return new UserProvider(
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
@@ -201,11 +199,11 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
             checkUsersExistHandler: new CheckUsersExistHandler(userRepository: $this->userRepository()),
             getUserPublicProfileHandler: new GetUserPublicProfileHandler(
                 userRepository: $this->userRepository(),
-                assembler: $assembler,
+                media: $media,
             ),
             getUserPublicProfilesHandler: new GetUserPublicProfilesHandler(
                 userRepository: $this->userRepository(),
-                assembler: $assembler,
+                media: $media,
             ),
         );
     }

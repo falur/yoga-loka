@@ -6,7 +6,6 @@ namespace App\Modules\User\Infrastructure\Spiral\PublicApi;
 
 use App\Modules\User\Application\Command\CreateUser\CreateUserCommand;
 use App\Modules\User\Application\Command\CreateUser\CreateUserHandler;
-use App\Modules\User\Application\Dto\UserPublicProfileView;
 use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistHandler;
 use App\Modules\User\Application\Query\CheckUsersExist\CheckUsersExistQuery;
 use App\Modules\User\Application\Query\FindUserForAuth\FindUserForAuthHandler;
@@ -15,6 +14,7 @@ use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfile
 use App\Modules\User\Application\Query\GetUserPublicProfile\GetUserPublicProfileQuery;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesHandler;
 use App\Modules\User\Application\Query\GetUserPublicProfiles\GetUserPublicProfilesQuery;
+use App\Modules\User\Application\Result\UserProfileResult;
 use App\Modules\User\Public\Contract\UserContract;
 use App\Modules\User\Public\Dto\CreatedUserDto;
 use App\Modules\User\Public\Dto\UserProfileDto;
@@ -103,12 +103,12 @@ final readonly class UserProvider implements UserContract
 
         return new UserProfileDtoCollection(
             $profiles->toBase()
-                ->map(fn(UserPublicProfileView $profile): UserProfileDto => $this->profileDto($profile))
+                ->map(fn(UserProfileResult $profile): UserProfileDto => $this->profileDto($profile))
                 ->keyBy(static fn(UserProfileDto $profile): string => $profile->userId),
         );
     }
 
-    private function profileDto(UserPublicProfileView $profile): UserProfileDto
+    private function profileDto(UserProfileResult $profile): UserProfileDto
     {
         return new UserProfileDto(
             userId: $profile->userId,

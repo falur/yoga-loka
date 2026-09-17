@@ -16,6 +16,7 @@ use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Infrastructure\Storage\MediaStorageNotConfiguredException;
 use App\Modules\Media\Infrastructure\Storage\S3MediaFileService;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaStorageConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageBucketConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageS3OptionsConfig;
@@ -35,6 +36,7 @@ final class S3MediaFileServiceErrorTest extends TestCase
     {
         $fileService = new S3MediaFileService(
             storageConfig: new StorageConfig(default: 's3', servers: $this->servers(), buckets: []),
+            mediaStorageConfig: new MediaStorageConfig(default: 's3', servers: $this->servers(), buckets: []),
             clientProvider: new FakeS3ClientProvider(new FakeS3Client([])),
         );
 
@@ -46,7 +48,8 @@ final class S3MediaFileServiceErrorTest extends TestCase
     public function testThrowsWhenBucketNameIsMissing(): void
     {
         $fileService = new S3MediaFileService(
-            storageConfig: new StorageConfig(
+            storageConfig: new StorageConfig(default: 's3', servers: $this->servers(), buckets: []),
+            mediaStorageConfig: new MediaStorageConfig(
                 default: 's3',
                 servers: $this->servers(),
                 buckets: ['media-upload' => new StorageBucketConfig(server: 's3', bucket: null)],
@@ -62,7 +65,8 @@ final class S3MediaFileServiceErrorTest extends TestCase
     public function testThrowsWhenServerIsMissing(): void
     {
         $fileService = new S3MediaFileService(
-            storageConfig: new StorageConfig(
+            storageConfig: new StorageConfig(default: 's3', servers: $this->servers(), buckets: []),
+            mediaStorageConfig: new MediaStorageConfig(
                 default: 's3',
                 servers: $this->servers(),
                 buckets: ['media-upload' => new StorageBucketConfig(server: 'ghost', bucket: 'media-upload')],
@@ -358,7 +362,8 @@ final class S3MediaFileServiceErrorTest extends TestCase
     public function testObjectKeyOmitsPrefixWhenNotConfigured(): void
     {
         $fileService = new S3MediaFileService(
-            storageConfig: new StorageConfig(
+            storageConfig: new StorageConfig(default: 's3', servers: $this->servers(), buckets: []),
+            mediaStorageConfig: new MediaStorageConfig(
                 default: 's3',
                 servers: $this->servers(),
                 buckets: ['media-upload' => new StorageBucketConfig(server: 's3', bucket: 'media-upload', prefix: null)],
@@ -377,7 +382,8 @@ final class S3MediaFileServiceErrorTest extends TestCase
     private function serviceWith(FakeS3Client $client): S3MediaFileService
     {
         return new S3MediaFileService(
-            storageConfig: new StorageConfig(
+            storageConfig: new StorageConfig(default: 's3', servers: $this->servers(), buckets: []),
+            mediaStorageConfig: new MediaStorageConfig(
                 default: 's3',
                 servers: $this->servers(),
                 buckets: ['media-upload' => new StorageBucketConfig(server: 's3', bucket: 'media-upload', prefix: 'test')],

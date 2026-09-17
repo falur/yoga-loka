@@ -18,6 +18,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Infrastructure\Storage\MediaStorageNotConfiguredException;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaStorageConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageBucketConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageConfig;
 use Aws\Exception\AwsException;
@@ -42,6 +43,7 @@ final readonly class S3MediaFileService implements MediaFileServiceContract
 
     public function __construct(
         private StorageConfig $storageConfig,
+        private MediaStorageConfig $mediaStorageConfig,
         private S3ClientProvider $clientProvider,
     ) {}
 
@@ -336,7 +338,7 @@ final readonly class S3MediaFileService implements MediaFileServiceContract
 
     private function bucketConfig(MediaStorage $storage): StorageBucketConfig
     {
-        return $this->storageConfig->buckets[$storage->value]
+        return $this->mediaStorageConfig->buckets[$storage->value]
             ?? throw MediaStorageNotConfiguredException::bucketAliasMissing($storage);
     }
 

@@ -9,12 +9,11 @@ use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
 use Cycle\ORM\EntityManagerInterface;
 use Spiral\Queue\Config\QueueConfig;
 use Spiral\Queue\HandlerInterface;
-use Spiral\Queue\QueueRegistry;
 
 /**
  * @mixin \Tests\TestCase
@@ -75,13 +74,10 @@ trait OutboxRelayTestHelpers
      */
     private function registerOutboxJob(string $integrationEventClass, string $jobClass): void
     {
+        // register() сам кладёт Job в Spiral\Queue\QueueRegistry — отдельный setHandler() здесь не нужен.
         $this->getContainer()->get(IntegrationEventRoutingContract::class)->register(
             integrationEventClass: $integrationEventClass,
             jobClass: $jobClass,
-        );
-        $this->getContainer()->get(QueueRegistry::class)->setHandler(
-            jobType: $jobClass,
-            handler: $jobClass,
         );
     }
 

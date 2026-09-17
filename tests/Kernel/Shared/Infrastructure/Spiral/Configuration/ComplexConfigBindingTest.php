@@ -32,6 +32,7 @@ use Cycle\Database\Config\DatabaseConfig as CycleDatabaseConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Cycle\Config\CycleConfig as SpiralCycleConfig;
 use Spiral\Queue\Config\QueueConfig as SpiralQueueConfig;
+use Spiral\Queue\QueueRegistry;
 use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\Storage\Config\StorageConfig as SpiralStorageConfig;
 use Tests\TestCase;
@@ -76,8 +77,14 @@ final class ComplexConfigBindingTest extends TestCase
         self::assertSame('roadrunner', $queueConfig->connections['rabbitmq']->driver);
         self::assertSame('rabbitmq', $queueConfig->connections['rabbitmq']->pipeline);
         self::assertSame('json', $queueConfig->defaultSerializer);
-        self::assertSame(OutboxDebugLogJob::class, $queueConfig->registry->handlers[OutboxDebugLogJob::class]);
-        self::assertSame(OutboxQueueSerializer::class, $queueConfig->registry->serializers[OutboxDebugLogJob::class]);
+        // Пары «outbox-событие -> Job» не лежат в секции конфигурации: OutboxJobRegistry::register()
+        // кладёт handler и сериализатор прямо в реестр очереди Spiral, поэтому статический список в
+        // queue.php пуст, а фактическая регистрация проверяется через сам реестр.
+        self::assertSame([], $queueConfig->registry->handlers);
+        self::assertSame([], $queueConfig->registry->serializers);
+        $queueRegistry = $container->get(QueueRegistry::class);
+        self::assertInstanceOf(OutboxDebugLogJob::class, $queueRegistry->getHandler(OutboxDebugLogJob::class));
+        self::assertInstanceOf(OutboxQueueSerializer::class, $queueRegistry->getSerializer(OutboxDebugLogJob::class));
         self::assertContains(OutboxQueueStatusInterceptor::class, $queueConfig->interceptors->consume);
         self::assertArrayHasKey('memory', $queueConfig->pipelines);
         self::assertArrayHasKey('rabbitmq', $queueConfig->pipelines);

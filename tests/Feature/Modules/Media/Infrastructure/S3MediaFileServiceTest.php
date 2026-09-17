@@ -16,6 +16,7 @@ use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Infrastructure\Storage\ConfiguredS3ClientProvider;
 use App\Modules\Media\Infrastructure\Storage\S3MediaFileService;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaStorageConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageConfig;
 use GuzzleHttp\Client;
 use Tests\TestCase;
@@ -290,6 +291,7 @@ final class S3MediaFileServiceTest extends TestCase
     {
         return new S3MediaFileService(
             storageConfig: $this->getContainer()->get(StorageConfig::class),
+            mediaStorageConfig: $this->getContainer()->get(MediaStorageConfig::class),
             clientProvider: new ConfiguredS3ClientProvider(),
         );
     }

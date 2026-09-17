@@ -22,8 +22,8 @@ use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
 use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
 use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Auth\TokenStorageProviderInterface;
-use Spiral\Config\ConfiguratorInterface;
 use Spiral\Core\Container\Autowire;
+use Spiral\Queue\QueueRegistry;
 use Spiral\Router\GroupRegistry;
 use Spiral\Router\RouteGroup;
 use Tests\TestCase;
@@ -44,15 +44,17 @@ final class AuthBootloaderTest extends TestCase
         self::assertInstanceOf(SpiralTokenStorage::class, $storage);
     }
 
+    /**
+     * Пара «outbox-событие -> Job» регистрируется не патчем секции конфигурации 'queue' (секцию
+     * необратимо забирает `Spiral\Queue\Bootloader\QueueBootloader::boot()`), а напрямую в реестре
+     * `QueueRegistry` — единственный источник истины `OutboxJobRegistry::register()`.
+     */
     public function testQueueRegistersSendLoginCodeJobWithOutboxSerializer(): void
     {
-        $queueConfig = $this->getContainer()->get(ConfiguratorInterface::class)->getConfig('queue');
+        $queueRegistry = $this->getContainer()->get(QueueRegistry::class);
 
-        self::assertArrayHasKey(SendLoginCodeJob::class, $queueConfig['registry']['handlers']);
-        self::assertSame(
-            OutboxQueueSerializer::class,
-            $queueConfig['registry']['serializers'][SendLoginCodeJob::class],
-        );
+        self::assertInstanceOf(SendLoginCodeJob::class, $queueRegistry->getHandler(SendLoginCodeJob::class));
+        self::assertInstanceOf(OutboxQueueSerializer::class, $queueRegistry->getSerializer(SendLoginCodeJob::class));
     }
 
     /**

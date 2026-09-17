@@ -12,8 +12,12 @@ use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueuePublisher;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
+use Spiral\Core\FactoryInterface;
 use Spiral\Queue\Config\QueueConfig;
+use Spiral\Queue\HandlerRegistryInterface;
 use Spiral\Queue\QueueConnectionProviderInterface;
+use Spiral\Queue\QueueRegistry;
 
 final class OutboxInfrastructureEdgeTest extends TestCase
 {
@@ -26,7 +30,7 @@ final class OutboxInfrastructureEdgeTest extends TestCase
     {
         $this->expectException(OutboxJobRegistryException::class);
 
-        (new OutboxJobRegistry())->register(
+        $this->outboxJobRegistry()->register(
             integrationEventClass: \stdClass::class,
             jobClass: \stdClass::class,
         );
@@ -36,7 +40,7 @@ final class OutboxInfrastructureEdgeTest extends TestCase
     {
         $this->expectException(OutboxJobRegistryException::class);
 
-        (new OutboxJobRegistry())->register(
+        $this->outboxJobRegistry()->register(
             integrationEventClass: OutboxInfrastructureEdgeMessage::class,
             jobClass: \stdClass::class,
         );
@@ -46,14 +50,14 @@ final class OutboxInfrastructureEdgeTest extends TestCase
     {
         $this->expectException(OutboxJobRegistryException::class);
 
-        (new OutboxJobRegistry())->jobFor(new OutboxInfrastructureEdgeMessage());
+        $this->outboxJobRegistry()->jobFor(new OutboxInfrastructureEdgeMessage());
     }
 
     public function testQueuePublisherRejectsNonStringConnectionAlias(): void
     {
         $outboxQueuePublisher = new OutboxQueuePublisher(
             outboxMessageSerializer: $this->createStub(OutboxMessageSerializerContract::class),
-            outboxJobRegistry: new OutboxJobRegistry(),
+            outboxJobRegistry: $this->outboxJobRegistry(),
             queueConnectionProvider: $this->createStub(QueueConnectionProviderInterface::class),
             queueConfig: new QueueConfig([
                 'default' => 'default',
@@ -74,7 +78,7 @@ final class OutboxInfrastructureEdgeTest extends TestCase
     {
         $outboxQueuePublisher = new OutboxQueuePublisher(
             outboxMessageSerializer: $this->createStub(OutboxMessageSerializerContract::class),
-            outboxJobRegistry: new OutboxJobRegistry(),
+            outboxJobRegistry: $this->outboxJobRegistry(),
             queueConnectionProvider: $this->createStub(QueueConnectionProviderInterface::class),
             queueConfig: new QueueConfig([]),
             outboxQueueSerializer: new OutboxQueueSerializer(),
@@ -84,6 +88,23 @@ final class OutboxInfrastructureEdgeTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
 
         $nonEmptyHeaderValue->invoke($outboxQueuePublisher, '');
+    }
+
+    /**
+     * Настоящий QueueRegistry не нужен: сценарии этого теста либо бросают исключение до обращения
+     * к реестру очереди (невалидные классы), либо вовсе не доходят до setHandler()/setSerializer()
+     * на переданном OutboxJobRegistry — зависимости QueueRegistry дублёры без проверки факта вызова.
+     */
+    private function outboxJobRegistry(): OutboxJobRegistry
+    {
+        return new OutboxJobRegistry(
+            queueRegistry: new QueueRegistry(
+                container: $this->createStub(ContainerInterface::class),
+                factory: $this->createStub(FactoryInterface::class),
+                fallbackHandlers: $this->createStub(HandlerRegistryInterface::class),
+            ),
+            outboxQueueSerializer: new OutboxQueueSerializer(),
+        );
     }
 }
 

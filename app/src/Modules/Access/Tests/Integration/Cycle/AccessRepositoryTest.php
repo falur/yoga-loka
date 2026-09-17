@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Access\Repository;
+namespace App\Modules\Access\Tests\Integration\Cycle;
 
 use App\Modules\Access\Domain\Collection\PermissionCollection;
 use App\Modules\Access\Domain\Collection\RoleCollection;

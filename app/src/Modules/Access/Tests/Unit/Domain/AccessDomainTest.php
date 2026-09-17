@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Access\Domain;
+namespace App\Modules\Access\Tests\Unit\Domain;
 
 use App\Modules\Access\Domain\Entity\Permission;
 use App\Modules\Access\Domain\Entity\Role;

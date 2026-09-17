@@ -22,6 +22,11 @@ parameters:
     tmpDir: runtime/phpstan
     paths:
         - app/src
+    # Тесты модулей физически переехали внутрь app/src (волна H), но никогда не входили в область
+    # анализа PHPStan (paths содержал только app/src без tests/): перенос не должен де-факто
+    # расширить область анализа новым требованием к содержимому тестов.
+    excludePaths:
+        - app/src/Modules/*/Tests/*
     phpVersion: 80506
     bootstrapFiles:
         - vendor/autoload.php

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Access\Migration;
+namespace App\Modules\Access\Tests\Integration\Cycle;
 
 use Cycle\Database\Schema\AbstractForeignKey;
 use Tests\DatabaseTestCase;

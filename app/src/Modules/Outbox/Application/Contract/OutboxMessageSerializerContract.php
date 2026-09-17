@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Application\Contract;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
-use App\Modules\Outbox\Application\Message\SerializedOutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
 interface OutboxMessageSerializerContract
 {
-    public function serialize(OutboxMessage $outboxMessage): SerializedOutboxMessage;
+    public function serialize(IntegrationEvent $integrationEvent): SerializedOutboxMessage;
 
-    public function deserialize(SerializedOutboxMessage $serializedOutboxMessage): OutboxMessage;
+    public function deserialize(SerializedOutboxMessage $serializedOutboxMessage): IntegrationEvent;
 }

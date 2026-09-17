@@ -2,14 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Presentation\Job\SendLoginCodeJob;
-use App\Modules\Media\Presentation\Job\ProcessMediaJob;
-use App\Modules\Notifications\Presentation\Job\DispatchNotificationJob;
-use App\Modules\Notifications\Presentation\Job\PublishRealtimeNotificationJob;
-use App\Modules\Notifications\Presentation\Job\SendPushNotificationJob;
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\Queue\OutboxQueueStatusInterceptor;
-use App\Modules\Outbox\Presentation\Job\OutboxDebugLogJob;
+use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;
 use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
@@ -128,33 +121,29 @@ return [
          *
          * (QueueInterface)->push('ping', ["url" => "http://site.com"]);
          *
+         * Пары «outbox-событие -> Job» сюда не перечисляются статично: единственный источник истины —
+         * App\Modules\Outbox\Infrastructure\Spiral\Registry\OutboxJobRegistry::register(), которая
+         * в момент регистрации маршрута кладёт handler и сериализатор прямо в реестр очереди
+         * Spiral\Queue\QueueRegistry (вызывается каждым производящим событие модулем в его boot()
+         * через IntegrationEventRoutingContract).
+         *
          * @link https://spiral.dev/docs/queue-jobs#job-handler-registry
          */
         'handlers' => [
-            // 'ping' => \App\Modules\System\Presentation\Job\Ping::class
-            OutboxDebugLogJob::class => OutboxDebugLogJob::class,
-            ProcessMediaJob::class => ProcessMediaJob::class,
-            SendLoginCodeJob::class => SendLoginCodeJob::class,
-            DispatchNotificationJob::class => DispatchNotificationJob::class,
-            SendPushNotificationJob::class => SendPushNotificationJob::class,
-            PublishRealtimeNotificationJob::class => PublishRealtimeNotificationJob::class,
+            // 'ping' => \App\Modules\System\Infrastructure\Spiral\Job\Ping::class
         ],
 
         /**
          * Соответствие имён задач и сериализаторов.
          * При постановке задачи используется указанный сериализатор, при обработке он же используется для десериализации.
          *
+         * Пары «outbox-событие -> Job» сюда не перечисляются статично — см. комментарий у 'handlers'.
+         *
          * @link https://spiral.dev/docs/queue-jobs#changing-serializer
          */
         'serializers' => [
             // 'ping' => 'json',
-            // \App\Modules\System\Presentation\Job\Ping::class => 'json',
-            OutboxDebugLogJob::class => OutboxQueueSerializer::class,
-            ProcessMediaJob::class => OutboxQueueSerializer::class,
-            SendLoginCodeJob::class => OutboxQueueSerializer::class,
-            DispatchNotificationJob::class => OutboxQueueSerializer::class,
-            SendPushNotificationJob::class => OutboxQueueSerializer::class,
-            PublishRealtimeNotificationJob::class => OutboxQueueSerializer::class,
+            // \App\Modules\System\Infrastructure\Spiral\Job\Ping::class => 'json',
         ],
     ],
 

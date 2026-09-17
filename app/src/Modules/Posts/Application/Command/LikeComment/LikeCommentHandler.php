@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\LikeComment;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
+use App\Modules\Posts\Application\Command\CommentPost\CommentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\CommentLike;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
-use App\Modules\Posts\Repository\CommentLikeRepository;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -25,9 +23,7 @@ final readonly class LikeCommentHandler
 {
     public function __construct(
         private CommentRepository $commentRepository,
-        private CommentLikeRepository $commentLikeRepository,
         private CommentComposer $composer,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -38,21 +34,21 @@ final readonly class LikeCommentHandler
         $userId = UserId::fromString($command->authUserId);
 
         $comment = $this->commentRepository->findById(CommentId::fromString($command->commentId))
-            ?? throw new NotFoundException('app.posts.comment_not_found');
+            ?? throw new CommentNotFoundException();
 
         if ($comment->isDeleted()) {
-            throw new NotFoundException('app.posts.comment_not_found');
+            throw new CommentNotFoundException();
         }
 
-        if ($this->commentLikeRepository->existsByCommentAndUser(commentId: $comment->id, userId: $userId)) {
+        if ($this->commentRepository->existsLikeByCommentAndUser(commentId: $comment->id, userId: $userId)) {
             $this->logger->debug(message: 'Повторный лайк комментария — no-op.', context: ['commentId' => $comment->id->value()]);
 
             return;
         }
 
-        $this->entityManager->persist(CommentLike::create(commentId: $comment->id, userId: $userId));
+        $like = CommentLike::create(commentId: $comment->id, userId: $userId);
         $comment->incrementLikes();
-        $this->entityManager->persist($comment);
+        $this->commentRepository->saveWithLike(comment: $comment, like: $like);
 
         $this->composer->notifyCommentAuthor(
             type: PostNotificationType::CommentLike,
@@ -60,7 +56,5 @@ final readonly class LikeCommentHandler
             actorUserId: $command->authUserId,
             commentId: $comment->id->value(),
         );
-
-        $this->entityManager->run();
     }
 }

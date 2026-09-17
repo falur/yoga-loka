@@ -27,6 +27,24 @@ final readonly class GetUserResult
 }
 ```
 
+Переиспользуемая часть ответа — краткая карточка автора, нужная и в ленте, и в детальном просмотре, — лежит в `Application/Result` и вкладывается в Result сценария.
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\User\Application\Result;
+
+final readonly class UserCardResult
+{
+    public function __construct(
+        public string $id,
+        public string $name,
+    ) {}
+}
+```
+
 ## Что повторять
 
 - Имя заканчивается на `Result` и начинается с имени сценария.
@@ -36,4 +54,4 @@ final readonly class GetUserResult
 
 ## Допустимые варианты
 
-Простой Query может вернуть Domain Entity. Для страницы создаётся отдельный Result с типизированными элементами и курсором; общий каталог результатов не создаётся.
+Форма ответа сценария лежит рядом со своим Command или Query; переиспользуемая часть ответа — отдельный `final readonly` класс в `Application/Result`, который вкладывается в Result сценария. Для страницы создаётся отдельный Result с типизированными элементами и курсором следующей страницы.

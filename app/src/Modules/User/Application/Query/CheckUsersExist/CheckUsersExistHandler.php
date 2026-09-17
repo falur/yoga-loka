@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Application\Query\CheckUsersExist;
 
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 

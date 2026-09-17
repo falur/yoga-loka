@@ -7,7 +7,7 @@ namespace App\Modules\Notifications\Domain\ValueObject;
 use App\Shared\Domain\ValueObject\AbstractUuidV7Id;
 
 /**
- * Идентификатор outbox-события NotificationRequested, по которому рассылка обеспечивает
+ * Идентификатор outbox-события NotificationRequestedEvent, по которому рассылка обеспечивает
  * идемпотентность (колонка notifications.outbox_id + unique). Значение совпадает с
  * OutboxEventId источника, поэтому это тоже UUID v7.
  */

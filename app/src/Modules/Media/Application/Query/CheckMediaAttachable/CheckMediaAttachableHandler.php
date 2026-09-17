@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Query\CheckMediaAttachable;
 
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaNotReadyForAttachmentException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
 /**
- * Проверяет, можно ли вложить медиа в запись: оно должно существовать (иначе 404), принадлежать
- * владельцу (иначе 403) и быть обработанным/готовым (иначе 422). Вызывается до MakeMediaPermanent,
- * поэтому тот всегда получает готовое медиа.
+ * Проверяет, можно ли вложить набор медиа в запись: каждое должно существовать (иначе 404),
+ * принадлежать владельцу (иначе 403) и быть обработанным/готовым (иначе 422). Набор обходится в
+ * порядке передачи, поэтому ошибку даёт первое непригодное медиа. Вызывается до MakeMediaPermanent,
+ * поэтому тот всегда получает готовые медиа.
  */
 final readonly class CheckMediaAttachableHandler
 {
@@ -24,19 +25,23 @@ final readonly class CheckMediaAttachableHandler
     ) {}
 
     #[LogOperation]
-    public function handle(CheckMediaAttachableQuery $query): MediaAttachableResult
+    public function handle(CheckMediaAttachableQuery $query): CheckMediaAttachableResult
     {
-        $media = $this->mediaRepository->findById(MediaId::fromString($query->mediaId))
-            ?? throw new NotFoundException('app.media.not_found');
+        $owner = UserId::fromString($query->ownerUserId);
 
-        if (!$media->uploadedById->equals(UserId::fromString($query->ownerUserId))) {
-            throw new ForbiddenException('app.media.access_denied');
+        foreach ($query->mediaIds as $mediaId) {
+            $media = $this->mediaRepository->findById(MediaId::fromString($mediaId))
+                ?? throw new MediaNotFoundException();
+
+            if (!$media->uploadedById->equals($owner)) {
+                throw new MediaAccessDeniedException();
+            }
+
+            if (!$media->isReady()) {
+                throw new MediaNotReadyForAttachmentException();
+            }
         }
 
-        if (!$media->isReady()) {
-            throw new ValidationException('app.media.not_ready');
-        }
-
-        return new MediaAttachableResult(mediaId: $media->id->value());
+        return new CheckMediaAttachableResult(mediaIds: $query->mediaIds);
     }
 }

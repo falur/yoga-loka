@@ -12,8 +12,12 @@ use Spiral\Boot\Environment\AppEnvironment;
 return [
     /**
      * Директория для файлов миграций.
+     *
+     * Каждая миграция физически переехала в свой модуль (`Infrastructure/Persistence/Cycle/Migration`)
+     * и регистрируется его bootloader-ом через `vendorDirectories`. Этот путь остаётся заглушкой без
+     * единого файла: `Cycle\Migrations\FileRepository` при отсутствии каталога просто не находит файлов.
      */
-    'directory' => \directory('app') . 'database/migrations/',
+    'directory' => \directory('runtime') . 'migrations/',
 
     /**
      * Таблица для хранения статуса миграций по базам данных.

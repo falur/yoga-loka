@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Application\Command\ResolveLoginCode;
 
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 
 /**
  * Результат транзакционного разбора кода: исход плюс выданная пара токенов (Verified) или

@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\CreatePost;
 
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\View\PostView;
-use App\Modules\Posts\Application\View\PostViewAssembler;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\Posts\Domain\Repository\PostRepository;
 use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -29,15 +26,14 @@ use Psr\Log\LoggerInterface;
 final readonly class CreatePostHandler
 {
     public function __construct(
+        private PostRepository $postRepository,
         private PostContentComposer $composer,
-        private PostViewAssembler $postViewAssembler,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(CreatePostCommand $command): PostView
+    public function handle(CreatePostCommand $command): CreatePostResult
     {
         $authUserId = UserId::fromString($command->authUserId);
         $tagIds = $this->composer->resolveTags(texts: $command->tags, creatorUserId: $command->authUserId);
@@ -51,19 +47,18 @@ final readonly class CreatePostHandler
             practice: PostPractice::none(),
             original: PostOriginal::none(),
         );
-        $this->entityManager->persist($post);
 
-        $this->composer->attachMedia(post: $post, mediaIds: $command->mediaIds, ownerUserId: $command->authUserId);
-        $this->composer->attachTags(post: $post, tagIds: $tagIds);
-        $this->composer->attachPostMentions(post: $post, mentionIds: $command->mentions, actorUserId: $command->authUserId);
+        $media = $this->composer->attachMedia(post: $post, mediaIds: $command->mediaIds, ownerUserId: $command->authUserId);
+        $tags = $this->composer->attachTags(post: $post, tagIds: $tagIds);
+        $mentions = $this->composer->attachPostMentions(post: $post, mentionIds: $command->mentions, actorUserId: $command->authUserId);
 
-        $this->entityManager->run();
+        $this->postRepository->saveWithAttachments(post: $post, media: $media, tags: $tags, mentions: $mentions);
 
         $this->logger->debug(message: 'Запись создана.', context: [
             'postId' => $post->id->value(),
             'status' => $post->status->value,
         ]);
 
-        return $this->postViewAssembler->fromPost(post: $post, viewer: $authUserId);
+        return new CreatePostResult(postId: $post->id->value());
     }
 }

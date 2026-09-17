@@ -8,24 +8,27 @@ use App\Modules\Media\Application\Contract\MediaAudioProcessorContract;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaImageProcessorContract;
 use App\Modules\Media\Application\Contract\MediaVideoProcessorContract;
-use App\Modules\Media\Application\Dto\MediaConversionPlan;
+use App\Modules\Media\Public\Dto\MediaConversionPlanDto;
+use App\Modules\Media\Domain\Collection\MediaAudioConversionCollection;
+use App\Modules\Media\Domain\Collection\MediaImageConversionCollection;
+use App\Modules\Media\Domain\Collection\MediaVideoConversionCollection;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaAudioConversion;
 use App\Modules\Media\Domain\Entity\MediaImageConversion;
 use App\Modules\Media\Domain\Entity\MediaVideoConversion;
+use App\Modules\Media\Domain\Enum\MediaAudioConversionType;
 use App\Modules\Media\Domain\Enum\MediaConversionStatus;
 use App\Modules\Media\Domain\Enum\MediaImageConversionType;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\Enum\MediaType;
+use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\NotFoundException;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
-use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -43,7 +46,6 @@ final readonly class ProcessMediaHandler
         private MediaImageProcessorContract $mediaImageProcessor,
         private MediaVideoProcessorContract $mediaVideoProcessor,
         private MediaAudioProcessorContract $mediaAudioProcessor,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -51,7 +53,7 @@ final readonly class ProcessMediaHandler
     public function handle(ProcessMediaCommand $command): void
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('app.media.not_found');
+            ?? throw new MediaNotFoundException();
 
         if ($media->isFinalized()) {
             $this->logger->debug(message: 'Обработка медиа пропущена: медиа уже финализировано.', context: [
@@ -69,8 +71,12 @@ final readonly class ProcessMediaHandler
         $targetStorage = $this->targetStorage($media->visibility);
         $extension = $media->path->extension();
 
-        $conversions = match ($media->type) {
-            MediaType::Image => $this->buildImageConversions(
+        $imageConversions = [];
+        $videoConversions = [];
+        $audioConversions = [];
+
+        match ($media->type) {
+            MediaType::Image => $imageConversions = $this->buildImageConversions(
                 media: $media,
                 plan: $command->plan,
                 targetStorage: $targetStorage,
@@ -80,29 +86,37 @@ final readonly class ProcessMediaHandler
                 media: $media,
                 plan: $command->plan,
                 targetStorage: $targetStorage,
+                videoConversions: $videoConversions,
+                posterConversions: $imageConversions,
             ),
-            MediaType::Audio => $this->buildAudioConversions(
+            MediaType::Audio => $audioConversions = $this->buildAudioConversions(
                 media: $media,
                 plan: $command->plan,
                 targetStorage: $targetStorage,
             ),
-            MediaType::Document => [],
+            MediaType::Document => null,
         };
 
         $this->persistReady(
             media: $media,
-            conversions: $conversions,
+            imageConversions: $imageConversions,
+            videoConversions: $videoConversions,
+            audioConversions: $audioConversions,
             targetStorage: $targetStorage,
             extension: $extension,
         );
     }
 
     /**
-     * @param list<MediaImageConversion|MediaVideoConversion|MediaAudioConversion> $conversions
+     * @param list<MediaImageConversion> $imageConversions
+     * @param list<MediaVideoConversion> $videoConversions
+     * @param list<MediaAudioConversion> $audioConversions
      */
     private function persistReady(
         Media $media,
-        array $conversions,
+        array $imageConversions,
+        array $videoConversions,
+        array $audioConversions,
         MediaStorage $targetStorage,
         string $extension,
     ): void {
@@ -115,31 +129,24 @@ final readonly class ProcessMediaHandler
         );
         $media->markReadyMovedTo(storage: $targetStorage, path: $targetPath);
 
-        $this->entityManager->persist($media);
-        foreach ($conversions as $conversion) {
-            $this->entityManager->persist($conversion);
-        }
-        $this->entityManager->run();
+        $imageConversionCollection = new MediaImageConversionCollection($imageConversions);
+        $videoConversionCollection = new MediaVideoConversionCollection($videoConversions);
+        $audioConversionCollection = new MediaAudioConversionCollection($audioConversions);
+
+        $this->mediaRepository->saveWithConversions(
+            media: $media,
+            imageConversions: $imageConversionCollection,
+            videoConversions: $videoConversionCollection,
+            audioConversions: $audioConversionCollection,
+        );
 
         $this->logger->debug(message: 'Медиа готово.', context: [
             'mediaId' => $media->id->value(),
             'targetStorage' => $targetStorage->value,
-            'imageConversions' => $this->countByClass(conversions: $conversions, conversionClass: MediaImageConversion::class),
-            'videoConversions' => $this->countByClass(conversions: $conversions, conversionClass: MediaVideoConversion::class),
-            'audioConversions' => $this->countByClass(conversions: $conversions, conversionClass: MediaAudioConversion::class),
+            'imageConversions' => $imageConversionCollection->count(),
+            'videoConversions' => $videoConversionCollection->count(),
+            'audioConversions' => $audioConversionCollection->count(),
         ]);
-    }
-
-    /**
-     * @param list<MediaImageConversion|MediaVideoConversion|MediaAudioConversion> $conversions
-     * @param class-string $conversionClass
-     */
-    private function countByClass(array $conversions, string $conversionClass): int
-    {
-        return Collection::make($conversions)
-            ->filter(static fn(MediaImageConversion|MediaVideoConversion|MediaAudioConversion $conversion): bool
-                => $conversion instanceof $conversionClass)
-            ->count();
     }
 
     /**
@@ -147,7 +154,7 @@ final readonly class ProcessMediaHandler
      */
     private function buildImageConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
         string $extension,
     ): array {
@@ -160,6 +167,10 @@ final readonly class ProcessMediaHandler
         $conversions = [];
 
         foreach ($plan->image as $spec) {
+            // Публичный вариант плана переводим в доменный по строковому значению: один оператор
+            // без ветвления, набор вариантов держит синхронной unit-проверка совпадения.
+            $type = MediaImageConversionType::from($spec->type->value);
+
             $conversionResult = $this->mediaImageProcessor->resize(
                 originalContents: $originalContents,
                 width: MediaPixelDimension::fromInt($spec->width),
@@ -168,7 +179,7 @@ final readonly class ProcessMediaHandler
             );
             $conversionPath = MediaPath::imageConversion(
                 storageKey: $media->storageKey,
-                type: $spec->type,
+                type: $type,
                 extension: $extension,
             );
             $this->mediaFileService->putObject(
@@ -179,7 +190,7 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия изображения.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $conversionPath->value(),
                 'size' => $conversionResult->size->value(),
             ]);
@@ -188,7 +199,7 @@ final readonly class ProcessMediaHandler
             // а не из spec — устойчиво к смене режима ресайза. См. README.
             $conversions[] = MediaImageConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $conversionPath,
@@ -203,17 +214,29 @@ final readonly class ProcessMediaHandler
     }
 
     /**
-     * @return list<MediaVideoConversion|MediaImageConversion>
+     * Заполняет видео-конверсии и постеры (MediaImageConversion) раздельными выходными списками:
+     * постер видео — это image-конверсия, а не video, поэтому смешивать их в один список нельзя —
+     * каждый тип сохраняется своей типизированной коллекцией. Оба списка передаются по ссылке, а не
+     * возвращаются кортежем, — тип-контракты проекта запрещают array shape и tuple.
+     *
+     * @param list<MediaVideoConversion> $videoConversions
+     * @param list<MediaImageConversion> $posterConversions
+     * @param-out list<MediaVideoConversion> $videoConversions
+     * @param-out list<MediaImageConversion> $posterConversions
      */
     private function buildVideoConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
-    ): array {
-        $conversions = [];
+        array &$videoConversions,
+        array &$posterConversions,
+    ): void {
+        $videoConversions = [];
+        $posterConversions = [];
 
         foreach ($plan->video as $spec) {
-            $normalizedPath = MediaPath::videoConversion(storageKey: $media->storageKey, type: $spec->type, extension: 'mp4');
+            $type = MediaVideoConversionType::from($spec->type->value);
+            $normalizedPath = MediaPath::videoConversion(storageKey: $media->storageKey, type: $type, extension: 'mp4');
             $posterPath = MediaPath::imageConversion(
                 storageKey: $media->storageKey,
                 type: MediaImageConversionType::Poster,
@@ -229,9 +252,9 @@ final readonly class ProcessMediaHandler
                 posterPath: $posterPath,
             );
 
-            $conversions[] = MediaVideoConversion::create(
+            $videoConversions[] = MediaVideoConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $normalizedPath,
@@ -243,7 +266,7 @@ final readonly class ProcessMediaHandler
                 bitrate: $result->bitrate,
             );
             // Постер видео — MediaImageConversion type=Poster размером транскода (width/height).
-            $conversions[] = MediaImageConversion::create(
+            $posterConversions[] = MediaImageConversion::create(
                 media: $media,
                 type: MediaImageConversionType::Poster,
                 status: MediaConversionStatus::Ready,
@@ -256,13 +279,11 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия видео и постер.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $normalizedPath->value(),
                 'size' => $result->normalizedSize->value(),
             ]);
         }
-
-        return $conversions;
     }
 
     /**
@@ -270,13 +291,14 @@ final readonly class ProcessMediaHandler
      */
     private function buildAudioConversions(
         Media $media,
-        MediaConversionPlan $plan,
+        MediaConversionPlanDto $plan,
         MediaStorage $targetStorage,
     ): array {
         $conversions = [];
 
         foreach ($plan->audio as $spec) {
-            $normalizedPath = MediaPath::audioConversion(storageKey: $media->storageKey, type: $spec->type, extension: 'm4a');
+            $type = MediaAudioConversionType::from($spec->type->value);
+            $normalizedPath = MediaPath::audioConversion(storageKey: $media->storageKey, type: $type, extension: 'm4a');
 
             $result = $this->mediaAudioProcessor->process(
                 sourceStorage: $media->storage,
@@ -288,7 +310,7 @@ final readonly class ProcessMediaHandler
 
             $conversions[] = MediaAudioConversion::create(
                 media: $media,
-                type: $spec->type,
+                type: $type,
                 status: MediaConversionStatus::Ready,
                 storage: $targetStorage,
                 path: $normalizedPath,
@@ -301,7 +323,7 @@ final readonly class ProcessMediaHandler
             );
 
             $this->logger->debug(message: 'Создана конверсия аудио с волной.', context: [
-                'type' => $spec->type->value,
+                'type' => $type->value,
                 'path' => $normalizedPath->value(),
                 'size' => $result->normalizedSize->value(),
             ]);

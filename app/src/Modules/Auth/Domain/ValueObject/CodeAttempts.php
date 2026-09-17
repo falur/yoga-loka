@@ -8,7 +8,7 @@ use App\Shared\Domain\Exception\InvalidDomainValueException;
 
 /**
  * Счётчик неверных вводов кода. Код сгорает после LIMIT неудачных попыток.
- * fromInt обязателен для восстановления через конвенцию ValueObjectCast.
+ * fromInt обязателен для восстановления из Cycle Entity в LoginCodeMapper::toDomain().
  */
 final readonly class CodeAttempts implements \Stringable, \JsonSerializable
 {

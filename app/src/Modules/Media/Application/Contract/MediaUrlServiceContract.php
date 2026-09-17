@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Contract;
 
-use App\Modules\Media\Application\Dto\MediaUrlsResult;
 use App\Modules\Media\Domain\Entity\Media;
 
 /**
@@ -17,7 +16,7 @@ use App\Modules\Media\Domain\Entity\Media;
  * getUrls — полный набор (оригинал, если не удалён, и все конверсии). Потребитель отдаёт набор целиком
  * (лента Posts, аватар профиля), а тот, кому нужна одна ссылка (уведомления, пуш), берёт original.
  *
- * Реализация — App\Modules\Media\Infrastructure\FileService\MediaUrlService.
+ * Реализация — App\Modules\Media\Infrastructure\Storage\MediaUrlService.
  */
 interface MediaUrlServiceContract
 {

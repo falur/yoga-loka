@@ -22,7 +22,7 @@ return [
          * Настройки по умолчанию для сегментов схемы, которые не были заданы явно.
          */
         'defaults' => [
-            \Cycle\ORM\SchemaInterface::MAPPER => \App\Shared\Infrastructure\Cycle\LazyGhostMapper::class,
+            \Cycle\ORM\SchemaInterface::MAPPER => \App\Shared\Infrastructure\Persistence\Cycle\LazyGhostMapper::class,
             // SchemaInterface::REPOSITORY => \Cycle\ORM\Select\Repository::class,
             // SchemaInterface::SCOPE => null,
             // SchemaInterface::TYPECAST_HANDLER => [

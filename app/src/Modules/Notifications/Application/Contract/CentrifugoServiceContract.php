@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Contract;
 
-use App\Modules\Notifications\Application\Dto\RealtimeNotificationPayload;
-
 /**
  * Публикация realtime-сообщения в канал Centrifugo. Реализация — в Infrastructure.
  */

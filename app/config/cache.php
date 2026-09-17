@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Shared\Infrastructure\Cache\RedisCacheStorage;
+use App\Shared\Infrastructure\Spiral\Cache\RedisCacheStorage;
 use Spiral\Cache\Storage\ArrayStorage;
 use Spiral\Cache\Storage\FileStorage;
 

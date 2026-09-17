@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Command\RefreshTokens;
 
 use App\Modules\Auth\Application\Contract\AuthTokenStorageContract;
-use App\Modules\Auth\Application\Dto\IssuedTokenPair;
+use App\Modules\Auth\Application\Result\IssuedTokenPair;
 use App\Modules\Auth\Domain\ValueObject\SessionDevice;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Обновление пары токенов: ротация refresh-токена (удаление старой пары сессии и выдача новой).
- * Невалидный/истёкший/не-refresh токен → AuthenticationException (401) из хранилища.
+ * Невалидный/истёкший/не-refresh токен → InvalidRefreshTokenException (401) из хранилища.
  */
 final readonly class RefreshTokensHandler
 {

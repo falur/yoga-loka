@@ -6,31 +6,17 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
 use App\Modules\Posts\Domain\ValueObject\PostMentionId;
-use App\Modules\Posts\Repository\PostMentionRepository;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'post_mention',
-    table: 'post_mentions',
-    repository: PostMentionRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class PostMention
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: PostMentionId::class)]
     public private(set) PostMentionId $id;
 
-    #[Column(type: 'uuid', name: 'post_id', typecast: PostId::class)]
     public private(set) PostId $postId;
 
-    #[Column(type: 'uuid', name: 'user_id', typecast: UserId::class)]
     public private(set) UserId $userId;
 
     public static function create(PostId $postId, UserId $userId): self
@@ -40,6 +26,23 @@ final class PostMention
         $postMention->postId = $postId;
         $postMention->userId = $userId;
         $postMention->initializeTimestamps();
+
+        return $postMention;
+    }
+
+    public static function restore(
+        PostMentionId $id,
+        PostId $postId,
+        UserId $userId,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $postMention = new self();
+        $postMention->id = $id;
+        $postMention->postId = $postId;
+        $postMention->userId = $userId;
+        $postMention->createdAt = $createdAt;
+        $postMention->updatedAt = $updatedAt;
 
         return $postMention;
     }

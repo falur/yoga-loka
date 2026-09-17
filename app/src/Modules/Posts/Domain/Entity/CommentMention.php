@@ -6,31 +6,17 @@ namespace App\Modules\Posts\Domain\Entity;
 
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\CommentMentionId;
-use App\Modules\Posts\Repository\CommentMentionRepository;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'comment_mention',
-    table: 'comment_mentions',
-    repository: CommentMentionRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class CommentMention
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: CommentMentionId::class)]
     public private(set) CommentMentionId $id;
 
-    #[Column(type: 'uuid', name: 'comment_id', typecast: CommentId::class)]
     public private(set) CommentId $commentId;
 
-    #[Column(type: 'uuid', name: 'user_id', typecast: UserId::class)]
     public private(set) UserId $userId;
 
     public static function create(CommentId $commentId, UserId $userId): self
@@ -40,6 +26,23 @@ final class CommentMention
         $commentMention->commentId = $commentId;
         $commentMention->userId = $userId;
         $commentMention->initializeTimestamps();
+
+        return $commentMention;
+    }
+
+    public static function restore(
+        CommentMentionId $id,
+        CommentId $commentId,
+        UserId $userId,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $commentMention = new self();
+        $commentMention->id = $id;
+        $commentMention->commentId = $commentId;
+        $commentMention->userId = $userId;
+        $commentMention->createdAt = $createdAt;
+        $commentMention->updatedAt = $updatedAt;
 
         return $commentMention;
     }

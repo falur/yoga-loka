@@ -15,25 +15,25 @@ return [
 
     'declarations' => [
         Declaration\BootloaderDeclaration::TYPE => [
-            'namespace' => 'Shared\\Infrastructure\\Framework\\Bootloader',
+            'namespace' => 'Shared\\Infrastructure\\Spiral\\Bootloader',
         ],
         Declaration\ConfigDeclaration::TYPE => [
-            'namespace' => 'Shared\\Infrastructure\\Configuration',
+            'namespace' => 'Shared\\Infrastructure\\Spiral\\Configuration',
         ],
         Declaration\ControllerDeclaration::TYPE => [
-            'namespace' => 'Modules\\System\\Presentation\\Http\\Controller',
+            'namespace' => 'Modules\\System\\Infrastructure\\Spiral\\Http\\Controller',
         ],
         Declaration\FilterDeclaration::TYPE => [
-            'namespace' => 'Modules\\System\\Presentation\\Http\\Filter',
+            'namespace' => 'Modules\\System\\Infrastructure\\Spiral\\Http\\Filter',
         ],
         Declaration\MiddlewareDeclaration::TYPE => [
-            'namespace' => 'Modules\\System\\Presentation\\Http\\Middleware',
+            'namespace' => 'Modules\\System\\Infrastructure\\Spiral\\Http\\Middleware',
         ],
         Declaration\CommandDeclaration::TYPE => [
-            'namespace' => 'Modules\\System\\Presentation\\Console',
+            'namespace' => 'Modules\\System\\Infrastructure\\Spiral\\Console',
         ],
         Declaration\JobHandlerDeclaration::TYPE => [
-            'namespace' => 'Modules\\System\\Presentation\\Job',
+            'namespace' => 'Modules\\System\\Infrastructure\\Spiral\\Job',
         ],
     ],
 ];

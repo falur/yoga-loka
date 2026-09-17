@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Contract;
 
-use App\Modules\Media\Application\Dto\MediaConversionResult;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 

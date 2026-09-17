@@ -13,7 +13,7 @@ Filter читает HTTP-вход, задаёт точные типы и воз�
 
 declare(strict_types=1);
 
-namespace App\Modules\User\Presentation\Http\Filter;
+namespace App\Modules\User\Infrastructure\Spiral\Http\Filter;
 
 use Spiral\Filters\Attribute\Input\Attribute;
 use Spiral\Filters\Attribute\Input\Post;
@@ -40,6 +40,7 @@ final class RenameUserFilter extends AttributesFilter
 - Имя `Post`-поля совпадает с JSON-ключом, поэтому `key` не указан.
 - Request attribute имеет явный ключ.
 - Проверка формата происходит до создания доменного типа.
+- Класс лежит в `Infrastructure/Spiral/Http/Filter`: Filter — часть входного адаптера Spiral.
 
 ## Допустимые варианты
 

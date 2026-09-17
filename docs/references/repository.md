@@ -35,4 +35,4 @@ interface UserRepository
 
 ## Допустимые варианты
 
-Для сложной проекции чтения допускается отдельный read-контракт в конкретном Query. Он возвращает Result или View и не подменяет Repository агрегата.
+Для сложной проекции чтения Repository не расширяется: порт объявляется как `{Name}Reader` в `Application/Contract`, реализуется в `Infrastructure/Persistence/Cycle/Read` и возвращает Data — см. карточку [Reader](reader.md). Reader не подменяет Repository агрегата.

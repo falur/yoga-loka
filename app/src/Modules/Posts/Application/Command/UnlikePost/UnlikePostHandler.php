@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Application\Command\UnlikePost;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostLikeRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -22,8 +20,6 @@ final readonly class UnlikePostHandler
 {
     public function __construct(
         private PostRepository $postRepository,
-        private PostLikeRepository $postLikeRepository,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -34,9 +30,9 @@ final readonly class UnlikePostHandler
         $userId = UserId::fromString($command->authUserId);
 
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
-        $like = $this->postLikeRepository->findByPostAndUser(postId: $post->id, userId: $userId);
+        $like = $this->postRepository->findLikeByPostAndUser(postId: $post->id, userId: $userId);
 
         if ($like === null) {
             $this->logger->debug(message: 'Снятие отсутствующего лайка записи — no-op.', context: ['postId' => $post->id->value()]);
@@ -44,13 +40,10 @@ final readonly class UnlikePostHandler
             return;
         }
 
-        $this->entityManager->delete($like);
-
         if ($post->likesCount->value() > 0) {
             $post->decrementLikes();
-            $this->entityManager->persist($post);
         }
 
-        $this->entityManager->run();
+        $this->postRepository->removeLike(like: $like, post: $post);
     }
 }

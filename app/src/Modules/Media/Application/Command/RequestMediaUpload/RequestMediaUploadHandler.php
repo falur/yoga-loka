@@ -4,29 +4,30 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Command\RequestMediaUpload;
 
+use App\Modules\Media\Application\Contract\MediaFileMeta;
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Contract\MediaUploadPlannerContract;
-use App\Modules\Media\Application\Dto\MediaFileMeta;
-use App\Modules\Media\Application\Dto\RequestMediaUploadResult;
-use App\Modules\Media\Application\Dto\MediaUploadSpec;
-use App\Modules\Media\Application\Service\MediaTypeResolver;
+use App\Modules\Media\Application\Contract\MediaUploadSpec;
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Entity\MediaMultipartUpload;
+use App\Modules\Media\Domain\Exception\MediaFileNameWithoutExtensionException;
+use App\Modules\Media\Domain\Exception\MediaFileSizeExceededException;
+use App\Modules\Media\Domain\Exception\MediaMimeTypeNotAllowedException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
+use App\Modules\Media\Domain\Service\MediaTypeResolver;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use Psr\Log\LoggerInterface;
 
 final readonly class RequestMediaUploadHandler
 {
     public function __construct(
+        private MediaRepository $mediaRepository,
         private MediaFileServiceContract $mediaFileService,
         private MediaTypeResolver $mediaTypeResolver,
         private MediaUploadPlannerContract $uploadPlanner,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -53,8 +54,6 @@ final readonly class RequestMediaUploadHandler
             ? $this->prepareMultipartUpload(media: $media, presignedExpiresAt: $presignedExpiresAt)
             : $this->prepareSingleUpload(media: $media, presignedExpiresAt: $presignedExpiresAt);
 
-        $this->entityManager->run();
-
         $this->logger->debug(message: 'Запрошена загрузка медиа.', context: [
             'mediaId' => $media->id->value(),
             'userId' => $command->userId,
@@ -75,7 +74,7 @@ final readonly class RequestMediaUploadHandler
             mimeType: $media->mimeType,
             expiresAt: $presignedExpiresAt,
         );
-        $this->entityManager->persist($media);
+        $this->mediaRepository->save($media);
 
         return RequestMediaUploadResult::single(
             mediaId: $media->id->value(),
@@ -101,14 +100,16 @@ final readonly class RequestMediaUploadHandler
             expiresAt: $presignedExpiresAt,
         );
 
-        $this->entityManager->persist($media);
-        $this->entityManager->persist(MediaMultipartUpload::create(
+        $this->mediaRepository->saveWithMultipartUpload(
             media: $media,
-            uploadId: $uploadId,
-            partsCount: $partsCount,
-            partSize: $partSize,
-            fileSize: $media->size,
-        ));
+            multipartUpload: MediaMultipartUpload::create(
+                media: $media,
+                uploadId: $uploadId,
+                partsCount: $partsCount,
+                partSize: $partSize,
+                fileSize: $media->size,
+            ),
+        );
 
         return RequestMediaUploadResult::multipart(
             mediaId: $media->id->value(),
@@ -121,14 +122,11 @@ final readonly class RequestMediaUploadHandler
     private function assertUploadAllowed(MediaUploadSpec $spec, MediaFileMeta $fileMeta): void
     {
         if (!$spec->allowedMimeTypes->containsMimeType($fileMeta->mimeType)) {
-            throw new ValidationException(
-                translationKey: 'app.media.mime_not_allowed',
-                translationParameters: ['mimeType' => $fileMeta->mimeType->value()],
-            );
+            throw new MediaMimeTypeNotAllowedException($fileMeta->mimeType->value());
         }
 
         if ($fileMeta->size->value() > $spec->maxSize->value()) {
-            throw new ValidationException('app.media.file_size_exceeded');
+            throw new MediaFileSizeExceededException();
         }
     }
 
@@ -137,7 +135,7 @@ final readonly class RequestMediaUploadHandler
         $extension = \pathinfo(path: $fileMeta->fileName, flags: \PATHINFO_EXTENSION);
 
         if ($extension === '') {
-            throw new ValidationException('app.media.file_name_without_extension');
+            throw new MediaFileNameWithoutExtensionException();
         }
 
         return $extension;

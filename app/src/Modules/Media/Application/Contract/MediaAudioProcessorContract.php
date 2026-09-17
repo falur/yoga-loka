@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Contract;
 
-use App\Modules\Media\Application\Dto\MediaAudioConversionSpec;
-use App\Modules\Media\Application\Dto\MediaAudioProcessingResult;
+use App\Modules\Media\Public\Dto\MediaAudioConversionSpecDto;
 use App\Modules\Media\Domain\Enum\MediaStorage;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 
@@ -22,7 +21,7 @@ interface MediaAudioProcessorContract
     public function process(
         MediaStorage $sourceStorage,
         MediaPath $sourcePath,
-        MediaAudioConversionSpec $spec,
+        MediaAudioConversionSpecDto $spec,
         MediaStorage $targetStorage,
         MediaPath $normalizedPath,
     ): MediaAudioProcessingResult;

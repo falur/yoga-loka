@@ -14,7 +14,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
  * нужен ли multipart для данного размера, размер и число частей multipart. Application-сценарий
  * (RequestMediaUploadHandler) получает эти решения через контракт и не знает про *Config.
  *
- * Реализация — App\Modules\Media\Infrastructure\FileService\MediaUploadPlanner (читает MediaConfig
+ * Реализация — App\Modules\Media\Infrastructure\Storage\MediaUploadPlanner (читает MediaConfig
  * напрямую через конструктор, как MediaUrlService).
  */
 interface MediaUploadPlannerContract

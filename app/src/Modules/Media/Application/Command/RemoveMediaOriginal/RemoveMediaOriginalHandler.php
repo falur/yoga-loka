@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Command\RemoveMediaOriginal;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
-use App\Modules\Media\Application\Dto\MediaResult;
-use App\Modules\Media\Application\Service\MediaConversionsChecker;
+use App\Modules\Media\Application\Result\MediaResult;
+use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
+use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Domain\Exception\MediaOriginalNotRemovableException;
+use App\Modules\Media\Domain\Exception\MediaWithoutConversionsToKeepException;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
-use App\Shared\Domain\Exception\ValidationException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use Psr\Log\LoggerInterface;
 
@@ -24,7 +23,7 @@ use Psr\Log\LoggerInterface;
  * к S3. На сбое после deleteObject до flush статус остаётся ready, повтор команды довыполнит переход.
  *
  * Осознанный компромисс порядка «удалить в S3 → зафиксировать статус»: пока переход не довыполнен,
- * статус остаётся ready, и любой запрос ссылки на оригинал (FindMediaUrl/лента/аватар) вернёт ссылку
+ * статус остаётся ready, и любой запрос ссылки на оригинал (FindMediaUrls/лента/аватар) вернёт ссылку
  * на уже удалённый объект — короткое окно битой ссылки. Команда предполагает
  * повторный вызов при сбое (автоматического реиспуска, как у тяжёлой обработки через outbox, тут нет),
  * поэтому пока не подключена к прямому запуску пользователем; перед подключением к реальному триггеру компромисс
@@ -36,7 +35,6 @@ final readonly class RemoveMediaOriginalHandler
         private MediaRepository $mediaRepository,
         private MediaConversionsChecker $mediaConversionsChecker,
         private MediaFileServiceContract $mediaFileService,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -44,10 +42,10 @@ final readonly class RemoveMediaOriginalHandler
     public function handle(RemoveMediaOriginalCommand $command): MediaResult
     {
         $media = $this->mediaRepository->findById(MediaId::fromString($command->mediaId))
-            ?? throw new NotFoundException('app.media.not_found');
+            ?? throw new MediaNotFoundException();
 
         if (!$media->uploadedById->equals(UserId::fromString($command->userId))) {
-            throw new ForbiddenException('app.media.access_denied');
+            throw new MediaAccessDeniedException();
         }
 
         if ($media->isOriginalRemoved()) {
@@ -59,11 +57,11 @@ final readonly class RemoveMediaOriginalHandler
         }
 
         if (!$media->isReady()) {
-            throw new ValidationException('app.media.original_not_removable');
+            throw new MediaOriginalNotRemovableException();
         }
 
         if (!$this->mediaConversionsChecker->hasAnyReadyConversion($media->id)) {
-            throw new ValidationException('app.media.no_conversions_to_keep');
+            throw new MediaWithoutConversionsToKeepException();
         }
 
         // Удаляем текущий оригинал в целевом бакете строго до доменного перехода. 404 идемпотентно
@@ -71,8 +69,7 @@ final readonly class RemoveMediaOriginalHandler
         $this->mediaFileService->deleteObject(storage: $media->storage, path: $media->path);
 
         $media->markReadyOriginalRemoved();
-        $this->entityManager->persist($media);
-        $this->entityManager->run();
+        $this->mediaRepository->save($media);
 
         $this->logger->debug(message: 'Оригинал медиа удалён.', context: [
             'mediaId' => $media->id->value(),

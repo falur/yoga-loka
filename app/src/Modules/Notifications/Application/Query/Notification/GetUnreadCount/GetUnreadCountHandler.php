@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Query\Notification\GetUnreadCount;
 
-use App\Modules\Notifications\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Shared\Domain\ValueObject\UserId;
 
 final readonly class GetUnreadCountHandler
@@ -13,9 +13,9 @@ final readonly class GetUnreadCountHandler
         private NotificationRepository $notificationRepository,
     ) {}
 
-    public function handle(GetUnreadCountQuery $query): UnreadCountResult
+    public function handle(GetUnreadCountQuery $query): GetUnreadCountResult
     {
-        return new UnreadCountResult(
+        return new GetUnreadCountResult(
             count: $this->notificationRepository->countUnreadForRecipient(UserId::fromString($query->userId)),
         );
     }

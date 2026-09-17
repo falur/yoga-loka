@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\LikePost;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\PostContentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
+use App\Modules\Posts\Application\Command\CreatePost\PostContentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\PostLike;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostLikeRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -27,10 +25,9 @@ final readonly class LikePostHandler
 {
     public function __construct(
         private PostRepository $postRepository,
-        private PostLikeRepository $postLikeRepository,
         private PostContentComposer $composer,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
@@ -40,21 +37,21 @@ final readonly class LikePostHandler
         $userId = UserId::fromString($command->authUserId);
 
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isActionable($post)) {
-            throw new NotFoundException('app.posts.not_found');
+        if (!$this->postVisibilityPolicy->isActionable($post)) {
+            throw new PostNotFoundException();
         }
 
-        if ($this->postLikeRepository->existsByPostAndUser(postId: $post->id, userId: $userId)) {
+        if ($this->postRepository->existsLikeByPostAndUser(postId: $post->id, userId: $userId)) {
             $this->logger->debug(message: 'Повторный лайк записи — no-op.', context: ['postId' => $post->id->value()]);
 
             return;
         }
 
-        $this->entityManager->persist(PostLike::create(postId: $post->id, userId: $userId));
+        $like = PostLike::create(postId: $post->id, userId: $userId);
         $post->incrementLikes();
-        $this->entityManager->persist($post);
+        $this->postRepository->saveWithLike(post: $post, like: $like);
 
         $this->composer->notifyPostAuthor(
             type: PostNotificationType::PostLike,
@@ -62,7 +59,5 @@ final readonly class LikePostHandler
             actorUserId: $command->authUserId,
             postId: $post->id->value(),
         );
-
-        $this->entityManager->run();
     }
 }

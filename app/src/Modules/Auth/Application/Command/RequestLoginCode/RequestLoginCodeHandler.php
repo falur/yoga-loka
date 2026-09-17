@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application\Command\RequestLoginCode;
 
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
-use App\Modules\Auth\Application\Message\LoginCodeRequested;
+use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Domain\Entity\LoginCode;
 use App\Modules\Auth\Domain\ValueObject\EmailAddress;
 use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
-use App\Modules\Auth\Repository\LoginCodeRepository;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
-use Cycle\ORM\EntityManagerInterface;
+use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -31,8 +30,7 @@ final readonly class RequestLoginCodeHandler
     public function __construct(
         private LoginCodeRepository $loginCodeRepository,
         private SecretHasherContract $secretHasher,
-        private OutboxEventStoreContract $outboxEventStore,
-        private EntityManagerInterface $entityManager,
+        private IntegrationEventStoreContract $integrationEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -54,7 +52,7 @@ final readonly class RequestLoginCodeHandler
 
         if ($activeCode !== null) {
             $activeCode->consume($now);
-            $this->entityManager->persist($activeCode);
+            $this->loginCodeRepository->add($activeCode);
         }
 
         $code = \str_pad(
@@ -70,13 +68,14 @@ final readonly class RequestLoginCodeHandler
             expiration: Expiration::after(now: $now, seconds: self::CODE_TTL_SECONDS),
             now: $now,
         );
-        $this->entityManager->persist($loginCode);
-        $this->outboxEventStore->add(new LoginCodeRequested(
+        $this->integrationEventStore->add(new LoginCodeRequestedEvent(
             email: $email->value(),
             code: $code,
             locale: $command->requestLocale,
         ));
-        $this->entityManager->run();
+        // Единственный прогон сценария: он уносит в базу и погашенный прежний код, и событие
+        // outbox, поставленные выше в ту же запись, и сам новый код.
+        $this->loginCodeRepository->save($loginCode);
 
         $this->logger->debug(message: 'Код входа запрошен и поставлен в outbox.', context: [
             'email' => $email->value(),

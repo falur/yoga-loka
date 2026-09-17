@@ -84,7 +84,7 @@ new AuthTokenCollection($sessionTokens);
 
 ### Репозиторий: `WhenSelect::cursorById()`
 
-`App\Shared\Infrastructure\Cycle\WhenSelect::cursorById($cursor, $limit)` — последнее звено
+`App\Shared\Infrastructure\Persistence\Cycle\WhenSelect::cursorById($cursor, $limit)` — последнее звено
 цепочки `select()`: инкапсулирует `orderBy('id','DESC')`, `where('id','<',$cursor)` при курсоре
 и `limit`. Курсор — `value()` UUID v7 id (см. правило «Cursor-пагинация по UUID v7 `id`»).
 

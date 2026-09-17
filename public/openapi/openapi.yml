@@ -10,7 +10,7 @@ paths:
     post:
       operationId: api_v1_auth_code_request
       description: 'Запрос кода входа на email. Ответ всегда 204 (наличие пользователя не раскрываем).'
-      parameters: {  }
+      security: []
       responses:
         204:
           description: 'Успешный ответ.'
@@ -20,60 +20,62 @@ paths:
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { email: { type: string } }, required: [email] } }
+          application/json: { schema: { $ref: '#/components/schemas/RequestCodeFilter' } }
   /auth/code/verify:
     post:
       operationId: api_v1_auth_code_verify
       description: 'Проверка кода: пара токенов существующему пользователю или талон регистрации новому email.'
-      parameters: {  }
+      security: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/VerifyResultResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/VerifyResultResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { email: { type: string }, code: { type: string } }, required: [email, code] } }
+          application/json: { schema: { $ref: '#/components/schemas/VerifyCodeFilter' } }
   /auth/register:
     post:
       operationId: api_v1_auth_register
       description: 'Завершение регистрации по талону: создаёт пользователя и выдаёт пару токенов.'
-      parameters: {  }
+      security: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/TokenPairResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/TokenPairResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { ticket: { type: string }, name: { type: string }, nickname: { type: string } }, required: [ticket, name, nickname] } }
+          application/json: { schema: { $ref: '#/components/schemas/RegisterFilter' } }
   /auth/refresh:
     post:
       operationId: api_v1_auth_refresh
       description: 'Обновление пары токенов по refresh-токену (ротация).'
-      parameters: {  }
+      security: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/TokenPairResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/TokenPairResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { refreshToken: { type: string } }, required: [refreshToken] } }
+          application/json: { schema: { $ref: '#/components/schemas/RefreshFilter' } }
   /auth/logout:
     post:
       operationId: api_v1_auth_logout
       description: 'Выход: отзыв всех токенов текущей сессии. Требует Bearer access-токен.'
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         204:
           description: 'Успешный ответ.'
@@ -84,11 +86,13 @@ paths:
     get:
       operationId: api_v1_auth_sessions_index
       description: 'Список своих активных сессий с устройством, IP и пометкой текущей. Требует Bearer access-токен.'
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/SessionResource' } } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionResourceCollectionResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -96,6 +100,9 @@ paths:
     delete:
       operationId: api_v1_auth_sessions_revoke
       description: 'Отзыв своей сессии по её id; требует Bearer access-токен; чужая/несуществующая → 404.'
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: sessionId
@@ -112,6 +119,9 @@ paths:
     get:
       operationId: api_v1_notifications_list
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: cursor
@@ -122,11 +132,11 @@ paths:
           name: limit
           in: query
           required: false
-          schema: { type: integer }
+          schema: { type: integer, default: 20 }
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationResource' } }, meta: { type: object, properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }, required: [nextCursor, limit] } }, required: [data, meta] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationResourcePaginationResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -134,11 +144,13 @@ paths:
     get:
       operationId: api_v1_notifications_unread_count
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/UnreadCountResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnreadCountResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -146,6 +158,9 @@ paths:
     post:
       operationId: api_v1_notifications_read
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -155,7 +170,7 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -163,11 +178,13 @@ paths:
     post:
       operationId: api_v1_notifications_read_all
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/UnreadCountResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnreadCountResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -175,53 +192,61 @@ paths:
     post:
       operationId: api_v1_notification_device_tokens_register
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationDeviceTokenResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDeviceTokenResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { token: { type: string }, platform: { type: string } }, required: [token, platform] } }
+          application/json: { schema: { $ref: '#/components/schemas/RegisterNotificationDeviceTokenFilter' } }
     delete:
       operationId: api_v1_notification_device_tokens_remove
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/NotificationDeviceTokenResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDeviceTokenResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { token: { type: string } }, required: [token] } }
+          application/json: { schema: { $ref: '#/components/schemas/RemoveNotificationDeviceTokenFilter' } }
   /notification-settings:
     get:
       operationId: api_v1_notification_settings_get
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationSettingResource' } } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationSettingResourceCollectionResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
     put:
       operationId: api_v1_notification_settings_update
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationSettingResource' } } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationSettingResourceCollectionResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -229,6 +254,9 @@ paths:
     post:
       operationId: api_v1_posts_comments_create
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -238,17 +266,20 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/CommentResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommentResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { text: { type: string }, mentions: { type: array, items: { type: string } } }, required: [text] } }
+          application/json: { schema: { $ref: '#/components/schemas/CommentPostFilter' } }
     get:
       operationId: api_v1_posts_comments_list
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -264,11 +295,11 @@ paths:
           name: limit
           in: query
           required: false
-          schema: { type: integer }
+          schema: { type: integer, default: 20 }
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/CommentResource' } }, meta: { type: object, properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }, required: [nextCursor, limit] } }, required: [data, meta] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommentResourcePaginationResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -276,6 +307,9 @@ paths:
     post:
       operationId: api_v1_posts_comments_reply
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -285,17 +319,20 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/CommentResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommentResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { text: { type: string }, mentions: { type: array, items: { type: string } } }, required: [text] } }
+          application/json: { schema: { $ref: '#/components/schemas/ReplyCommentFilter' } }
     get:
       operationId: api_v1_posts_comments_replies
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -311,11 +348,11 @@ paths:
           name: limit
           in: query
           required: false
-          schema: { type: integer }
+          schema: { type: integer, default: 20 }
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/CommentResource' } }, meta: { type: object, properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }, required: [nextCursor, limit] } }, required: [data, meta] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommentResourcePaginationResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -323,6 +360,9 @@ paths:
     delete:
       operationId: api_v1_posts_comments_delete
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -339,6 +379,9 @@ paths:
     post:
       operationId: api_v1_posts_comments_like
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -354,6 +397,9 @@ paths:
     delete:
       operationId: api_v1_posts_comments_unlike
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -370,22 +416,27 @@ paths:
     post:
       operationId: api_v1_posts_create
       description: ''
-      parameters: {  }
+      security:
+        -
+          bearerAuth: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PostResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/PostResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { text: { type: [string, 'null'] }, draft: { type: boolean }, mediaIds: { type: array, items: { type: string } }, tags: { type: array, items: { type: string } }, mentions: { type: array, items: { type: string } } } } }
+          application/json: { schema: { $ref: '#/components/schemas/CreatePostFilter' } }
   '/posts/{id}/publish':
     post:
       operationId: api_v1_posts_publish
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -395,7 +446,7 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PostResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/PostResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -403,6 +454,9 @@ paths:
     post:
       operationId: api_v1_posts_repost
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -412,18 +466,21 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PostResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/PostResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, properties: { text: { type: [string, 'null'] }, mediaIds: { type: array, items: { type: string } }, tags: { type: array, items: { type: string } }, mentions: { type: array, items: { type: string } } } } }
+          application/json: { schema: { $ref: '#/components/schemas/RepostPostFilter' } }
   '/posts/{id}':
     delete:
       operationId: api_v1_posts_delete
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -439,6 +496,9 @@ paths:
     get:
       operationId: api_v1_posts_show
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -448,7 +508,7 @@ paths:
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PostResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/PostResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -456,6 +516,9 @@ paths:
     post:
       operationId: api_v1_posts_like
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -471,6 +534,9 @@ paths:
     delete:
       operationId: api_v1_posts_unlike
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -487,6 +553,9 @@ paths:
     get:
       operationId: api_v1_posts_user_feed
       description: ''
+      security:
+        -
+          bearerAuth: []
       parameters:
         -
           name: id
@@ -502,11 +571,11 @@ paths:
           name: limit
           in: query
           required: false
-          schema: { type: integer }
+          schema: { type: integer, default: 20 }
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/PostResource' } }, meta: { type: object, properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }, required: [nextCursor, limit] } }, required: [data, meta] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/PostResourcePaginationResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -514,11 +583,11 @@ paths:
     get:
       operationId: health
       description: 'Проверка работоспособности API'
-      parameters: {  }
+      security: []
       responses:
         200:
           description: 'Успешный ответ.'
-          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/HealthResource' } }, required: [data] } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/HealthResourceDataResponse' } } }
         default:
           description: 'Ошибка API.'
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
@@ -543,6 +612,16 @@ components:
       required:
         - userId
         - name
+    CommentPostFilter:
+      type: object
+      properties:
+        text:
+          type: string
+        mentions:
+          type: array
+          items: { type: string }
+      required:
+        - text
     CommentResource:
       type: object
       properties:
@@ -574,6 +653,43 @@ components:
         - likedByMe
         - createdAt
         - author
+    CommentResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/CommentResource'
+      required:
+        - data
+    CommentResourcePaginationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CommentResource' }
+        meta:
+          type: object
+          properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }
+          required: [nextCursor, limit]
+      required:
+        - data
+        - meta
+    CreatePostFilter:
+      type: object
+      properties:
+        text:
+          type: [string, 'null']
+        draft:
+          type: boolean
+          default: false
+        mediaIds:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        mentions:
+          type: array
+          items: { type: string }
     DevicePlatform:
       type: string
       enum:
@@ -595,6 +711,13 @@ components:
           $ref: '#/components/schemas/HealthStatus'
       required:
         - status
+    HealthResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/HealthResource'
+      required:
+        - data
     HealthStatus:
       type: string
       enum:
@@ -678,8 +801,8 @@ components:
           type: string
         name:
           type: string
-        avatarUrl:
-          type: [string, 'null']
+        avatar:
+          oneOf: [{ $ref: '#/components/schemas/MediaResource' }, { type: 'null' }]
       required:
         - id
         - name
@@ -703,6 +826,13 @@ components:
         - id
         - platform
         - createdAt
+    NotificationDeviceTokenResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/NotificationDeviceTokenResource'
+      required:
+        - data
     NotificationResource:
       type: object
       properties:
@@ -730,6 +860,26 @@ components:
         - body
         - read
         - createdAt
+    NotificationResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/NotificationResource'
+      required:
+        - data
+    NotificationResourcePaginationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/NotificationResource' }
+        meta:
+          type: object
+          properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }
+          required: [nextCursor, limit]
+      required:
+        - data
+        - meta
     NotificationSettingResource:
       type: object
       properties:
@@ -746,6 +896,14 @@ components:
         - channel
         - enabled
         - default
+    NotificationSettingResourceCollectionResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/NotificationSettingResource' }
+      required:
+        - data
     PostResource:
       type: object
       properties:
@@ -790,12 +948,100 @@ components:
         - author
         - media
         - tags
+    PostResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PostResource'
+      required:
+        - data
+    PostResourcePaginationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PostResource' }
+        meta:
+          type: object
+          properties: { nextCursor: { type: [string, 'null'] }, limit: { type: integer } }
+          required: [nextCursor, limit]
+      required:
+        - data
+        - meta
     PostStatus:
       type: string
       enum:
         - draft
         - published
         - blocked
+    RefreshFilter:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+    RegisterFilter:
+      type: object
+      properties:
+        ticket:
+          type: string
+        name:
+          type: string
+        nickname:
+          type: string
+      required:
+        - ticket
+        - name
+        - nickname
+    RegisterNotificationDeviceTokenFilter:
+      type: object
+      properties:
+        token:
+          type: string
+        platform:
+          type: string
+      required:
+        - token
+        - platform
+    RemoveNotificationDeviceTokenFilter:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+    ReplyCommentFilter:
+      type: object
+      properties:
+        text:
+          type: string
+        mentions:
+          type: array
+          items: { type: string }
+      required:
+        - text
+    RepostPostFilter:
+      type: object
+      properties:
+        text:
+          type: [string, 'null']
+        mediaIds:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        mentions:
+          type: array
+          items: { type: string }
+    RequestCodeFilter:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
     SessionResource:
       type: object
       properties:
@@ -818,6 +1064,14 @@ components:
         - createdAt
         - expiresAt
         - current
+    SessionResourceCollectionResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SessionResource' }
+      required:
+        - data
     TagResource:
       type: object
       properties:
@@ -844,6 +1098,13 @@ components:
         - refreshToken
         - tokenType
         - expiresIn
+    TokenPairResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/TokenPairResource'
+      required:
+        - data
     UnreadCountResource:
       type: object
       properties:
@@ -851,6 +1112,23 @@ components:
           type: integer
       required:
         - count
+    UnreadCountResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UnreadCountResource'
+      required:
+        - data
+    VerifyCodeFilter:
+      type: object
+      properties:
+        email:
+          type: string
+        code:
+          type: string
+      required:
+        - email
+        - code
     VerifyResultResource:
       type: object
       properties:
@@ -862,3 +1140,14 @@ components:
           type: [string, 'null']
       required:
         - needsProfile
+    VerifyResultResourceDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/VerifyResultResource'
+      required:
+        - data
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

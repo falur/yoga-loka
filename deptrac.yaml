@@ -1,0 +1,1198 @@
+# Проверка архитектурных границ (deptrac).
+#
+# Файл кодирует раздел «Направления зависимостей» docs/arch.md: слой описан один раз как набор
+# классов, а разрешённые направления перечислены явно. Любое направление, которого нет в `ruleset`,
+# считается нарушением и роняет проверку. Правила не смягчаются ни baseline, ни `skip_violations`:
+# таких секций в файле нет и заводить их нельзя.
+#
+# Область анализа — `app/src` без `app/src/Modules/*/Tests/*`. Причины исключения тестов:
+#   1. таблица «Направления зависимостей» docs/arch.md описывает слои Domain / Public / Application /
+#      Infrastructure; `Tests` слоем не является и в таблице не участвует, поэтому исключение не
+#      снимает ни одного объявленного здесь правила;
+#   2. это ровно та область анализа, которую проект уже осознанно зафиксировал для PHPStan
+#      (`phpstan.neon`, `excludePaths: app/src/Modules/*/Tests/*`), — расхождение областей двух
+#      статических анализаторов создавало бы путаницу;
+#   3. фикстуре интеграционного теста нужно готовить состояния, которых публичный контракт соседа не
+#      выражает (например `Notifications/Tests/Support/PersistsMedia` собирает медиа через Domain и
+#      Mapper модуля Media), — принуждение тестов ходить через `Public` сузило бы проверяемые
+#      состояния и ослабило тесты.
+# Ни одна строка продуктивного кода из-под проверки не выведена.
+#
+# Зависимости на классы, не попавшие ни в один слой (PHP, `Psr\`, `Illuminate\`, `Symfony\`,
+# `Ramsey\` и прочий нейтральный вендор), deptrac считает непокрытыми и нарушением не объявляет:
+# docs/arch.md их не ограничивает. Ограничиваемые технологии — Spiral Framework, Cycle ORM и
+# собственные пакеты `GianTiaga\` — вынесены в отдельные слои ниже, поэтому запреты на них
+# выражены явно, а не получаются случайно из-за отсутствия слоя.
+
+deptrac:
+  paths:
+    - ./app/src
+  exclude_files:
+    # Тесты модулей — см. пункты 1-3 в шапке файла.
+    - '#/Modules/[^/]+/Tests/#'
+
+  # Кэш держим в runtime/, как это уже сделано для PHPStan (`tmpDir: runtime/phpstan`).
+  cache_file: runtime/deptrac.cache
+
+  analyser:
+    # `use` добавлен к типам по умолчанию, чтобы нарушением считался сам импорт класса из чужого
+    # слоя, а не только его использование в коде: забытый `use` — такое же нарушение границы.
+    types:
+      - class
+      - function
+      - use
+
+  layers:
+    # --- Слои модулей ---------------------------------------------------------------------------
+    # На каждый из девяти модулей — пять слоёв. Infrastructure намеренно разделена на две части:
+    # docs/arch.md («Границы слоёв → Infrastructure») требует, чтобы все прямые зависимости модуля
+    # от Spiral лежали в `Infrastructure/Spiral`. Одним слоем на модуль это правило выразить нельзя —
+    # разделение делает его проверяемым: доступ к слою `SpiralFramework` есть только у
+    # `{Module}InfrastructureSpiral`. Слои взаимоисключающие: класс попадает ровно в один из них,
+    # иначе deptrac проверял бы направление против каждого слоя цели.
+
+    - name: AccessDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Access\\Domain\\'
+
+    - name: AccessPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Access\\Public\\'
+
+    - name: AccessApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Access\\Application\\'
+
+    - name: AccessInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Access\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Access\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Access/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: AccessInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Access\\Infrastructure\\Spiral\\'
+
+    - name: AuthDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Auth\\Domain\\'
+
+    - name: AuthPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Auth\\Public\\'
+
+    - name: AuthApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Auth\\Application\\'
+
+    - name: AuthInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Auth\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Auth\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Auth/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: AuthInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Auth\\Infrastructure\\Spiral\\'
+
+    - name: MediaDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Media\\Domain\\'
+
+    - name: MediaPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Media\\Public\\'
+
+    - name: MediaApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Media\\Application\\'
+
+    - name: MediaInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Media\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Media\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Media/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: MediaInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Media\\Infrastructure\\Spiral\\'
+
+    - name: NotificationsDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Notifications\\Domain\\'
+
+    - name: NotificationsPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Notifications\\Public\\'
+
+    - name: NotificationsApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Notifications\\Application\\'
+
+    - name: NotificationsInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Notifications\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Notifications\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Notifications/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: NotificationsInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Notifications\\Infrastructure\\Spiral\\'
+
+    - name: OutboxDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Outbox\\Domain\\'
+
+    - name: OutboxPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Outbox\\Public\\'
+
+    - name: OutboxApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Outbox\\Application\\'
+
+    - name: OutboxInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Outbox\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Outbox\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: OutboxInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Outbox\\Infrastructure\\Spiral\\'
+
+    - name: PostsDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Posts\\Domain\\'
+
+    - name: PostsPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Posts\\Public\\'
+
+    - name: PostsApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Posts\\Application\\'
+
+    - name: PostsInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Posts\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Posts\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: PostsInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Posts\\Infrastructure\\Spiral\\'
+
+    - name: SystemDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\System\\Domain\\'
+
+    - name: SystemPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\System\\Public\\'
+
+    - name: SystemApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\System\\Application\\'
+
+    - name: SystemInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\System\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\System\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/System/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: SystemInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\System\\Infrastructure\\Spiral\\'
+
+    - name: TagsDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Tags\\Domain\\'
+
+    - name: TagsPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Tags\\Public\\'
+
+    - name: TagsApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Tags\\Application\\'
+
+    - name: TagsInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\Tags\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\Tags\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/Tags/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: TagsInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\Tags\\Infrastructure\\Spiral\\'
+
+    - name: UserDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\User\\Domain\\'
+
+    - name: UserPublic
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\User\\Public\\'
+
+    - name: UserApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\User\\Application\\'
+
+    - name: UserInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Modules\\User\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Modules\\User\\Infrastructure\\Spiral\\'
+        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
+        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
+        # бы вне слоёв, и её зависимости никто бы не проверял.
+        - type: directory
+          value: 'app/src/Modules/User/Infrastructure/Persistence/Cycle/Migration/'
+
+    - name: UserInfrastructureSpiral
+      collectors:
+        - type: classLike
+          value: '^App\\Modules\\User\\Infrastructure\\Spiral\\'
+
+    # --- Общие слои -----------------------------------------------------------------------------
+    # `Shared` не импортирует бизнес-модули (docs/arch.md, «Границы слоёв → Shared»). Единственное
+    # исключение — Kernel, собирающий bootloader-ы приложения; поэтому он вынесен из
+    # `SharedInfrastructure` в собственный слой со своим правилом.
+
+    - name: SharedDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Domain\\'
+
+    # Раздела `app/src/Shared/Application` сегодня нет — слой объявлен заранее, чтобы общая
+    # нейтральная форма сценария, появившись, сразу попала под правила, а не осталась непокрытой.
+    - name: SharedApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Application\\'
+
+    - name: SharedInfrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^App\\Shared\\Infrastructure\\'
+          must_not:
+            - type: classLike
+              value: '^App\\Shared\\Infrastructure\\Spiral\\Kernel$'
+
+    - name: Kernel
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Infrastructure\\Spiral\\Kernel$'
+
+    # --- Слои внешних зависимостей --------------------------------------------------------------
+    # Эти слои сами ни от чего не зависят (в `paths` их файлов нет) и в `ruleset` как источник не
+    # появляются. Они нужны как цель: без них зависимость на Spiral или Cycle была бы «непокрытой»
+    # и молча разрешённой.
+
+    - name: SpiralFramework
+      collectors:
+        - type: classLike
+          value: '^Spiral\\'
+
+    - name: CycleOrm
+      collectors:
+        - type: classLike
+          value: '^Cycle\\'
+
+    # Нейтральные контракты собственных Composer-пакетов разделены на два слоя, потому что
+    # docs/arch.md допускает их в разных слоях по-разному.
+    #
+    # Базовое переводимое исключение: `Shared/Domain/Exception/DomainTranslatableException`
+    # наследует `GianTiaga\SpiralApiErrors\Exception\TranslatableException`, и это прямо названное
+    # в docs/arch.md осознанное отступление — нейтральный контракт собственного пакета, не
+    # фреймворк. Доменные исключения модулей наследуют тот же базовый класс через `Shared`, поэтому
+    # слой доступен и из `{Module}Domain`: deptrac переносит зависимости предка на наследника, а
+    # запрещать наследнику то, что разрешено его же базовому классу в `Shared`, бессмысленно.
+    - name: OwnPackageExceptionContract
+      collectors:
+        - type: classLike
+          value: '^GianTiaga\\SpiralApiErrors\\Exception\\'
+
+    # Атрибуты и шины CQRS: контракт сценария, поэтому доступен `Application`, `Public` и
+    # Infrastructure — и недоступен `Domain`, которому docs/arch.md оставляет только PHP,
+    # собственный домен и `Shared/Domain`.
+    - name: OwnPackageCqrsContract
+      collectors:
+        - type: classLike
+          value: '^GianTiaga\\SpiralCqrs\\(Attribute\\|[A-Za-z]+Interface$)'
+
+    # Остальное из собственных пакетов — bootloader-ы, middleware, интерсепторы, HTTP-ответы и
+    # генератор OpenAPI: это runtime поверх Spiral, поэтому слой доступен только из
+    # `{Module}InfrastructureSpiral`, `SharedInfrastructure` и `Kernel`. Не-Spiral части
+    # Infrastructure (`Persistence/Cycle`, `Storage`, `Client`, `Ffmpeg`, `Imagick`, `Relay`,
+    # `Serializer`) доступа к нему не имеют: runtime поверх Spiral — та же прямая зависимость от
+    # фреймворка, которой docs/arch.md оставляет одно место — `Infrastructure/Spiral`.
+    - name: OwnPackageRuntime
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^GianTiaga\\'
+          must_not:
+            - type: classLike
+              value: '^GianTiaga\\(SpiralApiErrors\\Exception\\|SpiralCqrs\\(Attribute\\|[A-Za-z]+Interface$))'
+
+  ruleset:
+    # --- Модули ---------------------------------------------------------------------------------
+    # Правила одинаковы для всех девяти модулей и читаются построчно как таблица
+    # «Направления зависимостей» docs/arch.md.
+    #
+    # Domain         -> PHP, свой Domain, Shared/Domain и базовое переводимое исключение
+    #                   собственного пакета, которое домен получает по наследству от
+    #                   `Shared/Domain/Exception/DomainTranslatableException`. Ни Spiral, ни Cycle,
+    #                   ни CQRS-контрактов — это и есть запрет фреймворка и ORM в домене.
+    #                   Зависимость внутри своего слоя deptrac разрешает сам.
+    # Public         -> свой Public, Public других модулей, Shared/Domain, нейтральные контракты
+    #                   собственных пакетов.
+    # Application    -> свой Domain, свой Public, Public других модулей, Shared/Domain,
+    #                   Shared/Application, нейтральные контракты собственных пакетов.
+    #                   Domain, Application и Infrastructure соседа недоступны — отсюда правило
+    #                   «к соседу только через его Public», оно же закрывает ORM-связь через
+    #                   границу модуля: цель связи Cycle импортируется обычным `use`.
+    # Infrastructure -> свой Domain, Application, Public, свой Infrastructure/Spiral, Public
+    #                   других модулей, Shared целиком, Cycle ORM и нейтральные контракты
+    #                   собственных пакетов. Недоступны Spiral Framework и runtime собственных
+    #                   пакетов поверх него: их место — Infrastructure/Spiral.
+    # InfrastructureSpiral -> то же плюс Spiral Framework и runtime собственных пакетов.
+
+    AccessDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    AccessPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AccessApplication:
+      - AccessDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AccessInfrastructure:
+      - AccessDomain
+      - AccessApplication
+      - AccessInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AccessInfrastructureSpiral:
+      - AccessDomain
+      - AccessApplication
+      - AccessInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    AuthDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    AuthPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AuthApplication:
+      - AuthDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AuthInfrastructure:
+      - AuthDomain
+      - AuthApplication
+      - AuthInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    AuthInfrastructureSpiral:
+      - AuthDomain
+      - AuthApplication
+      - AuthInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    MediaDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    MediaPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    MediaApplication:
+      - MediaDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    MediaInfrastructure:
+      - MediaDomain
+      - MediaApplication
+      - MediaInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    MediaInfrastructureSpiral:
+      - MediaDomain
+      - MediaApplication
+      - MediaInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    NotificationsDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    NotificationsPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    NotificationsApplication:
+      - NotificationsDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    NotificationsInfrastructure:
+      - NotificationsDomain
+      - NotificationsApplication
+      - NotificationsInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    NotificationsInfrastructureSpiral:
+      - NotificationsDomain
+      - NotificationsApplication
+      - NotificationsInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    OutboxDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    OutboxPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    OutboxApplication:
+      - OutboxDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    OutboxInfrastructure:
+      - OutboxDomain
+      - OutboxApplication
+      - OutboxInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    OutboxInfrastructureSpiral:
+      - OutboxDomain
+      - OutboxApplication
+      - OutboxInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    PostsDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    PostsPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    PostsApplication:
+      - PostsDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    PostsInfrastructure:
+      - PostsDomain
+      - PostsApplication
+      - PostsInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    PostsInfrastructureSpiral:
+      - PostsDomain
+      - PostsApplication
+      - PostsInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    SystemDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    SystemPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    SystemApplication:
+      - SystemDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    SystemInfrastructure:
+      - SystemDomain
+      - SystemApplication
+      - SystemInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    SystemInfrastructureSpiral:
+      - SystemDomain
+      - SystemApplication
+      - SystemInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    TagsDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    TagsPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    TagsApplication:
+      - TagsDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    TagsInfrastructure:
+      - TagsDomain
+      - TagsApplication
+      - TagsInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    TagsInfrastructureSpiral:
+      - TagsDomain
+      - TagsApplication
+      - TagsInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    UserDomain:
+      - SharedDomain
+      - OwnPackageExceptionContract
+
+    UserPublic:
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    UserApplication:
+      - UserDomain
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    UserInfrastructure:
+      - UserDomain
+      - UserApplication
+      - UserInfrastructureSpiral
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    UserInfrastructureSpiral:
+      - UserDomain
+      - UserApplication
+      - UserInfrastructure
+      - AccessPublic
+      - AuthPublic
+      - MediaPublic
+      - NotificationsPublic
+      - OutboxPublic
+      - PostsPublic
+      - SystemPublic
+      - TagsPublic
+      - UserPublic
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    # --- Общие слои -----------------------------------------------------------------------------
+    # Ни в одном из трёх списков ниже нет слоя бизнес-модуля: `Shared` не импортирует модули.
+
+    SharedDomain:
+      - OwnPackageExceptionContract
+
+    SharedApplication:
+      - SharedDomain
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+
+    SharedInfrastructure:
+      - SharedDomain
+      - SharedApplication
+      - SpiralFramework
+      - CycleOrm
+      - OwnPackageExceptionContract
+      - OwnPackageCqrsContract
+      - OwnPackageRuntime
+
+    # Kernel — единственное место, которому docs/arch.md разрешает знать состав модулей: он
+    # собирает их bootloader-ы. Точнее слоя не получается: bootloader живёт в
+    # `Infrastructure/Spiral` модуля, а слои обязаны быть взаимоисключающими — отдельный слой на
+    # bootloader-ы пересёкся бы со слоем `{Module}InfrastructureSpiral`. Фактическое соблюдение
+    # узкой формулировки проверяется тем, что Kernel импортирует ровно девять bootloader-ов.
+    Kernel:
+      - AccessInfrastructureSpiral
+      - AuthInfrastructureSpiral
+      - MediaInfrastructureSpiral
+      - NotificationsInfrastructureSpiral
+      - OutboxInfrastructureSpiral
+      - PostsInfrastructureSpiral
+      - SystemInfrastructureSpiral
+      - TagsInfrastructureSpiral
+      - UserInfrastructureSpiral
+      - SharedInfrastructure
+      - SpiralFramework
+      - OwnPackageRuntime

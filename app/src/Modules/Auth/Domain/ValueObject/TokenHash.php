@@ -9,7 +9,7 @@ use App\Shared\Domain\Exception\InvalidDomainValueException;
 /**
  * SHA-256 хэш высокоэнтропийного токена (access/refresh). В БД хранится только хэш,
  * сам токен у клиента. fromRawToken считает хэш по сырому токену, fromString восстанавливает
- * уже известный хэш (в т.ч. при гидрации из БД через конвенцию ValueObjectCast).
+ * уже известный хэш (в т.ч. при гидрации из БД в AuthTokenMapper::toDomain()).
  */
 final readonly class TokenHash implements \Stringable, \JsonSerializable
 {

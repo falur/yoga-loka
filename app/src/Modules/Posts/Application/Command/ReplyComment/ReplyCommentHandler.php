@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\ReplyComment;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\CommentView;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
+use App\Modules\Posts\Application\Command\CommentPost\CommentComposer;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
 use App\Modules\Posts\Domain\ValueObject\CommentText;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
+use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 
@@ -32,29 +30,28 @@ final readonly class ReplyCommentHandler
         private CommentRepository $commentRepository,
         private PostRepository $postRepository,
         private CommentComposer $composer,
-        private CommentViewAssembler $commentViewAssembler,
-        private EntityManagerInterface $entityManager,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(ReplyCommentCommand $command): CommentView
+    public function handle(ReplyCommentCommand $command): ReplyCommentResult
     {
         $authUserId = UserId::fromString($command->authUserId);
 
         $parent = $this->commentRepository->findById(CommentId::fromString($command->commentId))
-            ?? throw new NotFoundException('app.posts.comment_not_found');
+            ?? throw new CommentNotFoundException();
 
         if ($parent->isDeleted()) {
-            throw new NotFoundException('app.posts.comment_not_found');
+            throw new CommentNotFoundException();
         }
 
         // Запись существующего комментария всегда есть (FK), но проверку null оставляем в одном
         // условии с доступностью: ответ допустим только на доступную (опубликованную) запись.
         $post = $this->postRepository->findById($parent->postId);
 
-        if ($post === null || !PostVisibilityPolicy::isActionable($post)) {
-            throw new NotFoundException('app.posts.not_found');
+        if ($post === null || !$this->postVisibilityPolicy->isActionable($post)) {
+            throw new PostNotFoundException();
         }
 
         $comment = Comment::create(
@@ -63,12 +60,8 @@ final readonly class ReplyCommentHandler
             text: CommentText::fromString($command->text),
             parent: CommentParent::pointingTo($parent->id->value()),
         );
-        $this->entityManager->persist($comment);
 
-        $parent->incrementReplies();
-        $this->entityManager->persist($parent);
-
-        $this->composer->attachMentionsAndNotify(
+        $mentions = $this->composer->attachMentionsAndNotify(
             comment: $comment,
             mentionIds: $command->mentions,
             actorUserId: $command->authUserId,
@@ -76,8 +69,13 @@ final readonly class ReplyCommentHandler
             primaryType: PostNotificationType::CommentReply,
         );
 
-        $this->entityManager->run();
+        // Один прогон EntityManager на сценарий: ответ с упоминаниями только ставятся в очередь,
+        // а родитель — второй экземпляр того же корня Comment — флашит всё разом своим save().
+        $this->commentRepository->addWithMentions(comment: $comment, mentions: $mentions);
 
-        return $this->commentViewAssembler->fromComment(comment: $comment, viewer: $authUserId);
+        $parent->incrementReplies();
+        $this->commentRepository->save($parent);
+
+        return new ReplyCommentResult(commentId: $comment->id->value());
     }
 }

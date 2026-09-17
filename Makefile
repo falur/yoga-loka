@@ -5,7 +5,7 @@ APP_SERVICE ?= app-http
 CMD ?= bash
 COMPOSE = docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) -p $(PROJECT_NAME)
 
-.PHONY: up down restart composer-install test test-unit test-kernel test-feature test-coverage warmup phpstan qa qa-build shell logs migrate reset-test
+.PHONY: up down restart composer-install test test-unit test-kernel test-feature test-coverage warmup phpstan deptrac qa qa-build shell logs migrate reset-test
 
 up:
 	@echo "[make] Старт цели up: project=$(PROJECT_NAME)"
@@ -62,9 +62,14 @@ phpstan:
 	@$(COMPOSE) run --rm $(APP_SERVICE) composer phpstan
 	@echo "[make] Цель phpstan завершена"
 
+deptrac:
+	@echo "[make] Старт цели deptrac: проверка архитектурных границ, service=$(APP_SERVICE)"
+	@$(COMPOSE) run --rm $(APP_SERVICE) composer deptrac
+	@echo "[make] Цель deptrac завершена"
+
 qa: TEST_PARALLEL_PROCESSES = 4
 qa: reset-test
-	@echo "[make] Старт цели qa: стиль, PHPStan и один coverage-run (PCOV), процессов=$(TEST_PARALLEL_PROCESSES), без пересборки образа"
+	@echo "[make] Старт цели qa: стиль, PHPStan, границы (deptrac) и один coverage-run (PCOV), процессов=$(TEST_PARALLEL_PROCESSES), без пересборки образа"
 	@$(COMPOSE) --profile test run --rm --no-deps -e TEST_PARALLEL_PROCESSES=$(TEST_PARALLEL_PROCESSES) test-runner bash docker/test/run-qa.sh
 	@echo "[make] Цель qa завершена"
 

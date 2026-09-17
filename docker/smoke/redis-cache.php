@@ -6,7 +6,7 @@ use Psr\SimpleCache\CacheInterface;
 use Spiral\Cache\CacheStorageProviderInterface;
 use Spiral\Core\Container;
 use Spiral\Core\Options;
-use App\Infrastructure\Framework\Kernel;
+use App\Shared\Infrastructure\Spiral\Kernel;
 
 require __DIR__ . '/../../vendor/autoload.php';
 

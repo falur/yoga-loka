@@ -14,64 +14,36 @@ use App\Modules\User\Domain\ValueObject\UserLocation;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Domain\ValueObject\UserSpiritualName;
-use App\Modules\User\Infrastructure\Cycle\UserAvatarTypecast;
-use App\Modules\User\Infrastructure\Cycle\UserBioTypecast;
-use App\Modules\User\Infrastructure\Cycle\UserDeletionTypecast;
-use App\Modules\User\Infrastructure\Cycle\UserLocationTypecast;
-use App\Modules\User\Infrastructure\Cycle\UserSpiritualNameTypecast;
-use App\Modules\User\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'user',
-    table: 'users',
-    repository: UserRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class User
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: UserId::class)]
     public private(set) UserId $id;
 
-    #[Column(type: 'string(100)', typecast: UserName::class)]
     public private(set) UserName $name;
 
-    #[Column(type: 'string(100)', name: 'spiritual_name', nullable: true, typecast: UserSpiritualNameTypecast::class)]
     public private(set) UserSpiritualName $spiritualName;
 
-    #[Column(type: 'text', nullable: true, typecast: UserBioTypecast::class)]
     public private(set) UserBio $bio;
 
-    #[Column(type: 'string(100)', nullable: true, typecast: UserLocationTypecast::class)]
     public private(set) UserLocation $location;
 
-    #[Column(type: 'string(254)', typecast: Email::class)]
     public private(set) Email $email;
 
-    #[Column(type: 'string(30)', typecast: UserNickname::class)]
     public private(set) UserNickname $nickname;
 
-    #[Column(type: 'uuid', name: 'avatar_media_id', nullable: true, typecast: UserAvatarTypecast::class)]
     public private(set) UserAvatar $avatar;
 
-    #[Column(type: 'string(32)', typecast: UserVerification::class)]
     public private(set) UserVerification $verification;
 
-    #[Column(type: 'string(32)', typecast: UserStatus::class)]
     public private(set) UserStatus $status;
 
-    #[Column(type: 'string(8)', typecast: Locale::class)]
     public private(set) Locale $locale;
 
-    #[Column(type: 'datetime', name: 'deleted_at', nullable: true, typecast: UserDeletionTypecast::class)]
     public private(set) UserDeletion $deletion;
 
     public static function create(
@@ -94,6 +66,41 @@ final class User
         $user->locale = $locale;
         $user->deletion = UserDeletion::active();
         $user->initializeTimestamps();
+
+        return $user;
+    }
+
+    public static function restore(
+        UserId $id,
+        UserName $name,
+        UserSpiritualName $spiritualName,
+        UserBio $bio,
+        UserLocation $location,
+        Email $email,
+        UserNickname $nickname,
+        UserAvatar $avatar,
+        UserVerification $verification,
+        UserStatus $status,
+        Locale $locale,
+        UserDeletion $deletion,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $user = new self();
+        $user->id = $id;
+        $user->name = $name;
+        $user->spiritualName = $spiritualName;
+        $user->bio = $bio;
+        $user->location = $location;
+        $user->email = $email;
+        $user->nickname = $nickname;
+        $user->avatar = $avatar;
+        $user->verification = $verification;
+        $user->status = $status;
+        $user->locale = $locale;
+        $user->deletion = $deletion;
+        $user->createdAt = $createdAt;
+        $user->updatedAt = $updatedAt;
 
         return $user;
     }

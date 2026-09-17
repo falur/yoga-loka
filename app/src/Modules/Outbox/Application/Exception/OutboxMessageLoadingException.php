@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Outbox\Application\Exception;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
 final class OutboxMessageLoadingException extends \DomainException
 {
     /**
-     * @param class-string<OutboxMessage> $expectedMessageClass
+     * @param class-string<IntegrationEvent> $expectedMessageClass
      */
     public static function eventNotFound(OutboxEventId $outboxEventId, string $expectedMessageClass): self
     {
@@ -22,7 +22,7 @@ final class OutboxMessageLoadingException extends \DomainException
     }
 
     /**
-     * @param class-string<OutboxMessage> $expectedMessageClass
+     * @param class-string<IntegrationEvent> $expectedMessageClass
      */
     public static function storedTypeMismatch(string $storedMessageClass, string $expectedMessageClass): self
     {
@@ -34,9 +34,9 @@ final class OutboxMessageLoadingException extends \DomainException
     }
 
     /**
-     * @param class-string<OutboxMessage> $expectedMessageClass
+     * @param class-string<IntegrationEvent> $expectedMessageClass
      */
-    public static function restoredTypeMismatch(OutboxMessage $outboxMessage, string $expectedMessageClass): self
+    public static function restoredTypeMismatch(IntegrationEvent $outboxMessage, string $expectedMessageClass): self
     {
         return new self(\sprintf(
             'Outbox-сообщение восстановлено как `%s`, ожидался `%s`.',

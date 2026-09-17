@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Modules\Media\Application\Query\FindMediaUrls;
 
 use App\Modules\Media\Application\Contract\MediaUrlServiceContract;
-use App\Modules\Media\Application\Dto\MediaUrlsResult;
-use App\Modules\Media\Application\Dto\MediaUrlsResultCollection;
+use App\Modules\Media\Application\Contract\MediaUrlsResult;
+use App\Modules\Media\Application\Contract\MediaUrlsResultCollection;
 use App\Modules\Media\Domain\Entity\Media;
+use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
-use App\Modules\Media\Repository\MediaRepository;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 
 /**
- * Пакетный аналог FindMediaUrl: грузит набор медиа вместе с конверсиями одним набором запросов и
- * строит URL для каждого через MediaUrlService. Возвращает коллекцию, ключ — id медиа; недоступные
+ * Best-effort разрешение всех URL набора медиа: грузит медиа вместе с конверсиями одним набором
+ * запросов и строит URL для каждого через MediaUrlService. Возвращает коллекцию, ключ — id медиа; недоступные
  * медиа (не найдены или не финализированы) в набор не попадают, вызывающий трактует их отсутствие как
  * «медиа недоступно» и подставляет значение по умолчанию (аватара нет) без try-catch.
  */

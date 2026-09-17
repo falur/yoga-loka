@@ -13,55 +13,30 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventPayload;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventType;
 use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
-use App\Modules\Outbox\Infrastructure\Cycle\OutboxAvailableAtTypecast;
-use App\Modules\Outbox\Infrastructure\Cycle\OutboxEventDateTypecast;
-use App\Modules\Outbox\Infrastructure\Cycle\OutboxEventPayloadTypecast;
-use App\Modules\Outbox\Infrastructure\Cycle\OutboxLastErrorTypecast;
-use App\Modules\Outbox\Repository\OutboxEventRepository;
 use App\Shared\Domain\Trait\HasTimestamps;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'outbox_event',
-    table: 'outbox_events',
-    repository: OutboxEventRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
-class StoredOutboxEvent
+final class StoredOutboxEvent
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: OutboxEventId::class)]
     public private(set) OutboxEventId $id;
 
-    #[Column(type: 'string(255)', typecast: OutboxEventType::class)]
     public private(set) OutboxEventType $type;
 
-    #[Column(type: 'jsonb', typecast: OutboxEventPayloadTypecast::class)]
     public private(set) OutboxEventPayload $payload;
 
-    #[Column(type: 'string(32)', typecast: OutboxEventStatus::class)]
     public private(set) OutboxEventStatus $status;
 
-    #[Column(type: 'integer', typecast: OutboxAttempts::class)]
     public private(set) OutboxAttempts $attempts;
 
-    #[Column(type: 'datetime', name: 'available_at', typecast: OutboxAvailableAtTypecast::class)]
     public private(set) OutboxAvailableAt $availableAt;
 
-    #[Column(type: 'datetime', name: 'queued_at', nullable: true, typecast: OutboxEventDateTypecast::class)]
     public private(set) OutboxEventDate $queuedAt;
 
-    #[Column(type: 'datetime', name: 'handled_at', nullable: true, typecast: OutboxEventDateTypecast::class)]
     public private(set) OutboxEventDate $handledAt;
 
-    #[Column(type: 'datetime', name: 'failed_at', nullable: true, typecast: OutboxEventDateTypecast::class)]
     public private(set) OutboxEventDate $failedAt;
 
-    #[Column(type: 'text', name: 'last_error', nullable: true, typecast: OutboxLastErrorTypecast::class)]
     public private(set) OutboxLastError $lastError;
 
     public static function create(
@@ -96,6 +71,37 @@ class StoredOutboxEvent
         $outboxEvent->failedAt = OutboxEventDate::none();
         $outboxEvent->lastError = OutboxLastError::none();
         $outboxEvent->initializeTimestamps($now);
+
+        return $outboxEvent;
+    }
+
+    public static function restore(
+        OutboxEventId $id,
+        OutboxEventType $type,
+        OutboxEventPayload $payload,
+        OutboxEventStatus $status,
+        OutboxAttempts $attempts,
+        OutboxAvailableAt $availableAt,
+        OutboxEventDate $queuedAt,
+        OutboxEventDate $handledAt,
+        OutboxEventDate $failedAt,
+        OutboxLastError $lastError,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $outboxEvent = new self();
+        $outboxEvent->id = $id;
+        $outboxEvent->type = $type;
+        $outboxEvent->payload = $payload;
+        $outboxEvent->status = $status;
+        $outboxEvent->attempts = $attempts;
+        $outboxEvent->availableAt = $availableAt;
+        $outboxEvent->queuedAt = $queuedAt;
+        $outboxEvent->handledAt = $handledAt;
+        $outboxEvent->failedAt = $failedAt;
+        $outboxEvent->lastError = $lastError;
+        $outboxEvent->createdAt = $createdAt;
+        $outboxEvent->updatedAt = $updatedAt;
 
         return $outboxEvent;
     }

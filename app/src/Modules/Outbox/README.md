@@ -37,8 +37,9 @@ Handler-а:
 
 ```text
 1. Handler меняет бизнес-данные.
-2. Handler вызывает OutboxEventStoreContract::add().
-3. Handler вызывает EntityManagerInterface::run().
+2. Handler вызывает IntegrationEventStoreContract::add() — событие только ставится в текущую
+   единицу работы и своей записи в базу не делает.
+3. Handler сохраняет свой агрегат методом Domain Repository — эта запись уносит в базу и событие.
 4. Транзакция успешно завершается.
 5. outbox:relay берёт pending-события из outbox_events.
 6. Relay находит Job для класса сообщения.
@@ -57,47 +58,47 @@ Job упала, interceptor записывает ошибку и перевод�
 app/config/outbox.php
 app/config/queue.php
 app/database/migrations/20260525.153700_0_create_outbox_events_table.php
-app/src/Modules/Outbox/Application/Contract/OutboxEventStoreContract.php
-app/src/Modules/Outbox/Application/Contract/OutboxMessageLoaderContract.php
-app/src/Modules/Outbox/Application/Message/OutboxMessage.php
-app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxBootloader.php
-app/src/Modules/Outbox/Infrastructure/Bootloader/OutboxConsoleBootloader.php
-app/src/Modules/Outbox/Infrastructure/Message/OutboxMessageLoader.php
+app/src/Modules/Outbox/Public/Contract/IntegrationEvent.php
+app/src/Modules/Outbox/Public/Contract/IntegrationEventStoreContract.php
+app/src/Modules/Outbox/Public/Contract/IntegrationEventLoaderContract.php
+app/src/Modules/Outbox/Public/Contract/IntegrationEventRoutingContract.php
+app/src/Modules/Outbox/Public/Dto/OutboxEnvelopeDto.php
+app/src/Modules/Outbox/Application/Command/StoreIntegrationEvent/StoreIntegrationEventHandler.php
+app/src/Modules/Outbox/Application/Query/LoadIntegrationEvent/LoadIntegrationEventHandler.php
+app/src/Modules/Outbox/Domain/Repository/StoredOutboxEventRepository.php
+app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Repository/CycleStoredOutboxEventRepository.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Bootloader/OutboxBootloader.php
 app/src/Modules/Outbox/Infrastructure/Relay/OutboxRelay.php
-app/src/Modules/Outbox/Infrastructure/Queue/OutboxQueueStatusInterceptor.php
-app/src/Modules/Outbox/Presentation/Console/OutboxRelayCommand.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Queue/OutboxQueueStatusInterceptor.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Console/OutboxRelayCommand.php
 ```
 
 ## Подключение модуля
 
-Модуль подключается в `App\Shared\Infrastructure\Framework\Kernel`.
+Модуль подключается в `App\Shared\Infrastructure\Spiral\Kernel`.
 
 В списке bootloader-ов должны быть:
 
 ```php
-use App\Modules\Outbox\Infrastructure\Bootloader\OutboxBootloader;
-use App\Modules\Outbox\Infrastructure\Bootloader\OutboxConsoleBootloader;
+use App\Modules\Outbox\Infrastructure\Spiral\Bootloader\OutboxBootloader;
 
 // ...
 
 OutboxBootloader::class,
-
-// ...
-
-OutboxConsoleBootloader::class,
 ```
 
 `OutboxBootloader` регистрирует сервисы модуля:
 
-- `OutboxEventStoreContract`;
-- `OutboxMessageLoaderContract`;
+- `IntegrationEventStoreContract`;
+- `IntegrationEventLoaderContract`;
+- `IntegrationEventRoutingContract`;
 - `OutboxMessageSerializerContract`;
 - `OutboxRelayContract`;
 - `OutboxRelayWorkerContract`;
 - `OutboxRelayLoopControlContract`;
 - `OutboxJobRegistryContract`.
 
-`OutboxConsoleBootloader` регистрирует консольную команду `outbox:relay`.
+Он же регистрирует консольную команду `outbox:relay`.
 
 ## Настройка базы данных
 
@@ -210,7 +211,7 @@ Interceptor обновляет статус outbox-события после в�
 
 ### 1. Создать класс сообщения
 
-Сообщение должно реализовать `OutboxMessage`.
+Сообщение должно реализовать `IntegrationEvent`.
 
 Пример:
 
@@ -219,11 +220,11 @@ Interceptor обновляет статус outbox-события после в�
 
 declare(strict_types=1);
 
-namespace App\Modules\Notification\Application\Message;
+namespace App\Modules\Notifications\Public\Event;
 
-use App\Modules\Outbox\Application\Message\OutboxMessage;
+use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 
-final readonly class SendWelcomeEmailMessage implements OutboxMessage
+final readonly class WelcomeEmailRequestedEvent implements IntegrationEvent
 {
     public function __construct(
         public string $userId,
@@ -239,8 +240,8 @@ final readonly class SendWelcomeEmailMessage implements OutboxMessage
 
 ### 2. Создать Job
 
-Job получает технический `OutboxQueueEnvelope`, загружает настоящее сообщение из
-`outbox_events` через `OutboxMessageLoaderContract` и вызывает обычную
+Job получает публичный конверт `OutboxEnvelopeDto`, загружает настоящее сообщение из
+`outbox_events` через `IntegrationEventLoaderContract` и вызывает обычную
 Application-команду с бизнес-данными.
 
 В очереди лежит только короткий payload:
@@ -253,7 +254,7 @@ outboxType
 Настоящий payload хранится в БД:
 
 ```text
-SendWelcomeEmailMessage
+WelcomeEmailRequestedEvent
   userId
   email
 ```
@@ -265,34 +266,34 @@ SendWelcomeEmailMessage
 
 declare(strict_types=1);
 
-namespace App\Modules\Notification\Presentation\Job;
+namespace App\Modules\Notifications\Infrastructure\Spiral\Job;
 
-use App\Modules\Notification\Application\Command\SendWelcomeEmail\SendWelcomeEmailCommand;
-use App\Modules\Notification\Application\Command\SendWelcomeEmail\SendWelcomeEmailHandler;
-use App\Modules\Notification\Application\Message\SendWelcomeEmailMessage;
-use App\Modules\Outbox\Application\Contract\OutboxMessageLoaderContract;
-use App\Modules\Outbox\Application\Message\OutboxQueueEnvelope;
+use App\Modules\Notifications\Application\Command\SendWelcomeEmail\SendWelcomeEmailCommand;
+use App\Modules\Notifications\Application\Command\SendWelcomeEmail\SendWelcomeEmailHandler;
+use App\Modules\Notifications\Public\Event\WelcomeEmailRequestedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
+use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Queue\JobHandler;
 
 final class SendWelcomeEmailJob extends JobHandler
 {
     public function invoke(
-        OutboxQueueEnvelope $payload,
+        OutboxEnvelopeDto $payload,
         string $id,
-        OutboxMessageLoaderContract $outboxMessageLoader,
+        IntegrationEventLoaderContract $integrationEventLoader,
         CommandBusInterface $commandBus,
         SendWelcomeEmailHandler $sendWelcomeEmailHandler,
     ): void {
-        $sendWelcomeEmailMessage = $outboxMessageLoader->load(
+        $welcomeEmailRequestedEvent = $integrationEventLoader->load(
             outboxEventId: $payload->outboxEventId,
-            expectedMessageClass: SendWelcomeEmailMessage::class,
+            expectedEventClass: WelcomeEmailRequestedEvent::class,
         );
 
         $commandBus->dispatch(
             command: new SendWelcomeEmailCommand(
-                userId: $sendWelcomeEmailMessage->userId,
-                email: $sendWelcomeEmailMessage->email,
+                userId: $welcomeEmailRequestedEvent->userId,
+                email: $welcomeEmailRequestedEvent->email,
             ),
             handler: $sendWelcomeEmailHandler->handle(...),
         );
@@ -305,19 +306,19 @@ Job не должна сама менять статус outbox-события. 
 
 `outboxId` остаётся техническим ключом. Если внешний сервис поддерживает
 idempotency key, Job или технический адаптер может использовать
-`$payload->outboxEventId->value()`. Но обычная бизнес-команда не должна получать
+`$payload->outboxEventId`. Но обычная бизнес-команда не должна получать
 `outboxId`, если у неё нет отдельной бизнес-причины знать про Outbox.
 
-### 3. Зарегистрировать сообщение и Job в OutboxJobRegistryContract
+### 3. Зарегистрировать сообщение и Job в IntegrationEventRoutingContract
 
 Регистрация делается в bootloader-е.
 
 Для встроенного debug-сообщения это выглядит так:
 
 ```php
-$outboxJobRegistry->register(
-    outboxMessageClass: OutboxDebugLogMessage::class,
-    outboxJobClass: OutboxDebugLogJob::class,
+$integrationEventRouting->register(
+    integrationEventClass: OutboxDebugLogRequestedEvent::class,
+    jobClass: OutboxDebugLogJob::class,
 );
 ```
 
@@ -330,11 +331,11 @@ $outboxJobRegistry->register(
 ```php
 final class NotificationOutboxBootloader extends Bootloader
 {
-    public function boot(OutboxJobRegistryContract $outboxJobRegistry): void
+    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
     {
-        $outboxJobRegistry->register(
-            outboxMessageClass: SendWelcomeEmailMessage::class,
-            outboxJobClass: SendWelcomeEmailJob::class,
+        $integrationEventRouting->register(
+            integrationEventClass: WelcomeEmailRequestedEvent::class,
+            jobClass: SendWelcomeEmailJob::class,
         );
     }
 }
@@ -358,8 +359,9 @@ SendWelcomeEmailJob::class => OutboxQueueSerializer::class,
 
 ### 5. Сохранить событие в Handler-е
 
-В бизнес Handler-е добавьте `OutboxEventStoreContract` через constructor
-injection и сохраните событие до `EntityManagerInterface::run()`.
+В бизнес Handler-е добавьте `IntegrationEventStoreContract` через constructor
+injection и поставьте событие до записи своего агрегата. `EntityManager` в Handler не
+инъектируется: слой Application про Cycle не знает, хранение скрыто за Domain Repository модуля.
 
 Пример:
 
@@ -367,8 +369,8 @@ injection и сохраните событие до `EntityManagerInterface::run
 final readonly class RegisterUserHandler
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
-        private OutboxEventStoreContract $outboxEventStore,
+        private UserRepository $userRepository,
+        private IntegrationEventStoreContract $integrationEventStore,
     ) {}
 
     #[Transactional]
@@ -376,13 +378,12 @@ final readonly class RegisterUserHandler
     {
         $user = User::create(/* ... */);
 
-        $this->entityManager->persist($user);
-        $this->outboxEventStore->add(new SendWelcomeEmailMessage(
+        $this->integrationEventStore->add(new WelcomeEmailRequestedEvent(
             userId: $user->id->value(),
             email: $user->email->value(),
         ));
-
-        $this->entityManager->run();
+        // Запись агрегата уносит в базу и поставленное выше событие outbox.
+        $this->userRepository->save($user);
     }
 }
 ```
@@ -474,13 +475,13 @@ failed     - публикация или обработка окончатель
 
 ## Как читать сообщение внутри Job
 
-Job читает сообщение через `OutboxMessageLoaderContract`. Application Handler
+Job читает сообщение через `IntegrationEventLoaderContract`. Application Handler
 получает уже готовую команду с бизнес-данными и не читает `outbox_events`.
 
 Пример есть в:
 
 ```text
-app/src/Modules/Outbox/Presentation/Job/OutboxDebugLogJob.php
+app/src/Modules/Outbox/Infrastructure/Spiral/Job/OutboxDebugLogJob.php
 ```
 
 Такой подход не дублирует большой payload в очереди, сохраняет источник правды в
@@ -505,7 +506,7 @@ make qa
 
 ## Частые ошибки
 
-Не зарегистрировали пару сообщение -> Job в `OutboxJobRegistryContract`.
+Не зарегистрировали пару сообщение -> Job в `IntegrationEventRoutingContract`.
 Relay выбросит ошибку, потому что не знает, какую Job поставить в очередь.
 
 Не добавили Job в `app/config/queue.php`.

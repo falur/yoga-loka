@@ -10,8 +10,8 @@ use App\Modules\Outbox\Application\Contract\OutboxRelaySleeperContract;
 use App\Modules\Outbox\Application\Contract\OutboxRelayWorkerContract;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
-use App\Modules\Outbox\Infrastructure\Exception\OutboxRelayStoppedException;
-use App\Shared\Infrastructure\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Application\Exception\OutboxRelayStoppedException;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use Psr\Log\LoggerInterface;
 
 final readonly class OutboxRelayWorker implements OutboxRelayWorkerContract

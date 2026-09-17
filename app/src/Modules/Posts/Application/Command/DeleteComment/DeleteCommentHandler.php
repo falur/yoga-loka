@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\DeleteComment;
 
+use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletedAt;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletedBy;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletionReason;
 use App\Modules\Posts\Domain\ValueObject\CommentId;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\CommentRepository;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
+use App\Modules\Posts\Domain\Exception\NotAuthorException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -29,7 +29,6 @@ final readonly class DeleteCommentHandler
     public function __construct(
         private CommentRepository $commentRepository,
         private PostRepository $postRepository,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -38,10 +37,10 @@ final readonly class DeleteCommentHandler
     public function handle(DeleteCommentCommand $command): void
     {
         $comment = $this->commentRepository->findById(CommentId::fromString($command->commentId))
-            ?? throw new NotFoundException('app.posts.comment_not_found');
+            ?? throw new CommentNotFoundException();
 
         if (!$comment->userId->equals(UserId::fromString($command->authUserId))) {
-            throw new ForbiddenException('app.posts.forbidden');
+            throw new NotAuthorException();
         }
 
         if ($comment->isDeleted()) {
@@ -56,33 +55,42 @@ final readonly class DeleteCommentHandler
             deletedAt: CommentDeletedAt::at($now),
             deletionReason: CommentDeletionReason::none(),
         );
-        $this->entityManager->persist($comment);
 
-        $this->mirrorCounter(postId: $comment->postId->value(), parentId: $comment->parent->value());
-
-        $this->entityManager->run();
+        $this->mirrorCounter(comment: $comment, postId: $comment->postId->value(), parentId: $comment->parent->value());
 
         $this->logger->debug(message: 'Комментарий удалён.', context: ['commentId' => $comment->id->value()]);
     }
 
-    private function mirrorCounter(string $postId, string|null $parentId): void
+    /**
+     * Один прогон EntityManager на сценарий: счётчик второго корня (записи для комментария
+     * верхнего уровня, родителя для ответа) только ставится в очередь через add(), а флашит всё
+     * разом save() самого удаляемого комментария — оба репозитория используют общий
+     * shared-singleton EntityManager запроса, как `LoginCodeRepository`/`StoredOutboxEventRepository`.
+     */
+    private function mirrorCounter(Comment $comment, string $postId, string|null $parentId): void
     {
         if ($parentId === null) {
             $post = $this->postRepository->findById(PostId::fromString($postId));
 
-            if ($post !== null && $post->commentsCount->value() > 0) {
-                $post->decrementComments();
-                $this->entityManager->persist($post);
+            if ($post !== null) {
+                if ($post->commentsCount->value() > 0) {
+                    $post->decrementComments();
+                }
+
+                $this->postRepository->add($post);
             }
+        } else {
+            $parent = $this->commentRepository->findById(CommentId::fromString($parentId));
 
-            return;
+            if ($parent !== null) {
+                if ($parent->repliesCount->value() > 0) {
+                    $parent->decrementReplies();
+                }
+
+                $this->commentRepository->add($parent);
+            }
         }
 
-        $parent = $this->commentRepository->findById(CommentId::fromString($parentId));
-
-        if ($parent !== null && $parent->repliesCount->value() > 0) {
-            $parent->decrementReplies();
-            $this->entityManager->persist($parent);
-        }
+        $this->commentRepository->save($comment);
     }
 }

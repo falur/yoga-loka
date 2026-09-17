@@ -21,8 +21,12 @@
 
 Если ты пишешь модуль-источник и хочешь слать уведомления — тебе нужны два шага:
 
-1. Зарегистрировать вид уведомления (`NotificationTypeDefinition`) в bootloader-е своего модуля.
-2. Вызвать `NotificationSenderContract::send()` из своего `#[Transactional]`-Handler-а.
+1. Зарегистрировать вид уведомления (`NotificationTypeDefinition`) в bootloader-е своего модуля
+   через `NotificationTypeRegistryContract`.
+2. Вызвать `NotificationContract::send()` из своего `#[Transactional]`-Handler-а.
+
+Все три типа лежат в `App\Modules\Notifications\Public` — это единственная часть модуля, которую
+видят соседи.
 
 Всё остальное (каналы, очереди, FCM, Centrifugo, inbox, настройки) ядро делает само.
 Подробности — в разделе [«Как слать уведомления из своего модуля»](#как-слать-уведомления-из-своего-модуля).
@@ -35,16 +39,16 @@
 Centrifugo из бизнес-кода нет.
 
 ```text
-1. Handler модуля-источника меняет свои данные и вызывает NotificationSender::send().
-2. send() проверяет, что вид зарегистрирован (fail-fast), и кладёт одно событие
-   NotificationRequested в outbox. Свой run() он НЕ вызывает.
+1. Handler модуля-источника меняет свои данные и вызывает NotificationContract::send().
+2. Сценарий RequestNotification проверяет, что вид зарегистрирован (fail-fast), и кладёт одно
+   событие NotificationRequestedEvent в outbox. Свой run() он НЕ вызывает.
 3. Handler-источник делает свой run() — бизнес-данные и outbox-событие
    коммитятся в одной транзакции.
 4. outbox:relay после commit ставит DispatchNotificationJob в очередь.
 5. DispatchNotificationJob -> DispatchNotificationCommand: решает, по каким каналам слать.
    - канал database включён -> создаёт строку в inbox (notifications);
-   - канал push включён     -> кладёт NotificationPushRequested в outbox;
-   - канал realtime включён -> кладёт NotificationRealtimeRequested в outbox.
+   - канал push включён     -> кладёт NotificationPushRequestedEvent в outbox;
+   - канал realtime включён -> кладёт NotificationRealtimeRequestedEvent в outbox.
 6. outbox:relay ставит SendPushNotificationJob и/или PublishRealtimeNotificationJob.
 7. SendPushNotificationJob      -> FCM multicast на все токены пользователя.
    PublishRealtimeNotificationJob -> публикация в личный канал Centrifugo.
@@ -60,30 +64,53 @@ Centrifugo из бизнес-кода нет.
 транзакции источника. Рассылка и каждая внешняя доставка — это отдельные, независимо повторяемые
 шаги. Если упадёт push, realtime и inbox не пострадают, и наоборот.
 
-## Два контракта для модулей-источников
+## Публичные контракты для модулей-источников
 
-Модуль-источник работает только с `Application`-слоем `Notifications`, не с `Repository`,
-`Infrastructure` или таблицами.
+Модуль-источник работает только с `Public`-слоем `Notifications`, не с его `Application`,
+`Domain`, `Repository`, `Infrastructure` или таблицами. В сигнатурах — только строки, публичные
+enum и публичные DTO: доменные объекты-значения через границу не ходят.
 
-### `NotificationSenderContract` — точка отправки
+### `NotificationContract` — точка отправки
 
 ```php
-public function send(UserId $recipient, NotificationContent $content): void;
+public function send(string $recipientUserId, NotificationContentDto $content): void;
 ```
 
 Вызывается **на каждого получателя**. Внутри: проверяет вид по реестру и стейджит одно
-`NotificationRequested` в outbox. Свой `EntityManager::run()` не делает — flush выполняет
-Handler источника.
+`NotificationRequestedEvent` в outbox. Своей записи в базу не делает — событие ставится в текущую
+единицу работы, а уносит его туда Handler источника, когда сохраняет свой агрегат.
+
+Содержимое (`NotificationContentDto`) — примитивы и публичные DTO:
+
+```php
+new NotificationContentDto(
+    typeCode: 'chat.message_received',          // код вида, тот же, что вернуло определение
+    title: $title,                              // уже на языке получателя
+    body: $body,                                // уже на языке получателя
+    action: new NotificationActionDto(actionType: 'chat', actionId: $chatId), // либо null
+    actor: new NotificationActorDto(id: $senderId, name: $senderName, avatarMediaId: $avatarId), // либо null
+);
+```
 
 ### `NotificationTypeDefinition` — описание вида
 
 ```php
-public function code(): NotificationTypeCode;            // код вида, формат module.action
-public function defaultChannels(): NotificationChannelDefaults;  // каналы по умолчанию
+public function code(): string;                                  // код вида, формат module.action
+public function defaultChannels(): NotificationChannelCollection;  // каналы по умолчанию
 ```
 
 Регистрируется один раз в bootloader-е модуля-источника. Задаёт код вида и набор каналов,
-которые включены, пока у пользователя нет персональной настройки по этому каналу.
+которые включены, пока у пользователя нет персональной настройки по этому каналу. Каналы —
+публичный enum `NotificationChannel` (`database`, `push`, `realtime`).
+
+### `NotificationTypeRegistryContract` — регистрация видов
+
+```php
+public function register(NotificationTypeDefinition ...$definitions): void;
+```
+
+Реестр — синглтон, накапливающий регистрации всех модулей. Чтение реестра соседям не публикуется:
+виды читает только само ядро. Повторная регистрация того же кода вида — ошибка.
 
 ## Как слать уведомления из своего модуля
 
@@ -106,25 +133,24 @@ declare(strict_types=1);
 
 namespace App\Modules\Chat\Infrastructure\Notification;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
-use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 
 final readonly class MessageReceivedNotificationType implements NotificationTypeDefinition
 {
     #[\Override]
-    public function code(): NotificationTypeCode
+    public function code(): string
     {
-        return NotificationTypeCode::fromString('chat.message_received');
+        return 'chat.message_received';
     }
 
     #[\Override]
-    public function defaultChannels(): NotificationChannelDefaults
+    public function defaultChannels(): NotificationChannelCollection
     {
         // По умолчанию: в inbox, push и realtime. Любой из каналов пользователь
         // потом сможет выключить через настройки.
-        return NotificationChannelDefaults::of(
+        return NotificationChannelCollection::of(
             NotificationChannel::Database,
             NotificationChannel::Push,
             NotificationChannel::Realtime,
@@ -157,10 +183,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Chat\Application\Notification;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeDefinition;
-use App\Modules\Notifications\Domain\Enum\NotificationChannel;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
-use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
+use App\Modules\Notifications\Public\Contract\NotificationTypeDefinition;
+use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
+use App\Modules\Notifications\Public\Enum\NotificationChannel;
 
 enum ChatNotificationType: string implements NotificationTypeDefinition
 {
@@ -168,23 +193,23 @@ enum ChatNotificationType: string implements NotificationTypeDefinition
     case AddedToChat     = 'chat.added_to_chat';
 
     #[\Override]
-    public function code(): NotificationTypeCode
+    public function code(): string
     {
-        return NotificationTypeCode::fromString($this->value);
+        return $this->value;
     }
 
     #[\Override]
-    public function defaultChannels(): NotificationChannelDefaults
+    public function defaultChannels(): NotificationChannelCollection
     {
         // Исчерпывающий match без default: добавишь новый case — статанализ заставит
         // тут же указать его каналы, забыть нельзя.
         return match ($this) {
-            self::MessageReceived => NotificationChannelDefaults::of(
+            self::MessageReceived => NotificationChannelCollection::of(
                 NotificationChannel::Database,
                 NotificationChannel::Push,
                 NotificationChannel::Realtime,
             ),
-            self::AddedToChat => NotificationChannelDefaults::of(
+            self::AddedToChat => NotificationChannelCollection::of(
                 NotificationChannel::Database,
                 NotificationChannel::Push,
             ),
@@ -206,7 +231,7 @@ final class ChatBootloader extends Bootloader
 ```
 
 Про слои: класс из варианта A нужен только в bootloader-е, поэтому лежит в `Infrastructure/Notification`.
-Enum из варианта B использует ещё и Handler отправки (Application-слой), поэтому его место —
+Enum из варианта B использует ещё и сборка содержимого (Application-слой), поэтому его место —
 в `Application/Notification`, чтобы Application не зависел от Infrastructure.
 
 Реестр — синглтон и накапливает регистрации всех модулей. Повторная регистрация того же кода
@@ -214,62 +239,61 @@ Enum из варианта B использует ещё и Handler отправ
 
 ### Шаг 2. Вызвать `send()` из своего Handler-а
 
-`send()` нужно вызывать внутри `#[Transactional]`-Handler-а **до** своего `run()`. Тогда
-бизнес-данные и outbox-событие уведомления коммитятся атомарно.
+`send()` нужно вызывать внутри `#[Transactional]`-Handler-а **до** записи своего агрегата. Тогда
+бизнес-данные и outbox-событие уведомления коммитятся атомарно. `EntityManager` в Handler не
+инъектируется: слой Application про Cycle не знает, хранение скрыто за Domain Repository модуля.
 
 ```php
 final readonly class SendMessageHandler
 {
     public function __construct(
         private MessageRepository $messageRepository,
-        private NotificationSenderContract $notificationSender,
-        private EntityManagerInterface $entityManager,
+        private NotificationContract $notifications,
     ) {}
 
     #[Transactional]
     public function handle(SendMessageCommand $command): void
     {
         $message = Message::create(/* ... */);
-        $this->entityManager->persist($message);
 
         // Текст уже на языке получателя — Notifications его не переводит.
-        $this->notificationSender->send(
-            recipient: $recipientId,
-            content: new NotificationContent(
-                // type — это само определение вида (его же зарегистрировали в Шаге 1), а не строка-код.
-                // Магической строки на месте отправки нет, код вида ядро возьмёт из определения само.
-                type: new MessageReceivedNotificationType(), // вариант A (класс)
-                // либо с enum из варианта B:
-                // type: ChatNotificationType::MessageReceived,
-                title: NotificationTitle::fromString($title),
-                body: NotificationBody::fromString($body),
-                action: NotificationAction::linkTo(actionType: 'chat', actionId: $chatId),
-                // либо NotificationAction::none(), если перехода нет
+        $this->notifications->send(
+            recipientUserId: $recipientId,
+            content: new NotificationContentDto(
+                // Код вида берётся у определения, зарегистрированного в Шаге 1, — магической строки
+                // на месте отправки нет.
+                typeCode: ChatNotificationType::MessageReceived->code(),
+                title: $title,
+                body: $body,
+                action: new NotificationActionDto(actionType: 'chat', actionId: $chatId),
+                // либо null, если перехода нет
                 // снимок автора: id + имя + id медиа-аватара (клиент покажет аватар без запроса к профилю)
-                actor: NotificationActor::of(userId: $senderId, name: $senderName, avatarMediaId: $senderAvatarMediaId),
-                // либо NotificationActor::none(), если автора нет (системное уведомление)
+                actor: new NotificationActorDto(id: $senderId, name: $senderName, avatarMediaId: $senderAvatarMediaId),
+                // либо null, если автора нет (системное уведомление)
             ),
         );
 
-        $this->entityManager->run(); // один flush на бизнес-данные + событие уведомления
+        // Запись агрегата уносит в базу и бизнес-данные, и событие уведомления.
+        $this->messageRepository->save($message);
     }
 }
 ```
 
 Важно:
 
-- **`type` — это само определение вида, а не строка-код.** В `NotificationContent` передаётся
-  зарегистрированное `NotificationTypeDefinition` (тот же объект, что в Шаге 1). На месте отправки нет
-  магической строки `'chat.message_received'` — код вида ядро берёт из определения (`code()`) само.
+- **Код вида берётся у определения.** В `NotificationContentDto` уезжает строка, но писать её
+  руками не нужно: её отдаёт `code()` зарегистрированного определения (того же, что в Шаге 1),
+  поэтому магической строки `'chat.message_received'` на месте отправки нет. Ядро проверит код по
+  реестру до постановки события.
 - **Текст готовый и переведённый.** `title`/`body` хранятся и доставляются как есть. Локализацию
   делает источник.
-- **`action`** — это deep-link (куда вести по тапу): пара `actionType` + `actionId`
-  (например, `chat` + id чата) либо `NotificationAction::none()`. Промежуточных состояний нет —
-  заданы либо обе части, либо ни одной.
-- **`actor`** — от кого пришло уведомление: `NotificationActor::of(userId: ..., name: ..., avatarMediaId: ...)`
-  инициатора (например, того, кто подписался) либо `NotificationActor::none()` для системного
-  уведомления. Ядро хранит **снимок** автора — `userId`, имя и **id медиа-аватара** (не готовую
-  ссылку), — а полный `MediaView` (оригинал + конверсии) собирается на чтении через модуль Media.
+- **`action`** — это deep-link (куда вести по тапу): `NotificationActionDto` с парой `actionType`
+  + `actionId` (например, `chat` + id чата) либо `null`. Промежуточных состояний нет — задан либо
+  весь DTO, либо `null`.
+- **`actor`** — от кого пришло уведомление: `NotificationActorDto` инициатора (например, того, кто
+  подписался) либо `null` для системного уведомления. Ядро хранит **снимок** автора — `userId`, имя и **id медиа-аватара** (не готовую
+  ссылку), — а полное медиа `MediaDto` (оригинал + конверсии) собирается на чтении через публичный
+  контракт `Media\Public\Contract\MediaContract` (пакетно: набор id аватаров на страницу инбокса).
   Поэтому клиент показывает аватар автора **без отдельного запроса к профилю**, а ссылка всегда
   валидна (у private-медиа presigned-ссылки временные — замороженная протухла бы). Аватар опционален:
   `avatarMediaId` может быть `null`, если у автора его нет (клиент подставит заглушку сам). Снимок
@@ -295,13 +319,16 @@ realtime - публикация в Centrifugo.
 ```
 
 Матрицу настроек (все зарегистрированные виды × все каналы, наложенные на персональные строки)
-строит `NotificationSettingsViewFactory`. Она же отдаётся клиенту на экран настроек: для каждой
+строит `NotificationSettingResultCollection::build()`, вызываемый из `GetNotificationSettingsHandler`
+и `UpdateNotificationSettingsHandler`. Она же отдаётся клиенту на экран настроек: для каждой
 ячейки видно текущее значение `enabled` и значение по умолчанию `default`.
 
 ## HTTP API
 
-Все маршруты в группе `api`, ожидают аутентифицированного пользователя (`authUserId`
-подставляется в фильтры). Получатель всегда сам пользователь — чужие уведомления недоступны.
+Все маршруты в группе `api` и объявляют требование действующей сессии публичным атрибутом
+`Auth\Public\Attribute\AuthenticatedRoute`: без сессии маршрут отвечает 401 и до контроллера
+не доходит, а с сессией `authUserId` подставляется в фильтры. Получатель всегда сам пользователь —
+чужие уведомления недоступны, и эту проверку владения делает сценарий модуля, а не правило доступа.
 
 | Метод и путь | Назначение |
 |---|---|
@@ -346,9 +373,9 @@ realtime - публикация в Centrifugo.
 ```
 
 `action` равен `null`, если перехода нет. `actor` — снимок автора-инициатора (например,
-пользователя, который подписался): `id` (его `userId`), `name` и `avatar` — общий `MediaView`
-(оригинал + конверсии) либо `null`, если у автора нет аватара или его медиа недоступно. Аватар
-собирается на чтении из id медиа-снимка, поэтому это та же форма, что у аватара в профиле, и клиент
+пользователя, который подписался): `id` (его `userId`), `name` и `avatar` — публичное медиа
+`MediaDto` (оригинал + конверсии) либо `null`, если у автора нет аватара или его медиа недоступно.
+Аватар собирается на чтении из id медиа-снимка, поэтому это та же форма, что у аватара в профиле, и клиент
 показывает автора **без отдельного запроса к профилю**. `actor` равен `null`, если у уведомления нет
 автора (системное уведомление).
 
@@ -401,11 +428,19 @@ realtime - публикация в Centrifugo.
 
 ### Bootloader
 
-`NotificationsBootloader` уже зарегистрирован в `App\Shared\Infrastructure\Framework\Kernel`
+`NotificationsBootloader` уже зарегистрирован в `App\Shared\Infrastructure\Spiral\Kernel`
 **после** Outbox-бутлоадеров (его `boot()` регистрирует пары «сообщение → Job» через
 `OutboxJobRegistryContract`). Он биндит:
 
-- `NotificationSenderContract`, `NotificationTypeRegistryContract` (реестр — синглтон);
+- три доменных интерфейса хранения корней агрегатов модуля — `NotificationRepository`,
+  `NotificationSettingRepository` и `NotificationDeviceTokenRepository` — на свои
+  `Cycle*`-реализации из `Infrastructure/Persistence/Cycle/Repository`;
+- `MarkAllNotificationsReadContract` — отдельный порт единственной массовой записи проекта
+  (отметка всех непрочитанных прочитанными одним `UPDATE`) — на `CycleMarkAllNotificationsRead`;
+  порт остаётся отдельным от `NotificationRepository` и репозиторием агрегата не притворяется;
+- публичные `NotificationContract` и `NotificationTypeRegistryContract` — на адаптеры из
+  `Infrastructure/Spiral/PublicApi`; внутренний `NotificationTypeCatalogContract` — на реестр видов
+  (синглтон);
 - `CentrifugoServiceContract`, `FcmPushSenderContract` и ленивые фабрики HTTP-клиента
   Centrifugo и FCM `Messaging`.
 
@@ -465,7 +500,7 @@ PublishRealtimeNotificationJob
   полным no-op. Поэтому повтор не задваивает ни inbox, ни push, ни realtime.
 
 - **Fail-fast на незарегистрированный вид.** `send()` бросит исключение **сразу**, до записи
-  события, если вид не зарегистрирован в реестре. Сначала регистрируй `NotificationTypeDefinition`,
+  события, если вид не зарегистрирован в реестре (проверку делает сценарий RequestNotification). Сначала регистрируй `NotificationTypeDefinition`,
   потом шли.
 
 - **Текст не переводится ядром.** `title`/`body` хранятся и доставляются как пришли. Локализация —
@@ -487,14 +522,16 @@ PublishRealtimeNotificationJob
 - **Данные в push.** Через FCM `data` уезжает переход (`actionType` и `actionId`, если есть) и снимок
   автора (`actorId`, `actorName`, а `actorAvatarUrl` — только если у автора есть аватар) — FCM `data`
   плоская строковая карта, поэтому снимок раскладывается по отдельным полям, а аватар остаётся **одной
-  ссылкой** (не полным `MediaView`). Ссылка разрешается из id медиа-снимка к моменту отправки. Заголовок
+  ссылкой** (не полным медиа). Ссылка разрешается из id медиа-снимка к моменту отправки через
+  `MediaContract`. Заголовок
   и тело идут в стандартный FCM `notification`.
 
 - **Realtime-канал.** Публикация идёт в персональный канал `personal:#user_{userId}`. Payload —
   camelCase JSON: `type`, `title`, `body`, `action` (или `null`), `actor` (объект
-  `{id, name, avatar}`, где `avatar` — тот же `MediaView` `{id, position, original, conversions}`, что
-  в HTTP-ответе инбокса, либо `null`) и `createdAt` (ISO-8601). Аватар разрешается из id медиа-снимка к
-  моменту публикации.
+  `{id, name, avatar}`, где `avatar` — та же форма `{id, position, original, conversions}`, что
+  в HTTP-ответе инбокса, либо `null`; `position` у аватара всегда `null` — позиция принадлежит записи,
+  а не медиа) и `createdAt` (ISO-8601). Аватар разрешается из id медиа-снимка к моменту публикации
+  через `MediaContract`.
 
 - **Классификация ошибок в Job.** Доменная ошибка (неизвестный вид, битый payload) терминальна —
   событие уходит в `failed`, повтор не назначается. Инфраструктурный сбой (БД, сеть) временный —

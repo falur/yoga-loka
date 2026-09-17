@@ -4,26 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Push\SendPushNotification;
 
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlHandler;
-use App\Modules\Media\Application\Query\FindMediaUrl\FindMediaUrlQuery;
+use App\Modules\Media\Public\Contract\MediaContract;
 use App\Modules\Notifications\Application\Contract\FcmPushSenderContract;
 use App\Modules\Notifications\Application\Contract\OnlinePresenceContract;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
-use App\Modules\Notifications\Application\Dto\NotificationPush;
-use App\Modules\Notifications\Application\Dto\NotificationPushActorPayload;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
+use App\Modules\Notifications\Application\Contract\NotificationPush;
+use App\Modules\Notifications\Application\Contract\NotificationPushActorPayload;
 use App\Modules\Notifications\Domain\Collection\NotificationDeviceTokenCollection;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
-use App\Modules\Notifications\Repository\NotificationDeviceTokenRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
-use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Отправляет push на активные токены получателя и удаляет токены, признанные FCM невалидными.
  * Без #[Transactional]: внешний вызов FCM не оборачиваем в транзакцию; удаление токенов
- * фиксируется отдельным run().
+ * фиксируется отдельным прогоном репозитория.
  */
 final readonly class SendPushNotificationHandler
 {
@@ -31,9 +28,7 @@ final readonly class SendPushNotificationHandler
         private NotificationDeviceTokenRepository $notificationDeviceTokenRepository,
         private FcmPushSenderContract $fcmPushSender,
         private OnlinePresenceContract $onlinePresence,
-        private QueryBusInterface $queryBus,
-        private FindMediaUrlHandler $findMediaUrlHandler,
-        private EntityManagerInterface $entityManager,
+        private MediaContract $media,
         private LoggerInterface $logger,
     ) {}
 
@@ -82,21 +77,24 @@ final readonly class SendPushNotificationHandler
             return;
         }
 
+        $invalidDeviceTokens = new NotificationDeviceTokenCollection();
+
         foreach ($deviceTokens as $deviceToken) {
             if (!\in_array(needle: $deviceToken->token->value(), haystack: $invalidTokenValues, strict: true)) {
                 continue;
             }
 
-            $this->entityManager->delete($deviceToken);
+            $invalidDeviceTokens->push($deviceToken);
             $this->logger->debug(message: 'Удалён невалидный push-токен.', context: [
                 'deviceTokenId' => $deviceToken->id->value(),
             ]);
         }
 
-        $this->entityManager->run();
+        // Весь набор невалидных токенов снимается одним прогоном, как и до появления репозитория.
+        $this->notificationDeviceTokenRepository->deleteAll($invalidDeviceTokens);
     }
 
-    private function actorPayload(NotificationActorPayload|null $actor): NotificationPushActorPayload|null
+    private function actorPayload(NotificationActorDto|null $actor): NotificationPushActorPayload|null
     {
         if ($actor === null) {
             return null;
@@ -111,7 +109,9 @@ final readonly class SendPushNotificationHandler
 
     /**
      * Аватар автора хранится как id медиа — для push разрешаем его в одну ссылку (original) к моменту
-     * отправки. Медиа недоступно или оригинал удалён -> ссылки нет (null), ключ в data не кладётся.
+     * отправки через публичный контракт Media. Обращение пакетное: набор из одного идентификатора, и
+     * только когда аватар у автора есть. Медиа недоступно или оригинал удалён -> ссылки нет (null),
+     * ключ в data не кладётся.
      */
     private function avatarUrl(string|null $avatarMediaId): string|null
     {
@@ -119,12 +119,7 @@ final readonly class SendPushNotificationHandler
             return null;
         }
 
-        $mediaUrls = $this->queryBus->dispatch(
-            query: new FindMediaUrlQuery(mediaId: $avatarMediaId),
-            handler: $this->findMediaUrlHandler->handle(...),
-        );
-
-        return $mediaUrls?->original?->url;
+        return $this->media->urlsByIds([$avatarMediaId])->get($avatarMediaId)?->original?->url;
     }
 
     /**

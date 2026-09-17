@@ -17,82 +17,50 @@ use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
 use App\Modules\Posts\Domain\ValueObject\PostText;
 use App\Modules\Posts\Domain\ValueObject\RepostsCount;
-use App\Modules\Posts\Infrastructure\Cycle\PostDeletionTypecast;
-use App\Modules\Posts\Infrastructure\Cycle\PostLessonTypecast;
-use App\Modules\Posts\Infrastructure\Cycle\PostOriginalTypecast;
-use App\Modules\Posts\Infrastructure\Cycle\PostPracticeTypecast;
-use App\Modules\Posts\Infrastructure\Cycle\PostTextTypecast;
-use App\Modules\Posts\Repository\PostRepository;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\Trait\HasTimestamps;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Cycle\ValueObjectCast;
-use Cycle\Annotated\Annotation\Column;
-use Cycle\Annotated\Annotation\Entity;
-use Cycle\Annotated\Annotation\Relation\HasMany;
-use Cycle\ORM\Parser\Typecast;
 
-#[Entity(
-    role: 'post',
-    table: 'posts',
-    repository: PostRepository::class,
-    typecast: [Typecast::class, ValueObjectCast::class],
-)]
 final class Post
 {
     use HasTimestamps;
 
-    #[Column(type: 'uuid', primary: true, typecast: PostId::class)]
     public private(set) PostId $id;
 
-    #[Column(type: 'uuid', name: 'user_id', typecast: UserId::class)]
     public private(set) UserId $userId;
 
-    #[Column(type: 'text', nullable: true, typecast: PostTextTypecast::class)]
     public private(set) PostText $text;
 
-    #[Column(type: 'string(32)', typecast: PostStatus::class)]
     public private(set) PostStatus $status;
 
-    #[Column(type: 'string(16)', name: 'attachment_type', typecast: AttachmentType::class)]
     public private(set) AttachmentType $attachmentType;
 
-    #[Column(type: 'uuid', name: 'lesson_id', nullable: true, typecast: PostLessonTypecast::class)]
     public private(set) PostLesson $lesson;
 
-    #[Column(type: 'uuid', name: 'practice_id', nullable: true, typecast: PostPracticeTypecast::class)]
     public private(set) PostPractice $practice;
 
-    #[Column(type: 'uuid', name: 'parent_post_id', nullable: true, typecast: PostOriginalTypecast::class)]
     public private(set) PostOriginal $original;
 
-    #[Column(type: 'integer', name: 'likes_count', typecast: LikesCount::class)]
     public private(set) LikesCount $likesCount;
 
-    #[Column(type: 'integer', name: 'reposts_count', typecast: RepostsCount::class)]
     public private(set) RepostsCount $repostsCount;
 
-    #[Column(type: 'integer', name: 'comments_count', typecast: CommentsCount::class)]
     public private(set) CommentsCount $commentsCount;
 
-    #[Column(type: 'datetime', name: 'deleted_at', nullable: true, typecast: PostDeletionTypecast::class)]
     public private(set) PostDeletion $deletion;
 
-    #[HasMany(
-        target: PostMedia::class,
-        innerKey: 'id',
-        outerKey: 'post_id',
-        orderBy: ['position' => 'ASC'],
-        collection: PostMediaCollection::class,
-    )]
+    /**
+     * Заполняется только когда репозиторий явно грузит вложения одним запросом — сегодня этого
+     * не делает никто (findMediaByPostId/findMediaByPostIds читают вложения отдельным запросом,
+     * не через эту связь), поэтому после findById() коллекция всегда пуста и читать её как
+     * актуальное состояние некорректно.
+     */
     public private(set) PostMediaCollection $media;
 
-    #[HasMany(
-        target: PostTag::class,
-        innerKey: 'id',
-        outerKey: 'post_id',
-        collection: PostTagCollection::class,
-    )]
+    /**
+     * См. media — то же самое для меток записи (findTagsByPostId/findTagsByPostIds читают метки
+     * отдельным запросом).
+     */
     public private(set) PostTagCollection $tags;
 
     public static function create(
@@ -130,6 +98,45 @@ final class Post
         return $post;
     }
 
+    public static function restore(
+        PostId $id,
+        UserId $userId,
+        PostText $text,
+        PostStatus $status,
+        AttachmentType $attachmentType,
+        PostLesson $lesson,
+        PostPractice $practice,
+        PostOriginal $original,
+        LikesCount $likesCount,
+        RepostsCount $repostsCount,
+        CommentsCount $commentsCount,
+        PostDeletion $deletion,
+        PostMediaCollection $media,
+        PostTagCollection $tags,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $post = new self();
+        $post->id = $id;
+        $post->userId = $userId;
+        $post->text = $text;
+        $post->status = $status;
+        $post->attachmentType = $attachmentType;
+        $post->lesson = $lesson;
+        $post->practice = $practice;
+        $post->original = $original;
+        $post->likesCount = $likesCount;
+        $post->repostsCount = $repostsCount;
+        $post->commentsCount = $commentsCount;
+        $post->deletion = $deletion;
+        $post->media = $media;
+        $post->tags = $tags;
+        $post->createdAt = $createdAt;
+        $post->updatedAt = $updatedAt;
+
+        return $post;
+    }
+
     public function publish(): void
     {
         $this->status = PostStatus::Published;
@@ -154,7 +161,11 @@ final class Post
         $this->touch(now: $deletedAt);
     }
 
-    public function restore(): void
+    /**
+     * Отменяет мягкое удаление записи. Названо undelete(), а не restore(): последнее имя занято
+     * технической фабрикой восстановления из хранения (docs/rules.md, «Именование»).
+     */
+    public function undelete(): void
     {
         $this->deletion = PostDeletion::notDeleted();
         $this->touch();

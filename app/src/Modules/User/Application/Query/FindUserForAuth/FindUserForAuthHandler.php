@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\User\Application\Query\FindUserForAuth;
 
-use App\Modules\User\Application\Dto\UserAuthView;
 use App\Modules\User\Domain\ValueObject\Email;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 
 final readonly class FindUserForAuthHandler
 {
@@ -14,7 +13,7 @@ final readonly class FindUserForAuthHandler
         private UserRepository $userRepository,
     ) {}
 
-    public function handle(FindUserForAuthQuery $query): UserAuthView|null
+    public function handle(FindUserForAuthQuery $query): FindUserForAuthResult|null
     {
         $user = $this->userRepository->findByEmail(Email::fromString($query->email));
 
@@ -22,7 +21,7 @@ final readonly class FindUserForAuthHandler
             return null;
         }
 
-        return new UserAuthView(
+        return new FindUserForAuthResult(
             userId: $user->id->value(),
             canSignIn: $user->isActive(),
         );

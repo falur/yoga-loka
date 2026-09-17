@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Posts\Application\Command\DeletePost;
 
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\ForbiddenException;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Exception\NotAuthorException;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -23,7 +22,6 @@ final readonly class DeletePostHandler
 {
     public function __construct(
         private PostRepository $postRepository,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
     ) {}
 
@@ -32,10 +30,10 @@ final readonly class DeletePostHandler
     public function handle(DeletePostCommand $command): void
     {
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
         if (!$post->userId->equals(UserId::fromString($command->authUserId))) {
-            throw new ForbiddenException('app.posts.forbidden');
+            throw new NotAuthorException();
         }
 
         if ($post->deletion->isDeleted()) {
@@ -45,20 +43,19 @@ final readonly class DeletePostHandler
         }
 
         $post->softDelete(new \DateTimeImmutable());
-        $this->entityManager->persist($post);
 
         $originalId = $post->original->value();
+        $original = $originalId !== null ? $this->postRepository->findById(PostId::fromString($originalId)) : null;
 
-        if ($originalId !== null) {
-            $original = $this->postRepository->findById(PostId::fromString($originalId));
-
-            if ($original !== null && $original->repostsCount->value() > 0) {
+        if ($original !== null) {
+            if ($original->repostsCount->value() > 0) {
                 $original->decrementReposts();
-                $this->entityManager->persist($original);
             }
-        }
 
-        $this->entityManager->run();
+            $this->postRepository->saveWithOriginal(post: $post, original: $original);
+        } else {
+            $this->postRepository->save($post);
+        }
 
         $this->logger->debug(message: 'Запись удалена.', context: ['postId' => $post->id->value()]);
     }

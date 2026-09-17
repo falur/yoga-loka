@@ -21,14 +21,13 @@ use App\Modules\User\Infrastructure\Persistence\Cycle\Columns\UserColumns;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Persistence\Cycle\AbstractCycleRepository;
+use App\Shared\Infrastructure\Persistence\Cycle\AbstractRepository;
 use Cycle\ORM\EntityManagerInterface;
 use Cycle\ORM\ORMInterface;
 use Cycle\ORM\Select;
-use Cycle\ORM\Transaction\Runner;
 
-/** @extends AbstractCycleRepository<CycleUserEntity> */
-final class CycleUserRepository extends AbstractCycleRepository implements UserRepository
+/** @extends AbstractRepository<CycleUserEntity> */
+final class CycleUserRepository extends AbstractRepository implements UserRepository
 {
     /** @param Select<CycleUserEntity> $select */
     public function __construct(
@@ -67,7 +66,7 @@ final class CycleUserRepository extends AbstractCycleRepository implements UserR
                 user: $user,
                 cycleEntity: $cycleEntity,
             ))
-            ->run(runner: Runner::outerTransaction());
+            ->run();
     }
 }
 ```
@@ -79,8 +78,10 @@ final class CycleUserRepository extends AbstractCycleRepository implements UserR
 - Cycle Entity преобразуется только через Mapper.
 - Имена колонок берутся из `{Entity}Columns`.
 - Cycle-типы не выходят из Infrastructure.
-- Запись требует уже открытую Command handler-ом транзакцию.
+- Базовый класс `AbstractRepository` берётся из `App\Shared\Infrastructure\Persistence\Cycle`: его `select()` возвращает `WhenSelect` с `when()` и `cursorById()`.
+- Репозиторий не открывает и не закрывает бизнес-транзакцию: прогон `EntityManager` вкладывается
+  в транзакцию, открытую границей вызова, и выполняется своей, когда открытой нет.
 
 ## Допустимые варианты
 
-Отдельный read-контракт допустим для тяжёлой проекции. Он не подменяет Repository агрегата и не возвращает Cycle Entity.
+Тяжёлая проекция чтения решается не здесь: порт объявляется как `{Name}Reader` в `Application/Contract`, реализуется как `Cycle{Name}Reader` в `Infrastructure/Persistence/Cycle/Read` и возвращает Data — см. карточку [Reader](reader.md). Cycle Entity наружу не выходит.

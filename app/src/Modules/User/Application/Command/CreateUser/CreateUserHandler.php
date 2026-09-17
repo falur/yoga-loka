@@ -8,12 +8,12 @@ use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\ValueObject\Email;
 use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
-use App\Modules\User\Repository\ReservedNicknameRepository;
-use App\Modules\User\Repository\UserRepository;
+use App\Modules\User\Domain\Repository\ReservedNicknameRepository;
+use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
-use App\Shared\Domain\Exception\ValidationException;
+use App\Modules\User\Domain\Exception\EmailAlreadyTakenException;
+use App\Modules\User\Domain\Exception\NicknameAlreadyTakenException;
 use App\Shared\Domain\Locale\LocaleResolver;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -23,7 +23,6 @@ final readonly class CreateUserHandler
     public function __construct(
         private UserRepository $userRepository,
         private ReservedNicknameRepository $reservedNicknameRepository,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger,
         private LocaleResolver $localeResolver,
     ) {}
@@ -36,14 +35,14 @@ final readonly class CreateUserHandler
         $nickname = UserNickname::fromString($command->nickname);
 
         if ($this->userRepository->existsByEmail($email)) {
-            throw new ValidationException('app.user.email_taken');
+            throw new EmailAlreadyTakenException();
         }
 
         if (
             $this->userRepository->existsByNickname($nickname)
             || $this->reservedNicknameRepository->isReserved($nickname)
         ) {
-            throw new ValidationException('app.user.nickname_taken');
+            throw new NicknameAlreadyTakenException();
         }
 
         $user = User::create(
@@ -54,8 +53,7 @@ final readonly class CreateUserHandler
         );
         $user->confirmEmail();
 
-        $this->entityManager->persist($user);
-        $this->entityManager->run();
+        $this->userRepository->save($user);
 
         $this->logger->debug(message: 'Пользователь создан.', context: [
             'userId' => $user->id->value(),

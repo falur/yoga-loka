@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Application\Command\Notification\DispatchNotification;
 
-use App\Modules\Notifications\Application\Contract\NotificationTypeRegistryContract;
-use App\Modules\Notifications\Application\Dto\NotificationActionPayload;
-use App\Modules\Notifications\Application\Dto\NotificationActorPayload;
-use App\Modules\Notifications\Application\Message\NotificationPushRequested;
-use App\Modules\Notifications\Application\Message\NotificationRealtimeRequested;
+use App\Modules\Notifications\Application\Contract\NotificationTypeCatalogContract;
+use App\Modules\Notifications\Public\Dto\NotificationActionDto;
+use App\Modules\Notifications\Public\Dto\NotificationActorDto;
+use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
+use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
 use App\Modules\Notifications\Domain\Collection\NotificationSettingCollection;
 use App\Modules\Notifications\Domain\Entity\Notification;
 use App\Modules\Notifications\Domain\Entity\NotificationSetting;
@@ -16,15 +16,16 @@ use App\Modules\Notifications\Domain\Enum\NotificationChannel;
 use App\Modules\Notifications\Domain\ValueObject\NotificationAction;
 use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Notifications\Domain\ValueObject\NotificationBody;
-use App\Modules\Notifications\Domain\ValueObject\NotificationChannelDefaults;
 use App\Modules\Notifications\Domain\ValueObject\NotificationOutboxId;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
-use App\Modules\Notifications\Repository\NotificationRepository;
-use App\Modules\Notifications\Repository\NotificationSettingRepository;
-use App\Modules\Outbox\Application\Contract\OutboxEventStoreContract;
+use App\Modules\Notifications\Public\Dto\NotificationChannelCollection;
+use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificationChannel;
+use App\Modules\Notifications\Domain\Collection\NotificationCollection;
+use App\Modules\Notifications\Domain\Repository\NotificationRepository;
+use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -39,9 +40,8 @@ final readonly class DispatchNotificationHandler
     public function __construct(
         private NotificationRepository $notificationRepository,
         private NotificationSettingRepository $notificationSettingRepository,
-        private NotificationTypeRegistryContract $typeRegistry,
-        private OutboxEventStoreContract $outboxEventStore,
-        private EntityManagerInterface $entityManager,
+        private NotificationTypeCatalogContract $typeCatalog,
+        private IntegrationEventStoreContract $integrationEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -61,11 +61,18 @@ final readonly class DispatchNotificationHandler
 
         $userId = UserId::fromString($command->userId);
         $type = NotificationTypeCode::fromString($command->type);
-        $defaults = $this->typeRegistry->get($type)->defaultChannels();
+        $defaults = $this->typeCatalog->get($type)->defaultChannels();
         $settings = $this->notificationSettingRepository->findForUserAndType(userId: $userId, type: $type);
 
+        $notifications = new NotificationCollection();
+
         if ($this->channelEnabled(channel: NotificationChannel::Database, settings: $settings, defaults: $defaults)) {
-            $this->createInbox(command: $command, outboxId: $outboxId, userId: $userId, type: $type);
+            $notifications->push($this->createInbox(
+                command: $command,
+                outboxId: $outboxId,
+                userId: $userId,
+                type: $type,
+            ));
         }
 
         if ($this->channelEnabled(channel: NotificationChannel::Push, settings: $settings, defaults: $defaults)) {
@@ -76,18 +83,25 @@ final readonly class DispatchNotificationHandler
             $this->stageRealtime($command);
         }
 
-        $this->entityManager->run();
+        // Единственный прогон сценария: он уносит в базу и созданный инбокс, и события outbox,
+        // поставленные в ту же запись публичным контрактом Outbox. Инбокса могло и не быть —
+        // прогон нужен и тогда, потому что каналы push и realtime уже застейджены.
+        $this->notificationRepository->saveAll($notifications);
     }
 
     private function channelEnabled(
         NotificationChannel $channel,
         NotificationSettingCollection $settings,
-        NotificationChannelDefaults $defaults,
+        NotificationChannelCollection $defaults,
     ): bool {
         $setting = $settings->first(
             static fn(NotificationSetting $candidate): bool => $candidate->channel === $channel,
         );
-        $enabled = $setting !== null ? $setting->isEnabled() : $defaults->isEnabled($channel);
+        // Каналы по умолчанию приходят из публичного определения вида: доменный канал сверяем с
+        // ними по строковому значению варианта.
+        $enabled = $setting !== null
+            ? $setting->isEnabled()
+            : $defaults->includes(PublicNotificationChannel::from($channel->value));
 
         $this->logger->debug(message: 'Решение по каналу уведомления.', context: [
             'channel' => $channel->value,
@@ -103,7 +117,7 @@ final readonly class DispatchNotificationHandler
         NotificationOutboxId $outboxId,
         UserId $userId,
         NotificationTypeCode $type,
-    ): void {
+    ): Notification {
         $notification = Notification::create(
             outboxId: $outboxId,
             userId: $userId,
@@ -114,16 +128,17 @@ final readonly class DispatchNotificationHandler
             actor: $this->actor($command->actor),
             triggeredAt: new \DateTimeImmutable($command->createdAt),
         );
-        $this->entityManager->persist($notification);
 
         $this->logger->debug(message: 'Инбокс уведомления создан.', context: [
             'notificationId' => $notification->id->value(),
         ]);
+
+        return $notification;
     }
 
     private function stagePush(DispatchNotificationCommand $command): void
     {
-        $storedOutboxEventId = $this->outboxEventStore->add(new NotificationPushRequested(
+        $outboxEventId = $this->integrationEventStore->add(new NotificationPushRequestedEvent(
             userId: $command->userId,
             type: $command->type,
             title: $command->title,
@@ -134,14 +149,14 @@ final readonly class DispatchNotificationHandler
         ));
 
         $this->logger->debug(message: 'Push-доставка застейджена.', context: [
-            'outboxId' => $storedOutboxEventId->value(),
+            'outboxId' => $outboxEventId,
             'type' => $command->type,
         ]);
     }
 
     private function stageRealtime(DispatchNotificationCommand $command): void
     {
-        $storedOutboxEventId = $this->outboxEventStore->add(new NotificationRealtimeRequested(
+        $outboxEventId = $this->integrationEventStore->add(new NotificationRealtimeRequestedEvent(
             userId: $command->userId,
             type: $command->type,
             title: $command->title,
@@ -152,12 +167,12 @@ final readonly class DispatchNotificationHandler
         ));
 
         $this->logger->debug(message: 'Realtime-доставка застейджена.', context: [
-            'outboxId' => $storedOutboxEventId->value(),
+            'outboxId' => $outboxEventId,
             'type' => $command->type,
         ]);
     }
 
-    private function action(NotificationActionPayload|null $payload): NotificationAction
+    private function action(NotificationActionDto|null $payload): NotificationAction
     {
         if ($payload === null) {
             return NotificationAction::none();
@@ -166,7 +181,7 @@ final readonly class DispatchNotificationHandler
         return NotificationAction::linkTo(actionType: $payload->actionType, actionId: $payload->actionId);
     }
 
-    private function actor(NotificationActorPayload|null $payload): NotificationActor
+    private function actor(NotificationActorDto|null $payload): NotificationActor
     {
         if ($payload === null) {
             return NotificationActor::none();

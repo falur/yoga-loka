@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Command\CommentPost;
 
-use App\Modules\Posts\Application\Notification\PostNotificationType;
-use App\Modules\Posts\Application\Post\CommentComposer;
-use App\Modules\Posts\Application\Post\PostVisibilityPolicy;
-use App\Modules\Posts\Application\View\CommentView;
-use App\Modules\Posts\Application\View\CommentViewAssembler;
+use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
 use App\Modules\Posts\Domain\ValueObject\CommentText;
 use App\Modules\Posts\Domain\ValueObject\PostId;
-use App\Modules\Posts\Repository\PostRepository;
-use App\Shared\Domain\Exception\NotFoundException;
+use App\Modules\Posts\Domain\Repository\CommentRepository;
+use App\Modules\Posts\Domain\Repository\PostRepository;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
+use App\Modules\Posts\Domain\Exception\PostNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 
@@ -29,22 +26,22 @@ final readonly class CommentPostHandler
 {
     public function __construct(
         private PostRepository $postRepository,
+        private CommentRepository $commentRepository,
         private CommentComposer $composer,
-        private CommentViewAssembler $commentViewAssembler,
-        private EntityManagerInterface $entityManager,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
     #[LogOperation]
-    public function handle(CommentPostCommand $command): CommentView
+    public function handle(CommentPostCommand $command): CommentPostResult
     {
         $authUserId = UserId::fromString($command->authUserId);
 
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
-            ?? throw new NotFoundException('app.posts.not_found');
+            ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isActionable($post)) {
-            throw new NotFoundException('app.posts.not_found');
+        if (!$this->postVisibilityPolicy->isActionable($post)) {
+            throw new PostNotFoundException();
         }
 
         $comment = Comment::create(
@@ -53,12 +50,10 @@ final readonly class CommentPostHandler
             text: CommentText::fromString($command->text),
             parent: CommentParent::none(),
         );
-        $this->entityManager->persist($comment);
 
         $post->incrementComments();
-        $this->entityManager->persist($post);
 
-        $this->composer->attachMentionsAndNotify(
+        $mentions = $this->composer->attachMentionsAndNotify(
             comment: $comment,
             mentionIds: $command->mentions,
             actorUserId: $command->authUserId,
@@ -66,8 +61,12 @@ final readonly class CommentPostHandler
             primaryType: PostNotificationType::PostCommented,
         );
 
-        $this->entityManager->run();
+        // Один прогон EntityManager на сценарий: комментарий с упоминаниями только ставятся в
+        // очередь, а запись флашит всё разом своим save() — оба репозитория используют общий
+        // shared-singleton EntityManager запроса, как `LoginCodeRepository`/`StoredOutboxEventRepository`.
+        $this->commentRepository->addWithMentions(comment: $comment, mentions: $mentions);
+        $this->postRepository->save($post);
 
-        return $this->commentViewAssembler->fromComment(comment: $comment, viewer: $authUserId);
+        return new CommentPostResult(commentId: $comment->id->value());
     }
 }

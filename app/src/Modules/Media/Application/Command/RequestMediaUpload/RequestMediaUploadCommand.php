@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Application\Command\RequestMediaUpload;
 
-use App\Modules\Media\Application\Dto\MediaFileMeta;
-use App\Modules\Media\Application\Dto\MediaUploadSpec;
+use App\Modules\Media\Application\Contract\MediaFileMeta;
+use App\Modules\Media\Application\Contract\MediaUploadSpec;
 
 final readonly class RequestMediaUploadCommand
 {

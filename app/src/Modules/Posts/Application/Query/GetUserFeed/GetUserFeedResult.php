@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Application\Query\GetUserFeed;
 
-use App\Modules\Posts\Application\View\PostViewCollection;
+use App\Modules\Posts\Application\Result\PostResultCollection;
 
 final readonly class GetUserFeedResult
 {
     public function __construct(
-        public PostViewCollection $posts,
+        public PostResultCollection $posts,
         public string|null $nextCursor,
     ) {}
 }

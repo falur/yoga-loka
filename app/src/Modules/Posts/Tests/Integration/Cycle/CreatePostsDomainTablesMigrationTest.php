@@ -10,15 +10,14 @@ use Tests\DatabaseTestCase;
 use Tests\Support\Migration\ReplaysMigration;
 
 /**
- * Реальное исполнение уже применённой миграции девяти таблиц Posts и одной — `tags`.
+ * Реальное исполнение уже применённой миграции девяти таблиц Posts.
  *
- * Файл лежит в Posts (исторический артефакт, см. docblock `PostsBootloader`): девять из десяти
- * созданных им таблиц принадлежат Posts, редактировать уже применённое содержимое нельзя
- * (`docs/rules.md`). `migrate-test-databases.sh` применяет его один раз до PHPUnit/PCOV, поэтому без
- * прямого вызова down()/up() тело миграции остаётся непокрытым. Тест откатывает и повторно
- * накатывает таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown —
- * временное воссоздание межмодульных внешних ключей на `users`/`media` (снятых отдельными
- * миграциями волны G, не затронутыми этим тестом) не оставляет следа на общей тестовой базе.
+ * `migrate-test-databases.sh` применяет миграцию один раз до PHPUnit/PCOV, поэтому без прямого
+ * вызова down()/up() тело миграции остаётся непокрытым. Тест откатывает и повторно накатывает
+ * таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown. Миграция не
+ * создаёт ни одного межмодульного внешнего ключа: ссылки на `users` и `tags` — обычные колонки без
+ * ограничения (docs/arch.md, «Владение данными»); внутримодульные ключи (на `posts`/`comments`
+ * этого же модуля) остаются как есть.
  */
 final class CreatePostsDomainTablesMigrationTest extends DatabaseTestCase
 {
@@ -28,7 +27,6 @@ final class CreatePostsDomainTablesMigrationTest extends DatabaseTestCase
     private const string MIGRATION_FILE = '/app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/20260617.160942_0_create_posts_domain_tables.php';
 
     private const array TABLES = [
-        'tags',
         'posts',
         'post_media',
         'post_likes',
@@ -40,7 +38,7 @@ final class CreatePostsDomainTablesMigrationTest extends DatabaseTestCase
         'comment_mentions',
     ];
 
-    public function testDownDropsAllTenTablesAndUpRecreatesThemWithForeignKeys(): void
+    public function testDownDropsAllNineTablesAndUpRecreatesThemWithForeignKeys(): void
     {
         foreach (self::TABLES as $table) {
             self::assertTrue($this->hasTable($table));
@@ -58,44 +56,39 @@ final class CreatePostsDomainTablesMigrationTest extends DatabaseTestCase
             self::assertTrue($this->hasTable($table));
         }
 
-        $tags = $this->migrationDatabase()->table('tags')->getSchema();
-        self::assertSame(['id'], $tags->getPrimaryKeys());
-        self::assertNotNull($this->foreignKeyOn($tags, ['created_by_id']));
-
         $posts = $this->migrationDatabase()->table('posts')->getSchema();
-        self::assertNotNull($this->foreignKeyOn($posts, ['user_id']));
+        self::assertNull($this->foreignKeyOn($posts, ['user_id']));
         $selfForeignKey = $this->foreignKeyOn($posts, ['parent_post_id']);
         self::assertNotNull($selfForeignKey);
         self::assertSame('posts', $selfForeignKey->getForeignTable());
 
+        self::assertNull($this->foreignKeyOn(
+            $this->migrationDatabase()->table('post_media')->getSchema(),
+            ['media_id'],
+        ));
+
         $postTags = $this->migrationDatabase()->table('post_tags')->getSchema();
-        $tagForeignKey = $this->foreignKeyOn($postTags, ['tag_id']);
-        self::assertNotNull($tagForeignKey);
-        self::assertSame('tags', $tagForeignKey->getForeignTable());
+        self::assertNull($this->foreignKeyOn($postTags, ['tag_id']));
+        self::assertNotNull($this->foreignKeyOn($postTags, ['post_id']));
 
         $postBlocks = $this->migrationDatabase()->table('post_blocks')->getSchema();
-        self::assertNotNull($this->foreignKeyOn($postBlocks, ['blocked_by_id']));
-        $unblockedForeignKey = $this->foreignKeyOn($postBlocks, ['unblocked_by_id']);
-        self::assertNotNull($unblockedForeignKey);
-        self::assertSame('SET NULL', $unblockedForeignKey->getDeleteRule());
+        self::assertNull($this->foreignKeyOn($postBlocks, ['blocked_by_id']));
+        self::assertNull($this->foreignKeyOn($postBlocks, ['unblocked_by_id']));
 
         $comments = $this->migrationDatabase()->table('comments')->getSchema();
-        self::assertNotNull($this->foreignKeyOn($comments, ['user_id']));
+        self::assertNull($this->foreignKeyOn($comments, ['user_id']));
+        self::assertNull($this->foreignKeyOn($comments, ['deleted_by_id']));
         $parentCommentForeignKey = $this->foreignKeyOn($comments, ['parent_comment_id']);
         self::assertNotNull($parentCommentForeignKey);
         self::assertSame('comments', $parentCommentForeignKey->getForeignTable());
 
-        self::assertNotNull($this->foreignKeyOn(
+        self::assertNull($this->foreignKeyOn(
             $this->migrationDatabase()->table('comment_likes')->getSchema(),
             ['user_id'],
         ));
-        self::assertNotNull($this->foreignKeyOn(
+        self::assertNull($this->foreignKeyOn(
             $this->migrationDatabase()->table('comment_mentions')->getSchema(),
             ['user_id'],
-        ));
-        self::assertNotNull($this->foreignKeyOn(
-            $this->migrationDatabase()->table('post_media')->getSchema(),
-            ['media_id'],
         ));
     }
 

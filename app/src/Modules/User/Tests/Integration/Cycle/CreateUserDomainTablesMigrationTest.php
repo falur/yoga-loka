@@ -11,13 +11,11 @@ use Tests\Support\Migration\ReplaysMigration;
 /**
  * Реальное исполнение уже применённой миграции трёх таблиц User.
  *
- * Файл переехал волной G из `app/database/migrations` (вне области покрытия) в `app/src` модуля
- * User: `migrate-test-databases.sh` применяет его один раз до PHPUnit/PCOV, поэтому без прямого
+ * `migrate-test-databases.sh` применяет миграцию один раз до PHPUnit/PCOV, поэтому без прямого
  * вызова down()/up() тело миграции остаётся непокрытым. Тест откатывает и повторно накатывает
- * таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown. up() этого
- * исторического файла воссоздаёт `users.avatar_media_id -> media.id` — ключ, снятый отдельной
- * миграцией `DropUsersAvatarMediaForeignKey` (не затронутой этим тестом): откат транзакции убирает
- * и это временное воссоздание, на общей тестовой базе следа не остаётся.
+ * таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown. Миграция не
+ * создаёт межмодульный внешний ключ `users.avatar_media_id -> media.id`: колонка хранит ссылку без
+ * ограничения (docs/arch.md, «Владение данными»).
  */
 final class CreateUserDomainTablesMigrationTest extends DatabaseTestCase
 {
@@ -47,10 +45,7 @@ final class CreateUserDomainTablesMigrationTest extends DatabaseTestCase
         }
 
         $users = $this->migrationDatabase()->table('users')->getSchema();
-        $avatarForeignKey = $this->foreignKeyOn($users->getForeignKeys(), ['avatar_media_id']);
-        self::assertInstanceOf(AbstractForeignKey::class, $avatarForeignKey);
-        self::assertSame('media', $avatarForeignKey->getForeignTable());
-        self::assertSame('RESTRICT', $avatarForeignKey->getDeleteRule());
+        self::assertNull($this->foreignKeyOn($users->getForeignKeys(), ['avatar_media_id']));
 
         $userBans = $this->migrationDatabase()->table('user_bans')->getSchema();
         $userForeignKey = $this->foreignKeyOn($userBans->getForeignKeys(), ['user_id']);

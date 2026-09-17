@@ -31,12 +31,6 @@ class CreateUserDomainTables extends Migration
             ->addIndex(['email'], ['unique' => true])
             ->addIndex(['nickname'], ['unique' => true])
             ->addIndex(['status'])
-            ->addForeignKey(
-                ['avatar_media_id'],
-                'media',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
 
         $this->table('user_bans')

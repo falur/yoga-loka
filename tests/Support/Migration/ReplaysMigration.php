@@ -12,7 +12,7 @@ use Cycle\Migrations\MigrationInterface;
  * Прогоняет уже применённую миграцию заново (down()/up()) внутри транзакционного теста, чтобы
  * реально исполнить её код, а не полагаться на однократное применение вне PCOV в
  * `migrate-test-databases.sh`. Файл миграции не автозагружается Composer (namespace `Migration` не
- * PSR-4), поэтому подключается явно тем же приёмом, что `DropPostsUserForeignKeysMigrationTest`.
+ * PSR-4), поэтому подключается явно тем же приёмом, что `CreatePostsDomainTablesMigrationTest`.
  * Требует `Tests\DatabaseTestCase`-контекста ($this->getContainer(), $this->rootDirectory()).
  */
 trait ReplaysMigration

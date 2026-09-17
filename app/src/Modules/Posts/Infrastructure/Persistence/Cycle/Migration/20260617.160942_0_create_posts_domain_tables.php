@@ -12,24 +12,6 @@ class CreatePostsDomainTables extends Migration
 
     public function up(): void
     {
-        $this->table('tags')
-            ->addColumn('id', 'uuid', ['nullable' => false])
-            // Ширина 64 — намеренный запас над доменным максимумом TagText (50 символов):
-            // VO остаётся строже схемы, а небольшой запас оставляет место для будущего смягчения длины.
-            ->addColumn('text', 'string', ['length' => 64, 'nullable' => false])
-            ->addColumn('created_by_id', 'uuid', ['nullable' => false])
-            ->addColumn('created_at', 'datetime', ['nullable' => false])
-            ->addColumn('updated_at', 'datetime', ['nullable' => false])
-            ->setPrimaryKeys(['id'])
-            ->addIndex(['text'], ['unique' => true])
-            ->addForeignKey(
-                ['created_by_id'],
-                'users',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->create();
-
         $this->table('posts')
             ->addColumn('id', 'uuid', ['nullable' => false])
             ->addColumn('user_id', 'uuid', ['nullable' => false])
@@ -49,12 +31,6 @@ class CreatePostsDomainTables extends Migration
             ->addIndex(['user_id', 'id'])
             ->addIndex(['status'])
             ->addIndex(['parent_post_id'])
-            ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
 
         // Self-FK добавляем отдельным ALTER после ->create(): индекс parent_post_id уже создан выше,
@@ -84,12 +60,6 @@ class CreatePostsDomainTables extends Migration
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
             )
-            ->addForeignKey(
-                ['media_id'],
-                'media',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
 
         $this->table('post_likes')
@@ -104,12 +74,6 @@ class CreatePostsDomainTables extends Migration
             ->addForeignKey(
                 ['post_id'],
                 'posts',
-                ['id'],
-                ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['user_id'],
-                'users',
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
             )
@@ -130,12 +94,6 @@ class CreatePostsDomainTables extends Migration
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
             )
-            ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
 
         $this->table('post_tags')
@@ -152,12 +110,6 @@ class CreatePostsDomainTables extends Migration
                 'posts',
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['tag_id'],
-                'tags',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
             )
             ->create();
 
@@ -178,18 +130,6 @@ class CreatePostsDomainTables extends Migration
                 'posts',
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['blocked_by_id'],
-                'users',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['unblocked_by_id'],
-                'users',
-                ['id'],
-                ['delete' => 'SET NULL', 'update' => 'CASCADE', 'indexCreate' => false],
             )
             ->create();
 
@@ -215,18 +155,6 @@ class CreatePostsDomainTables extends Migration
                 'posts',
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'RESTRICT', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
-                ['deleted_by_id'],
-                'users',
-                ['id'],
-                ['delete' => 'SET NULL', 'update' => 'CASCADE', 'indexCreate' => false],
             )
             ->create();
 
@@ -255,12 +183,6 @@ class CreatePostsDomainTables extends Migration
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
             )
-            ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
 
         $this->table('comment_mentions')
@@ -278,12 +200,6 @@ class CreatePostsDomainTables extends Migration
                 ['id'],
                 ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
             )
-            ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
             ->create();
     }
 
@@ -297,7 +213,6 @@ class CreatePostsDomainTables extends Migration
         $this->table('post_mentions')->drop();
         $this->table('post_likes')->drop();
         $this->table('post_media')->drop();
-        $this->table('tags')->drop();
         $this->table('posts')->drop();
     }
 }

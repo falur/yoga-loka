@@ -57,13 +57,11 @@ parameters:
             message: '#Call to function is_string\(\) with non-empty-string will always evaluate to true\.#'
             paths:
                 - app/src/Shared/Infrastructure/Persistence/Cycle/LazyGhostEntityFactory.php
-        # Девять миграций уже применены и вызывают Cycle\Database\Schema\AbstractTable позиционно
-        # (docs/rules.md: «не редактируй уже применённую миграцию» — тело `up()`/`down()` менять
-        # нельзя). Волна G перенесла файлы из app/database/migrations (вне paths, PHPStan их не
-        # видел) в свои модули под app/src (paths) без изменения содержимого — поэтому здесь впервые
-        # проверяется исторический код, написанный до правила именованных аргументов. Десятая
-        # перенесённая миграция (20260915.234500_0_drop_post_media_media_foreign_key.php, волна F) и
-        # все новые миграции этой волны уже используют именованные аргументы и в список не входят.
+        # Девять миграций вызывают Cycle\Database\Schema\AbstractTable позиционно: тело написано до
+        # правила именованных аргументов, а массовый перевод на именованные не входил в задачу волны
+        # (Access/Posts/User точечно правились позже — снятие межмодульных внешних ключей, — но
+        # оставшийся код файлов не тронут, стиль вызовов не менялся). Все новые миграции уже
+        # используют именованные аргументы и в список не входят.
         -
             identifier: gianTiaga.phpstanStrictRules.namedArgumentsRequired
             message: '#Calls with two or more ordinary arguments must use named arguments\.#'

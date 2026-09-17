@@ -11,13 +11,11 @@ use Tests\Support\Migration\ReplaysMigration;
 /**
  * Реальное исполнение уже применённой миграции четырёх таблиц Access.
  *
- * Файл переехал волной G из `app/database/migrations` (вне области покрытия) в `app/src` модуля
- * Access: `migrate-test-databases.sh` применяет его один раз до PHPUnit/PCOV, поэтому без прямого
+ * `migrate-test-databases.sh` применяет миграцию один раз до PHPUnit/PCOV, поэтому без прямого
  * вызова down()/up() тело миграции остаётся непокрытым. Тест откатывает и повторно накатывает
- * таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown. up() этого
- * исторического файла воссоздаёт `user_roles.user_id -> users.id` — ключ, снятый отдельной
- * миграцией `DropUserRolesUserForeignKey` (не затронутой этим тестом): откат транзакции убирает и
- * это временное воссоздание, на общей тестовой базе следа не остаётся.
+ * таблицы внутри транзакции `DatabaseTestCase`, которая откатывается в tearDown. Миграция не
+ * создаёт межмодульный внешний ключ `user_roles.user_id -> users.id`: колонка хранит ссылку без
+ * ограничения (docs/arch.md, «Владение данными»).
  */
 final class CreateAccessDomainTablesMigrationTest extends DatabaseTestCase
 {
@@ -52,9 +50,7 @@ final class CreateAccessDomainTablesMigrationTest extends DatabaseTestCase
         self::assertSame('roles', $roleForeignKey->getForeignTable());
 
         $userRoles = $this->migrationDatabase()->table('user_roles')->getSchema();
-        $userForeignKey = $this->foreignKeyOn($userRoles->getForeignKeys(), ['user_id']);
-        self::assertInstanceOf(AbstractForeignKey::class, $userForeignKey);
-        self::assertSame('users', $userForeignKey->getForeignTable());
+        self::assertNull($this->foreignKeyOn($userRoles->getForeignKeys(), ['user_id']));
     }
 
     /** @param list<string> $columns */

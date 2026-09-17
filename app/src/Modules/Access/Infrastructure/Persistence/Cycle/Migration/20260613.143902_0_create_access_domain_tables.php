@@ -56,12 +56,6 @@ class CreateAccessDomainTables extends Migration
             ->addColumn('role_id', 'uuid', ['nullable' => false])
             ->setPrimaryKeys(['id'])
             ->addForeignKey(
-                ['user_id'],
-                'users',
-                ['id'],
-                ['delete' => 'CASCADE', 'update' => 'CASCADE', 'indexCreate' => false],
-            )
-            ->addForeignKey(
                 ['role_id'],
                 'roles',
                 ['id'],

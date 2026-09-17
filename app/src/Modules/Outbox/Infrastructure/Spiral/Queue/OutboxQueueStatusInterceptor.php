@@ -10,7 +10,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxLastError;
 use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use Psr\Log\LoggerInterface;
 use Spiral\Core\CoreInterceptorInterface;
 use Spiral\Core\CoreInterface;

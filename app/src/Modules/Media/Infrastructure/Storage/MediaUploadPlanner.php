@@ -9,7 +9,7 @@ use App\Modules\Media\Domain\ValueObject\MediaExpiration;
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 
 /**
  * Считает решения пайплайна загрузки из MediaConfig: срок staging-хранения, порог multipart, размер и

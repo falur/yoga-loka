@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Infrastructure\Spiral\Configuration\Media;
+namespace App\Modules\Media\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Exception\InvalidConfigValueException;

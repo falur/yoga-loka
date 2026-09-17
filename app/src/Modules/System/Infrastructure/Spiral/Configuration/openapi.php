@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 return [
-    'enabled' => (bool) \env('OPENAPI_ENABLED', true),
-    'swaggerEnabled' => (bool) \env('OPENAPI_SWAGGER_ENABLED', \env('APP_ENV') !== 'production'),
+    'enabled' => (bool) \env(key: 'OPENAPI_ENABLED', default: true),
+    'swaggerEnabled' => (bool) \env(key: 'OPENAPI_SWAGGER_ENABLED', default: \env('APP_ENV') !== 'production'),
     'sourcePaths' => [
         'app/src/Modules/*/Infrastructure/Spiral/Http',
         // Доменные enum-ы включены в скан, потому что API-ресурсы отдают их напрямую как
@@ -23,5 +23,5 @@ return [
     'outputFile' => 'public/openapi/openapi.yml',
     'title' => 'YogaLoka API',
     'version' => '1.0.0',
-    'debug' => (bool) \env('OPENAPI_DEBUG', true),
+    'debug' => (bool) \env(key: 'OPENAPI_DEBUG', default: true),
 ];

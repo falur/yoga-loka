@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\System\Infrastructure\Spiral\Console;
 
-use App\Shared\Infrastructure\Spiral\Configuration\OpenApi\OpenApiConfig;
+use App\Modules\System\Infrastructure\Spiral\Configuration\OpenApiConfig;
 use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;
 use Spiral\Console\Attribute\AsCommand;

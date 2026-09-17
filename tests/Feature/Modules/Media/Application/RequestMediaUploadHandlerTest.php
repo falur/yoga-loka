@@ -29,7 +29,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

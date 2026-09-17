@@ -8,7 +8,7 @@ use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\System\Application\Exception\OpenApiSpecificationNotGeneratedException;
 use App\Modules\System\Application\Exception\SwaggerUiDisabledException;
 use App\Modules\System\Infrastructure\Spiral\Http\View\SwaggerView;
-use App\Shared\Infrastructure\Spiral\Configuration\OpenApi\OpenApiConfig;
+use App\Modules\System\Infrastructure\Spiral\Configuration\OpenApiConfig;
 use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;
 use Spiral\Router\Annotation\Route;

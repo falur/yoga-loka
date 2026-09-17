@@ -12,7 +12,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Tests\Feature\Modules\Outbox\CleansOutboxEvents;

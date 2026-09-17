@@ -7,7 +7,7 @@ namespace Tests\Unit\Modules\Notifications\Infrastructure\Client;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoClient;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoOnlinePresence;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Spiral\Configuration\Centrifugo\CentrifugoConfig;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\CentrifugoConfig;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;

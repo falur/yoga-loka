@@ -44,7 +44,7 @@ use App\Modules\User\Domain\Repository\UserRepository;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\Locale\LocaleResolver;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use GianTiaga\SpiralCqrs\QueryBusInterface;

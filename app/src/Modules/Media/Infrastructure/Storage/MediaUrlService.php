@@ -22,7 +22,7 @@ use App\Modules\Media\Domain\Enum\MediaVideoConversionType;
 use App\Modules\Media\Domain\Enum\MediaVisibility;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPresignedTtl;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use Illuminate\Support\Collection;
 
 /**

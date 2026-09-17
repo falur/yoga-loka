@@ -27,7 +27,12 @@ use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
+use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
+use Cycle\Migrations\Config\MigrationConfig;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Config\ConfiguratorInterface;
+use Spiral\Config\Patch\Append;
 use Spiral\Console\Bootloader\ConsoleBootloader;
 
 /**
@@ -37,6 +42,8 @@ use Spiral\Console\Bootloader\ConsoleBootloader;
  */
 final class OutboxBootloader extends Bootloader
 {
+    private const string MIGRATION_VENDOR_DIRECTORIES = 'vendorDirectories';
+
     protected const BINDINGS = [
         StoredOutboxEventRepository::class => CycleStoredOutboxEventRepository::class,
         IntegrationEventStoreContract::class => IntegrationEventStoreProvider::class,
@@ -61,9 +68,40 @@ final class OutboxBootloader extends Bootloader
         return [ConsoleBootloader::class];
     }
 
-    public function init(ConsoleBootloader $console): void
-    {
+    /** @param ConfiguratorInterface<object> $config */
+    public function init(
+        ConsoleBootloader $console,
+        ConfiguratorInterface $config,
+        ConfigBootloader $configBootloader,
+    ): void {
         $console->addCommand(OutboxRelayCommand::class);
+
+        // Каталог миграций модуля дописывается в общий механизм: файлы остаются внутри модуля,
+        // а удаление модуля не оставляет миграций в чужих папках.
+        $config->modify(
+            section: MigrationConfig::CONFIG,
+            patch: new Append(
+                position: self::MIGRATION_VENDOR_DIRECTORIES,
+                key: null,
+                value: \sprintf(
+                    '%s/Infrastructure/Persistence/Cycle/Migration',
+                    \dirname(path: __DIR__, levels: 3),
+                ),
+            ),
+        );
+
+        // Типизированный конфиг модуля лежит внутри модуля: удаление модуля не оставляет
+        // конфигурации в чужих папках.
+        $configBootloader->addConfigurationDirectory(
+            directory: \sprintf('%s/Infrastructure/Spiral/Configuration', \dirname(path: __DIR__, levels: 3)),
+        );
+        $config->setDefaults(
+            section: 'outbox',
+            data: ConfigArrayFile::read(path: \sprintf(
+                '%s/Infrastructure/Spiral/Configuration/outbox.php',
+                \dirname(path: __DIR__, levels: 3),
+            )),
+        );
     }
 
     public function boot(IntegrationEventRoutingContract $integrationEventRouting): void

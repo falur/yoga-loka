@@ -11,7 +11,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelaySleepSeconds;
 use App\Modules\Outbox\Infrastructure\Exception\OutboxRelayStoppedException;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelayWorker;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 

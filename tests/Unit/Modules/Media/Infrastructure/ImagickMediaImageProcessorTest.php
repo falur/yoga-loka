@@ -8,7 +8,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Infrastructure\Imagick\MediaImageProcessorException;
 use App\Modules\Media\Infrastructure\Imagick\ImagickMediaImageProcessor;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

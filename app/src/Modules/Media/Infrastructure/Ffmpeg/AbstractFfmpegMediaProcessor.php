@@ -6,7 +6,7 @@ namespace App\Modules\Media\Infrastructure\Ffmpeg;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use FFMpeg\FFMpeg;
 use FFMpeg\FFProbe\DataMapping\AbstractData;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;

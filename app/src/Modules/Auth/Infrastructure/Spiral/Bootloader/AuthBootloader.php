@@ -30,15 +30,24 @@ use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
 use App\Modules\Auth\Infrastructure\Spiral\Translation\SpiralTranslator;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
+use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
 use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
+use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
 use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
+use Cycle\Migrations\Config\MigrationConfig;
 use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Auth\Transport\HeaderTransport;
 use Spiral\Bootloader\Auth\AuthBootloader as SpiralAuthBootloader;
 use Spiral\Bootloader\Auth\HttpAuthBootloader;
+use Spiral\Bootloader\I18nBootloader;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Config\ConfiguratorInterface;
+use Spiral\Config\Patch\Append;
+use Spiral\Config\Patch\Group;
+use Spiral\Config\Patch\Set;
 use Spiral\Core\Container\Autowire;
 use Spiral\Router\GroupRegistry;
+use Spiral\SendIt\Config\MailerConfig as SpiralMailerConfig;
 use Spiral\Views\Bootloader\ViewsBootloader;
 
 /**
@@ -57,6 +66,8 @@ final class AuthBootloader extends Bootloader
      * Namespace представлений модуля Auth (ссылка на шаблон: `auth:<имя>`).
      */
     public const string VIEW_NAMESPACE = 'auth';
+
+    private const string MIGRATION_VENDOR_DIRECTORIES = 'vendorDirectories';
 
     protected const BINDINGS = [
         AuthTokenRepository::class => CycleAuthTokenRepository::class,
@@ -84,8 +95,15 @@ final class AuthBootloader extends Bootloader
         ];
     }
 
-    public function init(HttpAuthBootloader $httpAuth, SpiralAuthBootloader $auth, ViewsBootloader $views): void
-    {
+    /** @param ConfiguratorInterface<object> $config */
+    public function init(
+        HttpAuthBootloader $httpAuth,
+        SpiralAuthBootloader $auth,
+        ViewsBootloader $views,
+        I18nBootloader $i18n,
+        ConfiguratorInterface $config,
+        ConfigBootloader $configBootloader,
+    ): void {
         $views->addDirectory(
             namespace: self::VIEW_NAMESPACE,
             directory: \sprintf('%s/Infrastructure/Spiral/Resources/views', \dirname(path: __DIR__, levels: 3)),
@@ -96,13 +114,62 @@ final class AuthBootloader extends Bootloader
         );
         $httpAuth->addTokenStorage(name: 'cycle', storage: SpiralTokenStorage::class);
         $auth->addActorProvider(UserActorProvider::class);
+
+        // Переводы модуля лежат внутри модуля: удаление модуля не оставляет переводов в чужих папках.
+        $i18n->addDirectory(
+            directory: \sprintf('%s/Infrastructure/Spiral/Resources/locale', \dirname(path: __DIR__, levels: 3)),
+        );
+
+        // Каталог миграций модуля дописывается в общий механизм: файлы остаются внутри модуля,
+        // а удаление модуля не оставляет миграций в чужих папках.
+        $config->modify(
+            section: MigrationConfig::CONFIG,
+            patch: new Append(
+                position: self::MIGRATION_VENDOR_DIRECTORIES,
+                key: null,
+                value: \sprintf(
+                    '%s/Infrastructure/Persistence/Cycle/Migration',
+                    \dirname(path: __DIR__, levels: 3),
+                ),
+            ),
+        );
+
+        // Типизированный конфиг модуля лежит внутри модуля: удаление модуля не оставляет
+        // конфигурации в чужих папках. Значения секции 'mailer' переносятся в boot() (см. ниже),
+        // а не через setDefaults() здесь: секцию 'mailer' уже забирает себе
+        // Spiral\SendIt\Bootloader\MailerBootloader::init() своим собственным setDefaults(), и
+        // ConfigManager::setDefaults() бросает исключение при повторном вызове для той же секции.
+        $configBootloader->addConfigurationDirectory(
+            directory: \sprintf('%s/Infrastructure/Spiral/Configuration', \dirname(path: __DIR__, levels: 3)),
+        );
     }
 
+    /** @param ConfiguratorInterface<object> $config */
     public function boot(
         IntegrationEventRoutingContract $integrationEventRouting,
         GroupRegistry $routeGroups,
         AccessRuleRegistry $accessRuleRegistry,
+        ConfiguratorInterface $config,
     ): void {
+        // Значения mailer.php модуля накладываются на секцию 'mailer' поверх дефолтов
+        // Spiral\SendIt\Bootloader\MailerBootloader (см. пояснение в init()). modify() безопасен
+        // именно в boot(): к этому моменту init() уже отработал у ВСЕХ bootloader-ов (в т.ч. у
+        // MailerBootloader), поэтому секция 'mailer' гарантированно проинициализирована, а порядок
+        // AuthBootloader и MailerBootloader в Kernel не имеет значения.
+        $mailerConfig = ConfigArrayFile::read(path: \sprintf(
+            '%s/Infrastructure/Spiral/Configuration/mailer.php',
+            \dirname(path: __DIR__, levels: 3),
+        ));
+        $config->modify(
+            section: SpiralMailerConfig::CONFIG,
+            patch: new Group(
+                new Set(key: 'dsn', value: $mailerConfig['dsn']),
+                new Set(key: 'from', value: $mailerConfig['from']),
+                new Set(key: 'queueConnection', value: $mailerConfig['queueConnection']),
+                new Set(key: 'queue', value: $mailerConfig['queue']),
+            ),
+        );
+
         $integrationEventRouting->register(
             integrationEventClass: LoginCodeRequestedEvent::class,
             jobClass: SendLoginCodeJob::class,

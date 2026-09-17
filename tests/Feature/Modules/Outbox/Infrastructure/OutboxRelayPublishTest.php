@@ -14,7 +14,7 @@ use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueHeaders;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueuePublisher;
 use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
 use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use App\Shared\Infrastructure\Persistence\Cycle\DatabaseDateTimeFormat;
 use Cycle\Database\DatabaseInterface;
 use Spiral\Queue\OptionsInterface;

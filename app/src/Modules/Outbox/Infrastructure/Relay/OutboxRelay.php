@@ -13,7 +13,7 @@ use App\Modules\Outbox\Domain\ValueObject\OutboxMaxAttempts;
 use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueuePublisher;
 use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use Cycle\Database\DatabaseInterface;
 use Psr\Log\LoggerInterface;
 

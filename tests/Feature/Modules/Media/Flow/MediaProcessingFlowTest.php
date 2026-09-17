@@ -22,7 +22,7 @@ use App\Modules\Media\Public\Enum\MediaImageConversionType as PublicMediaImageCo
 use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use Symfony\Component\Process\Process;
 use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
 use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;

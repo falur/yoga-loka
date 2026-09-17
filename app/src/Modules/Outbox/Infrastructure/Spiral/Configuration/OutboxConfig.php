@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Infrastructure\Spiral\Configuration\Outbox;
+namespace App\Modules\Outbox\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
 

@@ -28,7 +28,7 @@ use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Domain\ValueObject\MediaWaveform;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 use App\Modules\Media\Infrastructure\Ffmpeg\NativeAacAudioFormat;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use FFMpeg\FFProbe\DataMapping\Stream;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;

@@ -20,7 +20,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaStorageKey;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaAudioProcessor;
 use App\Modules\Media\Infrastructure\Ffmpeg\FfmpegMediaVideoProcessor;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 

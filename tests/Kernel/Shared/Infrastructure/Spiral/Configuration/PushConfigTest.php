@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Spiral\Configuration\Push\PushConfig;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\PushConfig;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;
 use CuyZ\Valinor\Normalizer\Format;

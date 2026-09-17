@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Exception\InvalidConfigValueException;
 use CuyZ\Valinor\Mapper\Configurator\ConvertKeysToCamelCase;
 use CuyZ\Valinor\MapperBuilder;

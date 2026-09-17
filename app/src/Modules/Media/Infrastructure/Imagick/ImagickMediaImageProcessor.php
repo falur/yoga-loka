@@ -10,7 +10,7 @@ use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaMimeType;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Infrastructure\Imagick\MediaImageProcessorException;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;

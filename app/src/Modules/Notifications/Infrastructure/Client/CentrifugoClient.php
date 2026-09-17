@@ -7,7 +7,7 @@ namespace App\Modules\Notifications\Infrastructure\Client;
 use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoPresenceException;
-use App\Shared\Infrastructure\Spiral\Configuration\Centrifugo\CentrifugoConfig;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\CentrifugoConfig;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;

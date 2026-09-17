@@ -12,7 +12,7 @@ use App\Modules\Notifications\Application\Contract\RealtimeNotificationPayload;
 use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoClient;
 use App\Modules\Notifications\Infrastructure\Client\CentrifugoPresenceException;
-use App\Shared\Infrastructure\Spiral\Configuration\Centrifugo\CentrifugoConfig;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\CentrifugoConfig;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;

@@ -6,7 +6,7 @@ namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\Cache\CacheConfig as AppCacheConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Cache\CacheStorageConfig;
-use App\Shared\Infrastructure\Spiral\Configuration\OpenApi\OpenApiConfig;
+use App\Modules\System\Infrastructure\Spiral\Configuration\OpenApiConfig;
 use Spiral\Cache\Config\CacheConfig as SpiralCacheConfig;
 use Tests\TestCase;
 

@@ -31,13 +31,19 @@ use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeReg
 use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\CentrifugoConfig;
+use App\Modules\Notifications\Infrastructure\Spiral\Configuration\PushConfig;
 use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
-use App\Shared\Infrastructure\Spiral\Configuration\Centrifugo\CentrifugoConfig;
-use App\Shared\Infrastructure\Spiral\Configuration\Push\PushConfig;
+use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
+use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
+use Cycle\Migrations\Config\MigrationConfig;
 use GuzzleHttp\Client;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Factory;
 use Spiral\Boot\Bootloader\Bootloader;
+use Spiral\Bootloader\I18nBootloader;
+use Spiral\Config\ConfiguratorInterface;
+use Spiral\Config\Patch\Append;
 
 /**
  * Бутлоадер модуля Notifications. Доменные интерфейсы хранения трёх независимых корней агрегатов
@@ -54,6 +60,8 @@ use Spiral\Boot\Bootloader\Bootloader;
  */
 final class NotificationsBootloader extends Bootloader
 {
+    private const string MIGRATION_VENDOR_DIRECTORIES = 'vendorDirectories';
+
     protected const BINDINGS = [
         NotificationRepository::class => CycleNotificationRepository::class,
         NotificationSettingRepository::class => CycleNotificationSettingRepository::class,
@@ -71,6 +79,52 @@ final class NotificationsBootloader extends Bootloader
         NotificationTypeCatalogContract::class => NotificationTypeRegistry::class,
         Messaging::class => [self::class, 'fcmMessaging'],
     ];
+
+    /** @param ConfiguratorInterface<object> $config */
+    public function init(
+        ConfiguratorInterface $config,
+        I18nBootloader $i18n,
+        ConfigBootloader $configBootloader,
+    ): void {
+        // Переводы модуля лежат внутри модуля: удаление модуля не оставляет переводов в чужих папках.
+        $i18n->addDirectory(
+            directory: \sprintf('%s/Infrastructure/Spiral/Resources/locale', \dirname(path: __DIR__, levels: 3)),
+        );
+
+        // Каталог миграций модуля дописывается в общий механизм: файлы остаются внутри модуля,
+        // а удаление модуля не оставляет миграций в чужих папках.
+        $config->modify(
+            section: MigrationConfig::CONFIG,
+            patch: new Append(
+                position: self::MIGRATION_VENDOR_DIRECTORIES,
+                key: null,
+                value: \sprintf(
+                    '%s/Infrastructure/Persistence/Cycle/Migration',
+                    \dirname(path: __DIR__, levels: 3),
+                ),
+            ),
+        );
+
+        // Типизированные конфиги модуля (push, centrifugo) лежат внутри модуля: удаление модуля
+        // не оставляет конфигурации в чужих папках.
+        $configBootloader->addConfigurationDirectory(
+            directory: \sprintf('%s/Infrastructure/Spiral/Configuration', \dirname(path: __DIR__, levels: 3)),
+        );
+        $config->setDefaults(
+            section: 'push',
+            data: ConfigArrayFile::read(path: \sprintf(
+                '%s/Infrastructure/Spiral/Configuration/push.php',
+                \dirname(path: __DIR__, levels: 3),
+            )),
+        );
+        $config->setDefaults(
+            section: 'centrifugo',
+            data: ConfigArrayFile::read(path: \sprintf(
+                '%s/Infrastructure/Spiral/Configuration/centrifugo.php',
+                \dirname(path: __DIR__, levels: 3),
+            )),
+        );
+    }
 
     public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
     {

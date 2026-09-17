@@ -19,7 +19,7 @@ use App\Modules\Media\Public\Enum\MediaConversionKind;
 use App\Modules\Media\Public\Enum\MediaImageConversionType;
 use App\Modules\Media\Public\Enum\MediaVideoConversionType;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use GianTiaga\SpiralCqrs\QueryBusInterface;
 use Tests\Feature\Modules\Media\Application\MediaApplicationTestCase;

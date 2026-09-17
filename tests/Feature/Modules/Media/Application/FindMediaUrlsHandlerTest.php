@@ -22,7 +22,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Shared\Domain\Exception\InvalidDomainValueException;
 use App\Shared\Domain\ValueObject\UserId;
-use App\Shared\Infrastructure\Spiral\Configuration\Media\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
 
 /**
  * Пакетное разрешение URL нескольких медиа: результат ключуется по id медиа, недоступные (не

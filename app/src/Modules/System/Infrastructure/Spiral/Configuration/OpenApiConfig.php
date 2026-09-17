@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Shared\Infrastructure\Spiral\Configuration\OpenApi;
+namespace App\Modules\System\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
 use GianTiaga\SpiralOpenApi\Config\OpenApiGeneratorConfig;

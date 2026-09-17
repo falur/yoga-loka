@@ -23,7 +23,7 @@ final class DropPostMediaMediaForeignKeyMigrationTest extends DatabaseTestCase
 {
     private const string TABLE = 'post_media';
     private const string MIGRATION_CLASS = 'Migration\\DropPostMediaMediaForeignKey';
-    private const string MIGRATION_FILE = '/app/database/migrations/20260915.234500_0_drop_post_media_media_foreign_key.php';
+    private const string MIGRATION_FILE = '/app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/20260915.234500_0_drop_post_media_media_foreign_key.php';
 
     public function testAppliedSchemaKeepsPostForeignKeyAndBothIndexesWithoutMediaForeignKey(): void
     {

@@ -52,3 +52,23 @@ parameters:
             message: '#Call to function is_string\(\) with non-empty-string will always evaluate to true\.#'
             paths:
                 - app/src/Shared/Infrastructure/Persistence/Cycle/LazyGhostEntityFactory.php
+        # Девять миграций уже применены и вызывают Cycle\Database\Schema\AbstractTable позиционно
+        # (docs/rules.md: «не редактируй уже применённую миграцию» — тело `up()`/`down()` менять
+        # нельзя). Волна G перенесла файлы из app/database/migrations (вне paths, PHPStan их не
+        # видел) в свои модули под app/src (paths) без изменения содержимого — поэтому здесь впервые
+        # проверяется исторический код, написанный до правила именованных аргументов. Десятая
+        # перенесённая миграция (20260915.234500_0_drop_post_media_media_foreign_key.php, волна F) и
+        # все новые миграции этой волны уже используют именованные аргументы и в список не входят.
+        -
+            identifier: gianTiaga.phpstanStrictRules.namedArgumentsRequired
+            message: '#Calls with two or more ordinary arguments must use named arguments\.#'
+            paths:
+                - app/src/Modules/Access/Infrastructure/Persistence/Cycle/Migration/20260613.143902_0_create_access_domain_tables.php
+                - app/src/Modules/Auth/Infrastructure/Persistence/Cycle/Migration/20260615.141700_0_create_auth_domain_tables.php
+                - app/src/Modules/Auth/Infrastructure/Persistence/Cycle/Migration/20260616.180010_0_add_device_to_auth_tokens.php
+                - app/src/Modules/Media/Infrastructure/Persistence/Cycle/Migration/20260521.184100_0_create_media_domain_tables.php
+                - app/src/Modules/Media/Infrastructure/Persistence/Cycle/Migration/20260620.222100_0_create_media_audio_conversions_table.php
+                - app/src/Modules/Notifications/Infrastructure/Persistence/Cycle/Migration/20260613.130000_0_create_notification_domain_tables.php
+                - app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Migration/20260525.153700_0_create_outbox_events_table.php
+                - app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/20260617.160942_0_create_posts_domain_tables.php
+                - app/src/Modules/User/Infrastructure/Persistence/Cycle/Migration/20260613.143901_0_create_user_domain_tables.php

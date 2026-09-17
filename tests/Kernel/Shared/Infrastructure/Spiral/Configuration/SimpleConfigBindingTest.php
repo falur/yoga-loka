@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 
 use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
-use App\Shared\Infrastructure\Spiral\Configuration\Mailer\MailerConfig;
+use App\Modules\Auth\Infrastructure\Spiral\Configuration\MailerConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Migration\MigrationConfig;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationOptionsConfig;
@@ -17,7 +17,9 @@ use App\Shared\Infrastructure\Spiral\Configuration\Session\SessionConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Translator\TranslatorConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Translator\TranslatorDomainConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
+use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Cycle\Migrations\Config\MigrationConfig as CycleMigrationConfig;
+use Spiral\Boot\DirectoriesInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Core\Container\Autowire;
 use Spiral\Scaffolder\Config\ScaffolderConfig as SpiralScaffolderConfig;
@@ -51,7 +53,10 @@ final class SimpleConfigBindingTest extends TestCase
         $outboxConfig = $container->get(OutboxConfig::class);
         $scaffolderConfig = $container->get(ScaffolderConfig::class);
 
-        self::assertStringEndsWith('/app/database/migrations/', $migrationConfig->directory);
+        // Каталог миграций — заглушка внутри runtime-директории (файлы переехали в модули): в
+        // тестах runtime у каждого worker-а свой, поэтому путь сверяется с DirectoriesInterface.
+        $runtimeDirectory = $container->get(DirectoriesInterface::class)->get(DirectoryAlias::Runtime->value);
+        self::assertSame($runtimeDirectory . 'migrations/', $migrationConfig->directory);
         self::assertSame('migrations', $migrationConfig->table);
         self::assertSame('smtp://mailpit:1025', $mailerConfig->dsn);
         self::assertSame('local', $mailerConfig->queue);

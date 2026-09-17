@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Shared\Infrastructure\Spiral\Configuration;
 
-use App\Shared\Infrastructure\Spiral\Configuration\Mailer\MailerConfig;
+use App\Modules\Auth\Infrastructure\Spiral\Configuration\MailerConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Spiral\Configuration\Exception\ConfigMappingException;
 use App\Shared\Infrastructure\Spiral\Configuration\Migration\MigrationConfig;
-use App\Shared\Infrastructure\Spiral\Configuration\Outbox\OutboxConfig;
+use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationOptionsConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Session\SessionConfig;
@@ -30,7 +30,7 @@ final class SimpleConfigMapperTest extends TestCase
     public function testHydratesMigrationConfigFromArray(): void
     {
         $config = $this->mapperFor(MigrationConfig::configName(), [
-            'directory' => '/app/database/migrations/',
+            'directory' => '/runtime/migrations/',
             'vendorDirectories' => ['cycle' => '/vendor/migrations'],
             'strategy' => 'StrategyClass',
             'nameGenerator' => 'NameGeneratorClass',
@@ -38,7 +38,7 @@ final class SimpleConfigMapperTest extends TestCase
             'safe' => true,
         ])->map(section: MigrationConfig::configName(), targetClass: MigrationConfig::class);
 
-        self::assertSame('/app/database/migrations/', $config->directory);
+        self::assertSame('/runtime/migrations/', $config->directory);
         self::assertSame('/vendor/migrations', $config->vendorDirectories['cycle']);
         self::assertSame('StrategyClass', $config->strategy);
         self::assertSame('NameGeneratorClass', $config->nameGenerator);

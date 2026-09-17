@@ -262,15 +262,25 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         self::assertNull($this->postRepository()->findById($original->id));
     }
 
-    public function testCannotDeleteUserReferencedByPost(): void
+    /**
+     * Межмодульный внешний ключ posts.user_id -> users.id снят: база больше не запрещает удалить
+     * пользователя, на которого ссылается запись. Ссылка остаётся прежним значением колонки, а
+     * данные автора читатель берёт через публичный контракт модуля User.
+     */
+    public function testDeletingUserReferencedByPostIsAllowedWithoutForeignKey(): void
     {
         $user = $this->createUser();
         $this->persist($user);
-        $this->persist($this->newPost($user->id));
-
-        $this->expectException(\Throwable::class);
+        $post = $this->newPost($user->id);
+        $this->persist($post);
 
         $this->delete($user);
+        $this->cleanOrmHeap();
+
+        $restored = $this->postRepository()->findById($post->id);
+
+        self::assertInstanceOf(Post::class, $restored);
+        self::assertTrue($user->id->equals($restored->userId));
     }
 
     public function testDeletingPostCascadesAllInnerEntities(): void
@@ -529,7 +539,11 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->entityManager()->run();
     }
 
-    public function testCannotDeleteTagReferencedByPostTag(): void
+    /**
+     * Межмодульный внешний ключ post_tags.tag_id -> tags.id снят: удаление метки больше не
+     * запрещено базой, строка связи остаётся с прежним идентификатором метки.
+     */
+    public function testDeletingTagReferencedByPostTagIsAllowedWithoutForeignKey(): void
     {
         $user = $this->createUser();
         $this->persist($user);
@@ -538,9 +552,13 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $this->persist($tag);
         $this->persist(PostTag::create(postId: $post->id, tagId: PostTagReference::fromString($tag->id->value())));
 
-        $this->expectException(\Throwable::class);
-
         $this->delete($tag);
+        $this->cleanOrmHeap();
+
+        $postTags = $this->postRepository()->findTagsByPostId($post->id);
+
+        self::assertCount(1, $postTags);
+        self::assertSame($tag->id->value(), $postTags->first()?->tagId->value());
     }
 
     // --- Post: лайки и упоминания (внутренние сущности) ---
@@ -822,7 +840,11 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         self::assertCount(0, $this->commentRepository()->findMentionsByCommentId($comment->id));
     }
 
-    public function testCannotDeleteUserReferencedByComment(): void
+    /**
+     * Межмодульный внешний ключ comments.user_id -> users.id снят: удаление автора комментария
+     * больше не запрещено базой, комментарий остаётся с прежним идентификатором автора.
+     */
+    public function testDeletingUserReferencedByCommentIsAllowedWithoutForeignKey(): void
     {
         $author = $this->createUser();
         $this->persist($author);
@@ -830,11 +852,16 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $commenter = $this->createUser();
         $this->persist($commenter);
-        $this->persist($this->newComment($post->id, $commenter->id));
-
-        $this->expectException(\Throwable::class);
+        $comment = $this->newComment($post->id, $commenter->id);
+        $this->persist($comment);
 
         $this->delete($commenter);
+        $this->cleanOrmHeap();
+
+        $restored = $this->commentRepository()->findById($comment->id);
+
+        self::assertInstanceOf(Comment::class, $restored);
+        self::assertTrue($commenter->id->equals($restored->userId));
     }
 
     // --- Comment: лайки и упоминания (внутренние сущности) ---
@@ -970,7 +997,12 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         self::assertSame('Ошибочно', $restored->unblockedReason->value());
     }
 
-    public function testUnblockedByIsSetNullWhenUnblockerDeleted(): void
+    /**
+     * Межмодульный внешний ключ post_blocks.unblocked_by_id -> users.id снят вместе с правилом
+     * SET NULL: удаление снявшего блокировку пользователя больше не обнуляет колонку, значение
+     * остаётся прежним и разрешается через публичный контракт модуля User.
+     */
+    public function testUnblockedByKeepsValueWhenUnblockerDeletedWithoutForeignKey(): void
     {
         $author = $this->createUser();
         $this->persist($author);
@@ -998,11 +1030,15 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
 
         $restored = $this->postBlockRepository()->findById($block->id);
         self::assertInstanceOf(PostBlock::class, $restored);
-        self::assertTrue($restored->unblockedBy->isEmpty());
+        self::assertSame($unblocker->id->value(), $restored->unblockedBy->value());
         self::assertTrue($restored->unblockedAt->isUnblocked());
     }
 
-    public function testCannotDeleteBlockerReferencedByBlock(): void
+    /**
+     * Межмодульный внешний ключ post_blocks.blocked_by_id -> users.id снят: удаление
+     * заблокировавшего пользователя больше не запрещено базой, блокировка сохраняет ссылку.
+     */
+    public function testDeletingBlockerReferencedByBlockIsAllowedWithoutForeignKey(): void
     {
         $author = $this->createUser();
         $this->persist($author);
@@ -1011,15 +1047,20 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
         $post = $this->newPost($author->id, PostStatus::Blocked);
         $this->persist($post);
 
-        $this->persist(PostBlock::create(
+        $block = PostBlock::create(
             postId: $post->id,
             reason: BlockReason::fromString('Нарушение правил'),
             blockedBy: $blocker->id,
-        ));
-
-        $this->expectException(\Throwable::class);
+        );
+        $this->persist($block);
 
         $this->delete($blocker);
+        $this->cleanOrmHeap();
+
+        $restored = $this->postBlockRepository()->findById($block->id);
+
+        self::assertInstanceOf(PostBlock::class, $restored);
+        self::assertTrue($blocker->id->equals($restored->blockedById));
     }
 
     // --- Хелперы ---

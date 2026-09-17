@@ -69,15 +69,24 @@ final class TagRepositoryTest extends TagsRepositoryTestCase
         $this->entityManager()->run();
     }
 
-    public function testCannotDeleteUserReferencedByTag(): void
+    /**
+     * Межмодульный внешний ключ tags.created_by_id -> users.id снят: удаление создавшего метку
+     * пользователя больше не запрещено базой, метка остаётся с прежним идентификатором автора.
+     */
+    public function testDeletingUserReferencedByTagIsAllowedWithoutForeignKey(): void
     {
         $user = $this->createUser();
         $this->persist($user);
-        $this->persistTag(Tag::create(text: TagText::fromString('йога'), createdBy: $user->id));
-
-        $this->expectException(\Throwable::class);
+        $tag = Tag::create(text: TagText::fromString('йога'), createdBy: $user->id);
+        $this->persistTag($tag);
 
         $this->deleteUser($user);
         $this->entityManager()->run();
+        $this->cleanOrmHeap();
+
+        $restored = $this->tagRepository()->findById($tag->id);
+
+        self::assertInstanceOf(Tag::class, $restored);
+        self::assertTrue($user->id->equals($restored->createdById));
     }
 }

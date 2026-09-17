@@ -7,10 +7,10 @@ namespace App\Modules\Notifications\Application\Contract;
 use App\Shared\Domain\ValueObject\UserId;
 
 /**
- * Порт единственной массовой записи проекта: отметка всех непрочитанных уведомлений получателя
- * прочитанными. Порт назван своей операцией и остаётся отдельным от NotificationRepository,
- * потому что операция не проходит через доменный переход уведомления и её набор не ограничен
- * сверху.
+ * Порт массовой записи: отметка всех непрочитанных уведомлений получателя прочитанными. Порт
+ * назван своей операцией и остаётся отдельным от NotificationRepository, потому что операция не
+ * проходит через доменный переход уведомления и её набор не ограничен сверху. Второй такой порт
+ * проекта — {@see \App\Modules\Posts\Application\Contract\DetachMediaAttachmentsContract}.
  */
 interface MarkAllNotificationsReadContract
 {

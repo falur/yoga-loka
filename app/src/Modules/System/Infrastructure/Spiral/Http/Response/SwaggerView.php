@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\System\Infrastructure\Spiral\Http\View;
+namespace App\Modules\System\Infrastructure\Spiral\Http\Response;
 
 use Spiral\Views\ViewsInterface;
 

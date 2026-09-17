@@ -21,7 +21,7 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
-use Tests\Support\Media\PersistsMedia;
+use App\Modules\Notifications\Tests\Support\PersistsMedia;
 
 /**
  * Снимок автора обогащается актуальным аватаром (публичное медиа), собранным на чтении из

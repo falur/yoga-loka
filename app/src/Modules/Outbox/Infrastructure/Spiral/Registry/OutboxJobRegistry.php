@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Outbox\Infrastructure\Spiral\Registry;
 
 use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
-use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
+use App\Modules\Outbox\Application\Exception\OutboxJobRegistryException;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use Spiral\Queue\HandlerInterface;

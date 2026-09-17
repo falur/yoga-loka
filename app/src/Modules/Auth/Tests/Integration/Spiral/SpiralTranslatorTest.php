@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Tests\Integration\Spiral;
 
-use App\Modules\Auth\Infrastructure\Spiral\Translation\SpiralTranslator;
+use App\Modules\Auth\Infrastructure\Spiral\Adapter\SpiralTranslator;
 use PHPUnit\Framework\TestCase;
 use Spiral\Translator\TranslatorInterface;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Auth\Infrastructure\Spiral\Hash;
+namespace App\Modules\Auth\Infrastructure\Spiral\Adapter;
 
 use App\Modules\Auth\Application\Contract\SecretHasherContract;
 use Spiral\Encrypter\EncryptionInterface;

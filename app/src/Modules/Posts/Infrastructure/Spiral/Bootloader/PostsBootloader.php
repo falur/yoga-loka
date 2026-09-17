@@ -19,7 +19,7 @@ use App\Modules\Posts\Infrastructure\Persistence\Cycle\Read\CyclePostViewerReade
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CycleCommentRepository;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostBlockRepository;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostRepository;
-use App\Modules\Posts\Infrastructure\Spiral\Translation\SpiralTranslator;
+use App\Modules\Posts\Infrastructure\Spiral\Adapter\SpiralTranslator;
 use Cycle\Migrations\Config\MigrationConfig;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Bootloader\I18nBootloader;

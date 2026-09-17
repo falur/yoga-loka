@@ -15,7 +15,7 @@ use App\Modules\Auth\Infrastructure\Spiral\Http\Middleware\AuthContextAttributeM
 use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
 use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\Auth\Infrastructure\Spiral\Auth\RandomTokenGenerator;
-use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
+use App\Modules\Auth\Infrastructure\Spiral\Adapter\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;

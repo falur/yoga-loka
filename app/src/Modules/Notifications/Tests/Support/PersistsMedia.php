@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Support\Media;
+namespace App\Modules\Notifications\Tests\Support;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;

@@ -7,7 +7,7 @@ namespace App\Modules\System\Infrastructure\Spiral\Http\Controller;
 use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Modules\System\Application\Exception\OpenApiSpecificationNotGeneratedException;
 use App\Modules\System\Application\Exception\SwaggerUiDisabledException;
-use App\Modules\System\Infrastructure\Spiral\Http\View\SwaggerView;
+use App\Modules\System\Infrastructure\Spiral\Http\Response\SwaggerView;
 use App\Modules\System\Infrastructure\Spiral\Configuration\OpenApiConfig;
 use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;

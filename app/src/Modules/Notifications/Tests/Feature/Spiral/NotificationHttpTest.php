@@ -22,7 +22,7 @@ use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Testing\Http\TestResponse;
 use Tests\DatabaseTestCase;
-use Tests\Support\Media\PersistsMedia;
+use App\Modules\Notifications\Tests\Support\PersistsMedia;
 use App\Modules\Notifications\Tests\Unit\Application\Fixture\FixtureNotificationTypeDefinition;
 
 final class NotificationHttpTest extends DatabaseTestCase

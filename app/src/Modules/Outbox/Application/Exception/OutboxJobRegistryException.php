@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure\Exception;
+namespace App\Modules\Outbox\Application\Exception;
 
 final class OutboxJobRegistryException extends \DomainException
 {

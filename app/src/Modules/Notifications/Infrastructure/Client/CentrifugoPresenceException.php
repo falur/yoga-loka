@@ -10,8 +10,9 @@ namespace App\Modules\Notifications\Infrastructure\Client;
  * «не онлайн» (fail-open). Поэтому, в отличие от CentrifugoPublishException, нет флага isTransient —
  * исключение никогда не ретраится, флаг был бы мёртвым кодом.
  *
- * Слой исключения определяется контрактом, к которому оно относится: presence-исключение относится
- * к инфраструктурному CentrifugoClient, поэтому лежит в Infrastructure/Exception.
+ * Место исключения определяется технологией, к которой оно относится: presence-исключение
+ * принадлежит границе внешнего клиента Centrifugo, поэтому лежит рядом с ним в
+ * Infrastructure/Client, а не в отдельном разделе исключений.
  */
 final class CentrifugoPresenceException extends \DomainException
 {

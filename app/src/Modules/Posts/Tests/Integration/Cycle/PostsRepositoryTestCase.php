@@ -62,7 +62,7 @@ use Tests\DatabaseTestCase;
  * не могут быть сохранены через generic entityManager()->persist(): EntityManager не знает их роль.
  * persist()/stage()/delete() переводят их в Cycle Entity через Mapper соответствующего модуля перед
  * постановкой в очередь EntityManager — тот же приём, что применяют TagsRepositoryTestCase (фаза 1)
- * и tests/Support/Media/PersistsMedia.php (фаза 7) для своих модулей. Перед каждым сохранением
+ * и трейт PersistsMedia модуля Notifications для своих модулей. Перед каждым сохранением
  * существующая строка ищется по PK (findCycleEntityByClass()), чтобы повторный persist() уже
  * сохранённой сущности выполнял UPDATE, а не падал на дубликате первичного ключа — родная identity
  * map Cycle доступна только внутри одного findById(), домен её больше не наследует.

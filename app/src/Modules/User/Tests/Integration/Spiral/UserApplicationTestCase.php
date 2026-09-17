@@ -217,8 +217,8 @@ abstract class UserApplicationTestCase extends DatabaseTestCase
      * Media и MediaImageConversion — чистые доменные сущности без Cycle-разметки, поэтому в
      * отличие от прежнего (Cycle-нативного) состояния не могут быть сохранены через generic
      * persist(): EntityManager не знает их роль. Хелпер переводит их в Cycle Entity через
-     * соответствующий Mapper перед постановкой в очередь EntityManager, по образцу
-     * tests/Support/Media/PersistsMedia.php.
+     * соответствующий Mapper перед постановкой в очередь EntityManager, по тому же принципу, что
+     * и у трейта PersistsMedia модуля Notifications.
      */
     protected function persist(object $entity): void
     {

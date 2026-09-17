@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Posts\Infrastructure\Spiral\Translation;
+namespace App\Modules\Auth\Infrastructure\Spiral\Adapter;
 
-use App\Modules\Posts\Application\Contract\TranslatorContract;
+use App\Modules\Auth\Application\Contract\TranslatorContract;
 use Spiral\Translator\TranslatorInterface;
 
 /**

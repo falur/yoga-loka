@@ -8,7 +8,7 @@ use App\Modules\Outbox\Public\Contract\IntegrationEvent;
 use App\Modules\Outbox\Application\Contract\OutboxMessageSerializerContract;
 use App\Modules\Outbox\Infrastructure\Relay\InfiniteOutboxRelayLoopControl;
 use App\Modules\Outbox\Infrastructure\Spiral\Registry\OutboxJobRegistry;
-use App\Modules\Outbox\Infrastructure\Exception\OutboxJobRegistryException;
+use App\Modules\Outbox\Application\Exception\OutboxJobRegistryException;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueuePublisher;
 use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
 use PHPUnit\Framework\TestCase;

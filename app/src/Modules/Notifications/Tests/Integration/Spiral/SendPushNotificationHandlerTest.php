@@ -18,7 +18,7 @@ use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepositor
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
-use Tests\Support\Media\PersistsMedia;
+use App\Modules\Notifications\Tests\Support\PersistsMedia;
 
 final class SendPushNotificationHandlerTest extends DatabaseTestCase
 {

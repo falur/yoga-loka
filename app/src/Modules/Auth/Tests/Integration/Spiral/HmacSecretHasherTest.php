@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Tests\Integration\Spiral;
 
-use App\Modules\Auth\Infrastructure\Spiral\Hash\HmacSecretHasher;
+use App\Modules\Auth\Infrastructure\Spiral\Adapter\HmacSecretHasher;
 use PHPUnit\Framework\TestCase;
 use Spiral\Encrypter\EncryptionInterface;
 

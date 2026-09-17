@@ -31,7 +31,7 @@ use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Psr\Log\NullLogger;
 use Spiral\Queue\Exception\RetryException;
 use Tests\DatabaseTestCase;
-use Tests\Support\Media\PersistsMedia;
+use App\Modules\Notifications\Tests\Support\PersistsMedia;
 
 final class DeliveryJobTest extends DatabaseTestCase
 {

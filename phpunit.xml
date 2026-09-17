@@ -19,12 +19,14 @@
             <directory suffix="Test.php">tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/Access/Tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/Tags/Tests/Unit</directory>
+            <directory suffix="Test.php">app/src/Modules/User/Tests/Unit</directory>
         </testsuite>
         <testsuite name="Kernel">
             <directory suffix="Test.php">tests/Kernel</directory>
             <directory suffix="Test.php">app/src/Modules/Access/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/System/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/Tags/Tests/Integration</directory>
+            <directory suffix="Test.php">app/src/Modules/User/Tests/Integration</directory>
         </testsuite>
         <testsuite name="Feature">
             <directory suffix="Test.php">tests/Feature</directory>
@@ -39,6 +41,7 @@
             <directory>app/src/Modules/Access/Tests</directory>
             <directory>app/src/Modules/System/Tests</directory>
             <directory>app/src/Modules/Tags/Tests</directory>
+            <directory>app/src/Modules/User/Tests</directory>
         </exclude>
     </source>
     <php>

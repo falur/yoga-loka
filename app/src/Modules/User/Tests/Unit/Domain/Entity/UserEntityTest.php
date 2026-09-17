@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\User\Domain\Entity;
+namespace App\Modules\User\Tests\Unit\Domain\Entity;
 
 use App\Modules\User\Domain\Entity\ReservedNickname;
 use App\Modules\User\Domain\Entity\User;

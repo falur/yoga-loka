@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\User\Repository;
+namespace App\Modules\User\Tests\Integration\Cycle;
 
 use App\Modules\Media\Domain\Entity\Media;
 use App\Modules\Media\Domain\Enum\MediaType;

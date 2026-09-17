@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\User\PublicApi;
+namespace App\Modules\User\Tests\Integration\Spiral;
 
 use App\Modules\User\Domain\ValueObject\UserAvatar;
 use App\Shared\Domain\Enum\Locale;
 use App\Modules\User\Domain\Exception\EmailAlreadyTakenException;
 use App\Modules\User\Domain\Exception\UserNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
-use Tests\Feature\Modules\User\Application\UserApplicationTestCase;
 
 /**
  * Публичный контракт User: все пять операций раскладываются в существующие сценарии модуля, а их

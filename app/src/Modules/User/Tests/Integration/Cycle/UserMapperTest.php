@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\User\Infrastructure\Persistence\Cycle\Mapper;
+namespace App\Modules\User\Tests\Integration\Cycle;
 
 use App\Modules\User\Domain\Entity\User;
 use App\Modules\User\Domain\Enum\UserStatus;

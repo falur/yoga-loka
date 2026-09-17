@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\User\Domain\ValueObject;
+namespace App\Modules\User\Tests\Unit\Domain\ValueObject;
 
 use App\Modules\User\Domain\ValueObject\BanExpiration;
 use App\Modules\User\Domain\ValueObject\BanReason;

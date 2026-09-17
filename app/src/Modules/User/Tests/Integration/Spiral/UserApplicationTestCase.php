@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\User\Application;
+namespace App\Modules\User\Tests\Integration\Spiral;
 
 use App\Modules\Media\Application\Contract\MediaFileServiceContract;
 use App\Modules\Media\Application\Command\MakeMediaPermanent\MakeMediaPermanentHandler;

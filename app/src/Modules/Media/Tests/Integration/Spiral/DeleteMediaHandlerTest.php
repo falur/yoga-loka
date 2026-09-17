@@ -31,6 +31,8 @@ use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
 use App\Modules\Media\Domain\Exception\MediaNotFoundException;
+use App\Modules\Media\Public\Event\MediaDeletedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -46,7 +48,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $fileService->expects(self::once())->method('abortMultipartUpload');
         $fileService->expects(self::once())->method('deleteObject');
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -65,7 +67,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $fileService->expects(self::never())->method('abortMultipartUpload');
         $fileService->expects(self::once())->method('deleteObject');
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -88,7 +90,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
             },
         );
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -114,7 +116,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
             },
         );
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -140,7 +142,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
             },
         );
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -170,7 +172,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
             },
         );
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -192,7 +194,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $fileService->expects(self::never())->method('abortMultipartUpload');
         $fileService->expects(self::once())->method('deleteObject');
 
-        $this->handler($fileService)->handle(new DeleteMediaCommand(
+        $this->handler($fileService, $this->outboxStore())->handle(new DeleteMediaCommand(
             userId: $userId->value(),
             mediaId: $media->id->value(),
         ));
@@ -204,7 +206,10 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
     {
         $this->expectException(MediaNotFoundException::class);
 
-        $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new DeleteMediaCommand(
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore->expects(self::never())->method('add');
+
+        $this->handler($this->createStub(MediaFileServiceContract::class), $outboxStore)->handle(new DeleteMediaCommand(
             userId: UserId::generate()->value(),
             mediaId: UserId::generate()->value(),
         ));
@@ -217,19 +222,57 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
 
         $this->expectException(MediaAccessDeniedException::class);
 
-        $this->handler($this->createStub(MediaFileServiceContract::class))->handle(new DeleteMediaCommand(
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore->expects(self::never())->method('add');
+
+        $this->handler($this->createStub(MediaFileServiceContract::class), $outboxStore)->handle(new DeleteMediaCommand(
             userId: UserId::generate()->value(),
             mediaId: $media->id->value(),
         ));
     }
 
-    private function handler(MediaFileServiceContract $fileService): DeleteMediaHandler
+    public function testPublishesMediaDeletedEventOnSuccessfulDeletion(): void
+    {
+        $userId = UserId::generate();
+        $media = $this->createMedia(userId: $userId);
+        $media->markUploaded();
+        $this->persist($media);
+
+        $captured = null;
+        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore->expects(self::once())->method('add')->willReturnCallback(
+            function (MediaDeletedEvent $event) use (&$captured): string {
+                $captured = $event;
+
+                return 'outbox-1';
+            },
+        );
+
+        $this->handler($this->createStub(MediaFileServiceContract::class), $outboxStore)->handle(new DeleteMediaCommand(
+            userId: $userId->value(),
+            mediaId: $media->id->value(),
+        ));
+
+        self::assertInstanceOf(MediaDeletedEvent::class, $captured);
+        self::assertSame($media->id->value(), $captured->mediaId);
+    }
+
+    private function handler(MediaFileServiceContract $fileService, IntegrationEventStoreContract $outboxStore): DeleteMediaHandler
     {
         return new DeleteMediaHandler(
             mediaRepository: $this->mediaRepository(),
             mediaFileService: $fileService,
+            integrationEventStore: $outboxStore,
             logger: new NullLogger(),
         );
+    }
+
+    private function outboxStore(): IntegrationEventStoreContract
+    {
+        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
+        $outboxStore->method('add')->willReturn('outbox-1');
+
+        return $outboxStore;
     }
 
     private function readyMediaWithImageConversion(UserId $userId, MediaStorage $storage): Media

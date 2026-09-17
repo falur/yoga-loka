@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Posts\Tests\Integration\Cycle;
 
+use App\Modules\Posts\Application\Contract\DetachMediaAttachmentsContract;
 use App\Modules\Posts\Domain\Collection\PostMediaCollection;
 use App\Modules\Posts\Domain\Collection\PostTagCollection;
 use App\Modules\Posts\Domain\Entity\Comment;
@@ -431,11 +432,16 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
     }
 
     /**
-     * Межмодульного внешнего ключа post_media.media_id -> media.id больше нет: удаление медиа
-     * соседним модулем не блокируется вложением и не удаляет его строку. Недоступное медиа мягко
-     * исключается из ответа сборкой ответа, а не ограничением базы.
+     * Межмодульного внешнего ключа post_media.media_id -> media.id больше нет: сама по себе строка
+     * media, исчезнувшая из базы в обход прикладного сценария, не удаляет и не блокирует вложение —
+     * у post_media нет ограничения базы, которое сделало бы это автоматически. Согласованность
+     * теперь обеспечивает не FK, а интеграционное событие: DeleteMediaHandler модуля Media публикует
+     * MediaDeletedEvent в той же транзакции, что и настоящее удаление, а Posts подписан на него
+     * DetachDeletedMediaJob-ом, который вызывает ровно тот же порт (DetachMediaAttachmentsContract),
+     * что и здесь — см. также CycleDetachMediaAttachmentsTest и DetachDeletedMediaJobTest для
+     * проверки полного асинхронного пути.
      */
-    public function testDeletingReferencedMediaKeepsAttachmentRow(): void
+    public function testDeletingReferencedMediaLeavesAttachmentRowUntilConsumerDetachesIt(): void
     {
         $user = $this->createUser();
         $this->persist($user);
@@ -449,13 +455,20 @@ final class PostsRepositoryTest extends PostsRepositoryTestCase
             position: MediaPosition::fromInt(0),
         ));
 
+        // Строка media исчезла в обход прикладного сценария (эмулирует физическое удаление) — без
+        // ограничения базы вложение само по себе не пропадает.
         $this->delete($media);
         $this->cleanOrmHeap();
 
-        $attachments = $this->postRepository()->findMediaByPostId($post->id);
+        self::assertCount(1, $this->postRepository()->findMediaByPostId($post->id));
 
-        self::assertCount(1, $attachments);
-        self::assertSame($media->id->value(), $attachments->first()?->mediaId->value());
+        // Ровно эту операцию вызывает DetachDeletedMediaHandler, реагируя на MediaDeletedEvent:
+        // теперь вложение снимается, а не остаётся осиротевшим навсегда.
+        $detachedCount = $this->getContainer()->get(DetachMediaAttachmentsContract::class)
+            ->detachByMediaId(PostMediaReference::fromString($media->id->value()));
+
+        self::assertSame(1, $detachedCount);
+        self::assertCount(0, $this->postRepository()->findMediaByPostId($post->id));
     }
 
     // --- Post: метки (внутренняя сущность) ---

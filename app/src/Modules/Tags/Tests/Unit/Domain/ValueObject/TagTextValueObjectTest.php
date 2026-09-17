@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Tags\Domain\ValueObject;
+namespace App\Modules\Tags\Tests\Unit\Domain\ValueObject;
 
 use App\Modules\Tags\Domain\ValueObject\TagText;
 use App\Shared\Domain\Exception\InvalidDomainValueException;

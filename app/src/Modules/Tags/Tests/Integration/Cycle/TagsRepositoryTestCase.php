@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Tags;
+namespace App\Modules\Tags\Tests\Integration\Cycle;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\Repository\TagRepository;
@@ -23,7 +23,7 @@ use Tests\DatabaseTestCase;
  * Общая основа feature-тестов модуля Tags: реальная строка User для FK
  * `tags.created_by_id`, persist-helper с немедленным flush и доступ к репозиторию тегов.
  *
- * Дублирование `createUser`/`persist` с `Tests\Feature\Modules\Posts\PostsRepositoryTestCase`
+ * Дублирование `createUser`/`persist` с `App\Modules\Posts\Tests\Integration\Cycle\PostsRepositoryTestCase`
  * сознательное: тест-инфраструктура модулей изолирована, общую базу не выносим.
  */
 abstract class TagsRepositoryTestCase extends DatabaseTestCase

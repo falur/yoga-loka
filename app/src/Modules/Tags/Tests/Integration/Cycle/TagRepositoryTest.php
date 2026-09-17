@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Tags\Repository;
+namespace App\Modules\Tags\Tests\Integration\Cycle;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
 use App\Modules\Tags\Infrastructure\Persistence\Cycle\Mapper\TagMapper;
-use Tests\Feature\Modules\Tags\TagsRepositoryTestCase;
 
 final class TagRepositoryTest extends TagsRepositoryTestCase
 {

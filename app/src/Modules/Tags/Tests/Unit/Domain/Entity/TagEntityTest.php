@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Tags\Domain\Entity;
+namespace App\Modules\Tags\Tests\Unit\Domain\Entity;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;

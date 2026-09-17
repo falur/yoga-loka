@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Tags\Application;
+namespace App\Modules\Tags\Tests\Integration\Spiral;
 
 use App\Modules\Tags\Application\Query\GetTags\GetTagsHandler;
 use App\Modules\Tags\Application\Query\GetTags\GetTagsQuery;
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagText;
 use App\Modules\Tags\Domain\ValueObject\TagId;
-use Tests\Feature\Modules\Tags\TagsApplicationTestCase;
 
 final class GetTagsHandlerTest extends TagsApplicationTestCase
 {

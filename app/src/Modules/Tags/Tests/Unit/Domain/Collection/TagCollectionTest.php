@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\Tags\Domain\Collection;
+namespace App\Modules\Tags\Tests\Unit\Domain\Collection;
 
 use App\Modules\Tags\Domain\Collection\TagCollection;
 use PHPUnit\Framework\TestCase;

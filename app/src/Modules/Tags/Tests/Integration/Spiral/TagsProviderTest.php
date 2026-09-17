@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Tags\PublicApi;
+namespace App\Modules\Tags\Tests\Integration\Spiral;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\ValueObject\TagId;
 use App\Modules\Tags\Domain\ValueObject\TagText;
 use App\Modules\Tags\Public\Contract\TagsContract;
-use Tests\Feature\Modules\Tags\TagsApplicationTestCase;
 
 /**
  * Публичный контракт Tags: обе операции раскладываются в существующие сценарии модуля, а внутренняя

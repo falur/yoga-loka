@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\Tags;
+namespace App\Modules\Tags\Tests\Integration\Spiral;
 
 use App\Modules\Tags\Domain\Entity\Tag;
 use App\Modules\Tags\Domain\Repository\TagRepository;

@@ -63,6 +63,12 @@ services:
       S3_BUCKET: yoga-loka-test
       CACHE_STORAGE: local
       QUEUE_CONNECTION: sync
+      # Префиксы объектов Media изолируют тестовые файлы внутри общих с dev бакетами MinIO.
+      # Заданы здесь, потому что `.env` уже выставляет их пустыми и `<env>` из `phpunit.xml`
+      # не перекрывает переменную, которая уже есть в окружении процесса.
+      MEDIA_UPLOAD_STORAGE_PREFIX: test
+      MEDIA_PRIVATE_STORAGE_PREFIX: test
+      MEDIA_PUBLIC_STORAGE_PREFIX: test
     command: ["bash", "docker/test/run-tests.sh"]
     volumes:
       - ..:/app

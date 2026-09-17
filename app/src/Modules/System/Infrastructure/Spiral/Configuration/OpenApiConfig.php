@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\System\Infrastructure\Spiral\Configuration;
 
+use App\Modules\Auth\Public\Attribute\AuthenticatedRoute;
+use App\Modules\Auth\Public\Attribute\PublicRoute;
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
+use GianTiaga\SpiralOpenApi\Config\BearerSecurityConfig;
 use GianTiaga\SpiralOpenApi\Config\OpenApiGeneratorConfig;
 use GianTiaga\SpiralOpenApi\Config\ResponseWrapperMapping;
 use GianTiaga\SpiralOpenApi\Response\CollectionResponse;
@@ -15,6 +18,9 @@ use GianTiaga\SpiralOpenApi\Response\PaginationResponse;
 
 final readonly class OpenApiConfig implements TypedConfig
 {
+    /** Имя схемы безопасности в спецификации: общепринятое обозначение Bearer-токена. */
+    public const string BEARER_SCHEME_NAME = 'bearerAuth';
+
     public static function configName(): string
     {
         return 'openapi';
@@ -77,6 +83,13 @@ final readonly class OpenApiConfig implements TypedConfig
                 emptyResponseClass: EmptySuccessResponse::class,
             ),
             debug: $this->debug,
+            // Имена атрибутов доступа — не настройка окружения, а часть кода: маршруты помечены
+            // именно этими классами, поэтому список задан здесь, а не в файле конфигурации.
+            bearerSecurity: new BearerSecurityConfig(
+                schemeName: self::BEARER_SCHEME_NAME,
+                publicAccessAttributeClasses: [PublicRoute::class],
+                protectedAccessAttributeClasses: [AuthenticatedRoute::class],
+            ),
         );
     }
 }

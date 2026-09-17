@@ -42,6 +42,10 @@ final class OpenApiHttpTest extends TestCase
         $response->assertBodyContains('openapi: 3.1.0');
         $response->assertBodyContains('url: /api/v1');
         $response->assertBodyContains('/health:');
+        // Закоммиченная спецификация объявляет bearer-схему: клиент Swagger UI получает кнопку
+        // авторизации и требование доступа на защищённых операциях.
+        $response->assertBodyContains('securitySchemes:');
+        $response->assertBodyContains('bearerAuth:');
     }
 
     #[Config('openapi.outputFile', 'runtime/missing-openapi.yml')]

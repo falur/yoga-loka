@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\System\Http;
+namespace App\Modules\System\Tests\Feature\Spiral;
 
 use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
 use Spiral\Translator\TranslatorInterface;

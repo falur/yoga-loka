@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\System\Http;
+namespace App\Modules\System\Tests\Feature\Spiral;
 
 use Spiral\Testing\Attribute\Config;
 use Tests\TestCase;

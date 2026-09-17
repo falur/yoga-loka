@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\System\Http;
+namespace App\Modules\System\Tests\Feature\Spiral;
 
 use App\Shared\Infrastructure\Spiral\Bootloader\AppBootloader;
 use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;

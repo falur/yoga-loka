@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Modules\System\Infrastructure\Spiral\Temporal;
+namespace App\Modules\System\Tests\Integration\Spiral;
 
 use App\Modules\System\Infrastructure\Spiral\Temporal\Ping;
 use PHPUnit\Framework\TestCase;

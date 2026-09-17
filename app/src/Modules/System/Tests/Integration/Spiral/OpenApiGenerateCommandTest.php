@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\System\Console;
+namespace App\Modules\System\Tests\Integration\Spiral;
 
 use Spiral\Testing\Attribute\Config;
 use Spiral\Translator\TranslatorInterface;

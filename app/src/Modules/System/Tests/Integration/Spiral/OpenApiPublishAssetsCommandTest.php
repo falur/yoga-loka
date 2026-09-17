@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Modules\System\Console;
+namespace App\Modules\System\Tests\Integration\Spiral;
 
 use App\Shared\Infrastructure\Spiral\DirectoryAlias;
 use Spiral\Boot\DirectoriesInterface;

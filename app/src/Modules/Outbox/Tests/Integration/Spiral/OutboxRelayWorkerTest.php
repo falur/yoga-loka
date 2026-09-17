@@ -35,7 +35,7 @@ final class OutboxRelayWorkerTest extends TestCase
                 return 0;
             });
 
-        $logger = new RecordingLogger();
+        $logger = new OutboxRelayWorkerRecordingLogger();
         $recordingSleeper = new RecordingOutboxRelaySleeper();
         $outboxRelayWorker = new OutboxRelayWorker(
             outboxRelay: $outboxRelay,
@@ -65,7 +65,7 @@ final class OutboxRelayWorkerTest extends TestCase
             ->method('relay')
             ->willThrowException(new \RuntimeException('Постоянная ошибка relay.'));
 
-        $logger = new RecordingLogger();
+        $logger = new OutboxRelayWorkerRecordingLogger();
         $recordingSleeper = new RecordingOutboxRelaySleeper();
         $outboxRelayWorker = new OutboxRelayWorker(
             outboxRelay: $outboxRelay,
@@ -106,7 +106,7 @@ final class OutboxRelayWorkerTest extends TestCase
                 return 1;
             });
 
-        $logger = new RecordingLogger();
+        $logger = new OutboxRelayWorkerRecordingLogger();
         $recordingSleeper = new RecordingOutboxRelaySleeper();
         $outboxRelayWorker = new OutboxRelayWorker(
             outboxRelay: $outboxRelay,
@@ -138,7 +138,7 @@ final class OutboxRelayWorkerTest extends TestCase
             ->method('relay')
             ->willThrowException(new \RuntimeException('Постоянная ошибка relay с настроенным порогом.'));
 
-        $logger = new RecordingLogger();
+        $logger = new OutboxRelayWorkerRecordingLogger();
         $recordingSleeper = new RecordingOutboxRelaySleeper();
         $outboxRelayWorker = new OutboxRelayWorker(
             outboxRelay: $outboxRelay,
@@ -209,7 +209,7 @@ final class FixedOutboxRelayLoopControl implements OutboxRelayLoopControlContrac
     }
 }
 
-final class RecordingLogger extends AbstractLogger
+final class OutboxRelayWorkerRecordingLogger extends AbstractLogger
 {
     public int $warningCount = 0;
     public int $errorCount = 0;

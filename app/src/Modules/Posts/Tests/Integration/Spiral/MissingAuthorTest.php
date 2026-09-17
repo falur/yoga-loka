@@ -16,6 +16,7 @@ use App\Modules\Posts\Domain\Entity\Comment;
 use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\ValueObject\CommentParent;
 use App\Modules\Posts\Domain\ValueObject\CommentText;
 use App\Modules\Posts\Domain\ValueObject\PostLesson;
@@ -107,6 +108,7 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
             media: $this->getContainer()->get(MediaContract::class),
             tags: $this->getContainer()->get(TagsContract::class),
             postViewerReader: $this->getContainer()->get(PostViewerReader::class),
+            postVisibilityPolicy: new PostVisibilityPolicy(),
         );
     }
 
@@ -117,6 +119,7 @@ final class MissingAuthorTest extends PostsRepositoryTestCase
             commentRepository: $this->commentRepository(),
             users: $this->usersWithoutProfiles(),
             commentViewerReader: $this->getContainer()->get(CommentViewerReader::class),
+            postVisibilityPolicy: new PostVisibilityPolicy(),
         );
     }
 

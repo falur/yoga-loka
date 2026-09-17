@@ -29,6 +29,7 @@ final readonly class GetCommentHandler
         private PostRepository $postRepository,
         private UserContract $users,
         private CommentViewerReader $commentViewerReader,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[LogOperation]
@@ -47,7 +48,7 @@ final readonly class GetCommentHandler
         // условии с видимостью: читать комментарий можно только у видимой зрителю записи.
         $post = $this->postRepository->findById($comment->postId);
 
-        if ($post === null || !PostVisibilityPolicy::isVisibleTo(post: $post, viewer: $viewer)) {
+        if ($post === null || !$this->postVisibilityPolicy->isVisibleTo(post: $post, viewer: $viewer)) {
             throw new PostNotFoundException();
         }
 

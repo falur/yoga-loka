@@ -175,27 +175,48 @@ final class OutboxQueueStatusInterceptorTest extends TestCase
     }
 
     /**
-     * Строка события может исчезнуть, пока Job работает (параллельная чистка). Перечит вернёт
-     * null, и interceptor опирается на снимок, прочитанный до запуска Job: он не падает и
-     * доводит отработавшее событие до handled, не теряя факт успешной обработки.
+     * Строка события может исчезнуть, пока Job работает (параллельная чистка). Перечитывание
+     * вернёт null, и писать снимок, прочитанный до запуска Job, нельзя — он воскресил бы
+     * удалённую строку с устаревшим состоянием. Событие пропускается с предупреждением, результат
+     * Job возвращается вызывающему. Проверяются обе ветви условия: строка на месте (прежнее
+     * поведение, handled) и строка исчезла.
      */
-    public function testInterceptorSurvivesEventDeletedDuringSuccessfulJob(): void
+    public function testInterceptorSkipsEventDeletedDuringSuccessfulJob(): void
     {
-        $storedOutboxEvent = $this->persistQueuedEvent();
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $survivingOutboxEvent = $this->persistQueuedEvent();
 
-        $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
+        $this->interceptorWithLogger($recordingOutboxLogger)->process(
             controller: OutboxDebugLogJob::class,
             action: 'handle',
-            parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
+            parameters: ['headers' => $this->headersFor($survivingOutboxEvent->id)],
+            core: new QueueStatusTestCore(),
+        );
+
+        self::assertSame(OutboxEventStatus::Handled, $this->reloadStoredOutboxEvent($survivingOutboxEvent->id)->status);
+        self::assertFalse($recordingOutboxLogger->hasRecord(
+            level: 'warning',
+            messageSubstring: 'не нашёл событие после выполнения Job',
+        ));
+
+        $vanishingOutboxEvent = $this->persistQueuedEvent();
+
+        $jobResult = $this->interceptorWithLogger($recordingOutboxLogger)->process(
+            controller: OutboxDebugLogJob::class,
+            action: 'handle',
+            parameters: ['headers' => $this->headersFor($vanishingOutboxEvent->id)],
             core: new DeleteEventDuringJobQueueStatusCore(
                 database: $this->getContainer()->get(DatabaseInterface::class),
-                outboxEventId: $storedOutboxEvent->id,
+                outboxEventId: $vanishingOutboxEvent->id,
             ),
         );
 
-        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
-        self::assertSame(OutboxEventStatus::Handled, $reloadedStoredOutboxEvent->status);
-        self::assertFalse($reloadedStoredOutboxEvent->handledAt->isEmpty());
+        self::assertSame('job-result', $jobResult);
+        self::assertNull($this->storedOutboxEventRepository()->findById($vanishingOutboxEvent->id));
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'warning',
+            messageSubstring: 'не нашёл событие после выполнения Job',
+        ));
     }
 
     public function testInterceptorHandlesSerializedTransportEnvelope(): void

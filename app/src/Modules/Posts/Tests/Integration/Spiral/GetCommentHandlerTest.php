@@ -14,6 +14,7 @@ use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Domain\Exception\CommentNotFoundException;
 use App\Modules\Posts\Domain\Exception\PostNotFoundException;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletedAt;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletedBy;
 use App\Modules\Posts\Domain\ValueObject\CommentDeletionReason;
@@ -124,6 +125,7 @@ final class GetCommentHandlerTest extends PostsRepositoryTestCase
             postRepository: $this->postRepository(),
             users: $this->getContainer()->get(UserContract::class),
             commentViewerReader: $this->getContainer()->get(CommentViewerReader::class),
+            postVisibilityPolicy: new PostVisibilityPolicy(),
         );
     }
 

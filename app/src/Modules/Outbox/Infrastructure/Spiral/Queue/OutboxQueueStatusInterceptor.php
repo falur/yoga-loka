@@ -75,8 +75,19 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
         // доменная сущность без Cycle-разметки, поэтому Mapper каждый раз отдаёт отдельный объект:
         // $storedOutboxEvent выше не видит чужую запись. Перечитываем состояние из репозитория
         // перед проверкой eventBecameFinalDuringJob(), по образцу OutboxRelay::publish().
-        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
-            ?? $storedOutboxEvent;
+        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id);
+
+        // Строка исчезла, пока работал Job (параллельная чистка, ручное вмешательство). Писать
+        // снимок, прочитанный до запуска Job, нельзя: он воскресил бы удалённую строку с
+        // устаревшим состоянием. Статус не ставим, результат Job возвращаем вызывающему как есть.
+        if ($currentStoredOutboxEvent === null) {
+            $this->logger->warning(message: 'Outbox interceptor не нашёл событие после выполнения Job: строка исчезла, handled не ставится.', context: [
+                'outboxId' => $storedOutboxEvent->id->value(),
+                'outboxType' => $storedOutboxEvent->type->value(),
+            ]);
+
+            return $result;
+        }
 
         if ($this->eventBecameFinalDuringJob($currentStoredOutboxEvent)) {
             return $result;
@@ -196,8 +207,20 @@ final readonly class OutboxQueueStatusInterceptor implements CoreInterceptorInte
         // Тот же sync-сценарий, что и на успешной ветке process(): Job мог уже сам перевести
         // это же событие в финальный статус собственным findById()+save() до того, как исключение
         // добралось сюда. Перечитываем состояние из репозитория перед проверкой и записью.
-        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
-            ?? $storedOutboxEvent;
+        $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id);
+
+        // Зеркало успешной ветки: строка исчезла, пока работал упавший Job. Записывать ошибку
+        // некуда — снимок из памяти воскресил бы удалённую строку. Выходим без записи;
+        // исключение пробрасывает вызывающий код process(), как и раньше.
+        if ($currentStoredOutboxEvent === null) {
+            $this->logger->warning(message: 'Outbox interceptor не нашёл событие после ошибки Job: строка исчезла, ошибка не записывается.', context: [
+                'outboxId' => $storedOutboxEvent->id->value(),
+                'outboxType' => $storedOutboxEvent->type->value(),
+                'errorClass' => $exception::class,
+            ]);
+
+            return;
+        }
 
         if ($this->eventBecameFinalDuringJob($currentStoredOutboxEvent)) {
             return;

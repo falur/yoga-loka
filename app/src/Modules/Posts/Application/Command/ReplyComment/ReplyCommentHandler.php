@@ -30,6 +30,7 @@ final readonly class ReplyCommentHandler
         private CommentRepository $commentRepository,
         private PostRepository $postRepository,
         private CommentComposer $composer,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
@@ -49,7 +50,7 @@ final readonly class ReplyCommentHandler
         // условии с доступностью: ответ допустим только на доступную (опубликованную) запись.
         $post = $this->postRepository->findById($parent->postId);
 
-        if ($post === null || !PostVisibilityPolicy::isActionable($post)) {
+        if ($post === null || !$this->postVisibilityPolicy->isActionable($post)) {
             throw new PostNotFoundException();
         }
 

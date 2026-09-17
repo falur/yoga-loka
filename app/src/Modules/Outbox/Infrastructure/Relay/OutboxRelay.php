@@ -124,8 +124,19 @@ final readonly class OutboxRelay implements OutboxRelayContract
             // relay (в отличие от прежнего Cycle identity map). Перечитываем состояние из
             // репозитория и переводим в queued только если событие всё ещё publishing, иначе
             // оставляем выставленный sync-Job статус нетронутым.
-            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
-                ?? $storedOutboxEvent;
+            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id);
+
+            // Строка исчезла между захватом и перечитыванием (параллельная чистка, ручное
+            // вмешательство). Писать снимок из памяти нельзя: он воскресил бы удалённую строку
+            // с устаревшим состоянием. Пропускаем событие и не считаем его опубликованным.
+            if ($currentStoredOutboxEvent === null) {
+                $this->logger->warning(message: 'Outbox relay не нашёл событие после push: строка исчезла, статус не меняется.', context: [
+                    'outboxId' => $storedOutboxEvent->id->value(),
+                    'outboxType' => $storedOutboxEvent->type->value(),
+                ]);
+
+                return false;
+            }
 
             if ($currentStoredOutboxEvent->status !== OutboxEventStatus::Publishing) {
                 $this->logger->debug(message: 'Outbox relay не стал менять статус после push.', context: [
@@ -151,8 +162,19 @@ final readonly class OutboxRelay implements OutboxRelayContract
             // исход Job через свой собственный findById() (failed/queued/handled) и пробросить
             // исключение дальше. Перечитываем состояние из репозитория, чтобы не перезаписать
             // его статус ошибкой push.
-            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id)
-                ?? $storedOutboxEvent;
+            $currentStoredOutboxEvent = $this->storedOutboxEventRepository->findById($storedOutboxEvent->id);
+
+            // Строка исчезла, пока шёл упавший push: ошибку публикации записывать некуда —
+            // снимок из памяти воскресил бы удалённую строку. Пропускаем событие.
+            if ($currentStoredOutboxEvent === null) {
+                $this->logger->warning(message: 'Outbox relay не нашёл событие после ошибки push: строка исчезла, ошибка не записывается.', context: [
+                    'outboxId' => $storedOutboxEvent->id->value(),
+                    'outboxType' => $storedOutboxEvent->type->value(),
+                    'errorClass' => $exception::class,
+                ]);
+
+                return false;
+            }
 
             if ($currentStoredOutboxEvent->status !== OutboxEventStatus::Publishing) {
                 $this->logger->debug(message: 'Outbox relay не стал записывать ошибку публикации после sync Job.', context: [

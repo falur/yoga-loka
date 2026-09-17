@@ -45,6 +45,7 @@ final readonly class GetUserFeedHandler
         private MediaContract $media,
         private TagsContract $tags,
         private PostViewerReader $postViewerReader,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[LogOperation]
@@ -127,7 +128,7 @@ final readonly class GetUserFeedHandler
         }
 
         return $this->postRepository->findByIds(...\array_values($originalIds))->filter(
-            static fn(Post $original): bool => PostVisibilityPolicy::isVisibleTo(post: $original, viewer: $viewer),
+            fn(Post $original): bool => $this->postVisibilityPolicy->isVisibleTo(post: $original, viewer: $viewer),
         )->values();
     }
 

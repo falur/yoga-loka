@@ -10,17 +10,16 @@ use App\Shared\Domain\ValueObject\UserId;
 
 /**
  * Правило видимости и доступности записи: связывает запись, статус и зрителя, поэтому не
- * принадлежит ни записи, ни пользователю. Методы статические — правило не хранит состояния и не
- * имеет зависимостей (ни Repository, ни Reader, ни Public соседей), вызывающему сценарию не нужен
- * инстанс, чтобы им воспользоваться.
+ * принадлежит ни записи, ни пользователю. Зависимостей нет (ни Repository, ни Reader, ни Public
+ * соседей) и быть не должно: сценарий получает политику экземпляром через конструктор.
  */
-final class PostVisibilityPolicy
+final readonly class PostVisibilityPolicy
 {
     /**
      * Запись видна: не удалена и опубликована, либо это черновик её владельца. Заблокированная
      * (модерация) не видна никому.
      */
-    public static function isVisibleTo(Post $post, UserId $viewer): bool
+    public function isVisibleTo(Post $post, UserId $viewer): bool
     {
         if ($post->deletion->isDeleted()) {
             return false;
@@ -37,7 +36,7 @@ final class PostVisibilityPolicy
      * Над записью допустимо действие (лайк/комментарий/репост) только если она опубликована и не
      * удалена; черновик и заблокированная — нет.
      */
-    public static function isActionable(Post $post): bool
+    public function isActionable(Post $post): bool
     {
         return !$post->deletion->isDeleted() && $post->status === PostStatus::Published;
     }

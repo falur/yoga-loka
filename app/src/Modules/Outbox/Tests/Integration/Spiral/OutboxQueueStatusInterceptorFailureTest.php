@@ -128,31 +128,63 @@ final class OutboxQueueStatusInterceptorFailureTest extends TestCase
 
     /**
      * Зеркало успешной ветки: строка события исчезла, пока Job работал, и Job при этом упал.
-     * Перечит вернёт null, поэтому ошибка записывается в снимок, прочитанный до запуска Job, —
-     * interceptor не падает второй ошибкой и не теряет факт неудачи.
+     * Перечитывание вернёт null, записывать ошибку некуда — снимок из памяти воскресил бы
+     * удалённую строку. Событие пропускается с предупреждением, исключение Job пробрасывается
+     * наверх как и прежде. Проверяются обе ветви условия: строка на месте (прежнее поведение —
+     * failed с записанной ошибкой) и строка исчезла.
      */
-    public function testInterceptorSurvivesEventDeletedDuringFailedJob(): void
+    public function testInterceptorSkipsEventDeletedDuringFailedJob(): void
     {
-        $storedOutboxEvent = $this->persistQueuedEvent();
-
-        $this->expectException(\RuntimeException::class);
+        $recordingOutboxLogger = new RecordingOutboxLogger();
+        $survivingOutboxEvent = $this->persistQueuedEvent();
+        $survivingJobException = new \RuntimeException('Job упал при живой строке события.');
+        $caughtSurvivingException = null;
 
         try {
-            $this->getContainer()->get(OutboxQueueStatusInterceptor::class)->process(
+            $this->interceptorWithLogger($recordingOutboxLogger)->process(
                 controller: OutboxDebugLogJob::class,
                 action: 'handle',
-                parameters: ['headers' => $this->headersFor($storedOutboxEvent->id)],
+                parameters: ['headers' => $this->headersFor($survivingOutboxEvent->id)],
+                core: new QueueStatusTestCore($survivingJobException),
+            );
+        } catch (\RuntimeException $exception) {
+            $caughtSurvivingException = $exception;
+        }
+
+        $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($survivingOutboxEvent->id);
+        self::assertSame($survivingJobException, $caughtSurvivingException);
+        self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
+        self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
+        self::assertFalse($recordingOutboxLogger->hasRecord(
+            level: 'warning',
+            messageSubstring: 'не нашёл событие после ошибки Job',
+        ));
+
+        $vanishingOutboxEvent = $this->persistQueuedEvent();
+        $vanishingJobException = new \RuntimeException('Job упал после исчезновения своего события.');
+        $caughtVanishingException = null;
+
+        try {
+            $this->interceptorWithLogger($recordingOutboxLogger)->process(
+                controller: OutboxDebugLogJob::class,
+                action: 'handle',
+                parameters: ['headers' => $this->headersFor($vanishingOutboxEvent->id)],
                 core: new DeleteEventDuringJobQueueStatusCore(
                     database: $this->getContainer()->get(DatabaseInterface::class),
-                    outboxEventId: $storedOutboxEvent->id,
-                    exception: new \RuntimeException('Job упал после исчезновения своего события.'),
+                    outboxEventId: $vanishingOutboxEvent->id,
+                    exception: $vanishingJobException,
                 ),
             );
-        } finally {
-            $reloadedStoredOutboxEvent = $this->reloadStoredOutboxEvent($storedOutboxEvent->id);
-            self::assertSame(OutboxEventStatus::Failed, $reloadedStoredOutboxEvent->status);
-            self::assertFalse($reloadedStoredOutboxEvent->lastError->isEmpty());
+        } catch (\RuntimeException $exception) {
+            $caughtVanishingException = $exception;
         }
+
+        self::assertSame($vanishingJobException, $caughtVanishingException);
+        self::assertNull($this->storedOutboxEventRepository()->findById($vanishingOutboxEvent->id));
+        self::assertTrue($recordingOutboxLogger->hasRecord(
+            level: 'warning',
+            messageSubstring: 'не нашёл событие после ошибки Job',
+        ));
     }
 
     public function testInterceptorMarksFailedAndRethrowsJobError(): void

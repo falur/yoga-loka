@@ -28,6 +28,7 @@ final readonly class CommentPostHandler
         private PostRepository $postRepository,
         private CommentRepository $commentRepository,
         private CommentComposer $composer,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
@@ -39,7 +40,7 @@ final readonly class CommentPostHandler
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
             ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isActionable($post)) {
+        if (!$this->postVisibilityPolicy->isActionable($post)) {
             throw new PostNotFoundException();
         }
 

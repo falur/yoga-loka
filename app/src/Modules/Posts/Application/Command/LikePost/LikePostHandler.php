@@ -27,6 +27,7 @@ final readonly class LikePostHandler
         private PostRepository $postRepository,
         private PostContentComposer $composer,
         private LoggerInterface $logger,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
@@ -38,7 +39,7 @@ final readonly class LikePostHandler
         $post = $this->postRepository->findById(PostId::fromString($command->postId))
             ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isActionable($post)) {
+        if (!$this->postVisibilityPolicy->isActionable($post)) {
             throw new PostNotFoundException();
         }
 

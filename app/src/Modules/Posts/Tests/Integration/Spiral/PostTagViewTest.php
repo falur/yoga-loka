@@ -15,6 +15,7 @@ use App\Modules\Posts\Domain\Entity\Post;
 use App\Modules\Posts\Domain\Entity\PostTag;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
+use App\Modules\Posts\Domain\Service\PostVisibilityPolicy;
 use App\Modules\Posts\Domain\ValueObject\PostLesson;
 use App\Modules\Posts\Domain\ValueObject\PostOriginal;
 use App\Modules\Posts\Domain\ValueObject\PostPractice;
@@ -147,6 +148,7 @@ final class PostTagViewTest extends PostsRepositoryTestCase
             media: $this->getContainer()->get(MediaContract::class),
             tags: $tags,
             postViewerReader: $this->getContainer()->get(PostViewerReader::class),
+            postVisibilityPolicy: new PostVisibilityPolicy(),
         );
     }
 
@@ -158,6 +160,7 @@ final class PostTagViewTest extends PostsRepositoryTestCase
             media: $this->getContainer()->get(MediaContract::class),
             tags: $tags,
             postViewerReader: $this->getContainer()->get(PostViewerReader::class),
+            postVisibilityPolicy: new PostVisibilityPolicy(),
         );
     }
 }

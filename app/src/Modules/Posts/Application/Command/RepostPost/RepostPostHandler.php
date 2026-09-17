@@ -33,6 +33,7 @@ final readonly class RepostPostHandler
         private PostRepository $postRepository,
         private PostContentComposer $composer,
         private LoggerInterface $logger,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[Transactional]
@@ -44,7 +45,7 @@ final readonly class RepostPostHandler
         $original = $this->postRepository->findById(PostId::fromString($command->postId))
             ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isActionable($original)) {
+        if (!$this->postVisibilityPolicy->isActionable($original)) {
             throw new PostNotFoundException();
         }
 

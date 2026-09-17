@@ -32,6 +32,7 @@ final readonly class GetPostCommentsHandler
         private CommentRepository $commentRepository,
         private UserContract $users,
         private CommentViewerReader $commentViewerReader,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[LogOperation]
@@ -42,7 +43,7 @@ final readonly class GetPostCommentsHandler
         $post = $this->postRepository->findById(PostId::fromString($query->postId))
             ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isVisibleTo(post: $post, viewer: $viewer)) {
+        if (!$this->postVisibilityPolicy->isVisibleTo(post: $post, viewer: $viewer)) {
             throw new PostNotFoundException();
         }
 

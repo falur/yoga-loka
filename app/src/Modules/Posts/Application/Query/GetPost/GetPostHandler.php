@@ -38,6 +38,7 @@ final readonly class GetPostHandler
         private MediaContract $media,
         private TagsContract $tags,
         private PostViewerReader $postViewerReader,
+        private PostVisibilityPolicy $postVisibilityPolicy,
     ) {}
 
     #[LogOperation]
@@ -48,7 +49,7 @@ final readonly class GetPostHandler
         $post = $this->postRepository->findById(PostId::fromString($query->postId))
             ?? throw new PostNotFoundException();
 
-        if (!PostVisibilityPolicy::isVisibleTo(post: $post, viewer: $viewer)) {
+        if (!$this->postVisibilityPolicy->isVisibleTo(post: $post, viewer: $viewer)) {
             throw new PostNotFoundException();
         }
 
@@ -138,7 +139,7 @@ final readonly class GetPostHandler
 
         $original = $this->postRepository->findById(PostId::fromString($originalId));
 
-        if ($original === null || !PostVisibilityPolicy::isVisibleTo(post: $original, viewer: $viewer)) {
+        if ($original === null || !$this->postVisibilityPolicy->isVisibleTo(post: $original, viewer: $viewer)) {
             return null;
         }
 

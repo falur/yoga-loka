@@ -20,7 +20,6 @@
         "gian-tiaga/spiral-api-errors": "^0.1.0",
         "gian-tiaga/spiral-cqrs": "^0.1.0",
         "gian-tiaga/spiral-openapi": "^0.1.0",
-        "gian-tiaga/spiral-outbox": "^0.1.0",
         "illuminate/collections": "^13.0",
         "illuminate/support": "^13.0",
         "intervention/image": "^4",

@@ -8,7 +8,7 @@ namespace App\Modules\Media\Application\Query\CheckMediaAttachable;
  * Подтверждение, что весь набор медиа можно вложить: каждое существует, принадлежит владельцу и
  * готово (Ready). Порядок идентификаторов совпадает с порядком запроса.
  */
-final readonly class MediaAttachableResult
+final readonly class CheckMediaAttachableResult
 {
     /**
      * @param list<string> $mediaIds

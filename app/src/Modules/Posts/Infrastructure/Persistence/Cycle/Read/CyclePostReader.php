@@ -8,7 +8,7 @@ use App\Modules\Posts\Application\Contract\PostReader;
 use App\Modules\Posts\Application\Data\PostData;
 use App\Modules\Posts\Application\Data\PostDataCollection;
 use App\Modules\Posts\Application\Data\PostPageData;
-use App\Modules\Posts\Application\Data\PostRelatedIds;
+use App\Modules\Posts\Application\Data\PostRelatedIdsData;
 use App\Modules\Posts\Domain\Enum\AttachmentType;
 use App\Modules\Posts\Domain\Enum\PostStatus;
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Columns\PostColumns;
@@ -105,7 +105,7 @@ final readonly class CyclePostReader implements PostReader
      *
      * @param iterable<array-key, array<non-empty-string, scalar|PostStatus|AttachmentType|\DateTimeImmutable|null>> $rows
      *
-     * @return array<string, PostRelatedIds>
+     * @return array<string, PostRelatedIdsData>
      */
     private function mediaIdsByPost(iterable $rows): array
     {
@@ -129,7 +129,7 @@ final readonly class CyclePostReader implements PostReader
         }
 
         return \array_map(
-            static fn(array $mediaIds): PostRelatedIds => new PostRelatedIds(ids: $mediaIds),
+            static fn(array $mediaIds): PostRelatedIdsData => new PostRelatedIdsData(ids: $mediaIds),
             $mediaIdsByPost,
         );
     }
@@ -140,7 +140,7 @@ final readonly class CyclePostReader implements PostReader
      *
      * @param iterable<array-key, array<non-empty-string, scalar|PostStatus|AttachmentType|\DateTimeImmutable|null>> $rows
      *
-     * @return array<string, PostRelatedIds>
+     * @return array<string, PostRelatedIdsData>
      */
     private function tagIdsByPost(iterable $rows): array
     {
@@ -162,7 +162,7 @@ final readonly class CyclePostReader implements PostReader
         }
 
         return \array_map(
-            static fn(array $tagIds): PostRelatedIds => new PostRelatedIds(ids: $tagIds),
+            static fn(array $tagIds): PostRelatedIdsData => new PostRelatedIdsData(ids: $tagIds),
             $tagIdsByPost,
         );
     }

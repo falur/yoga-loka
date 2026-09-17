@@ -25,7 +25,7 @@ final readonly class CheckMediaAttachableHandler
     ) {}
 
     #[LogOperation]
-    public function handle(CheckMediaAttachableQuery $query): MediaAttachableResult
+    public function handle(CheckMediaAttachableQuery $query): CheckMediaAttachableResult
     {
         $owner = UserId::fromString($query->ownerUserId);
 
@@ -42,6 +42,6 @@ final readonly class CheckMediaAttachableHandler
             }
         }
 
-        return new MediaAttachableResult(mediaIds: $query->mediaIds);
+        return new CheckMediaAttachableResult(mediaIds: $query->mediaIds);
     }
 }

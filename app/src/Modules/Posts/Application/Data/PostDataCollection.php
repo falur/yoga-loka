@@ -16,8 +16,8 @@ final class PostDataCollection extends TypedCollection
 {
     /**
      * @param iterable<array-key, array<non-empty-string, scalar|\App\Modules\Posts\Domain\Enum\PostStatus|\App\Modules\Posts\Domain\Enum\AttachmentType|\DateTimeImmutable|null>> $rows
-     * @param array<string, PostRelatedIds> $mediaIdsByPost
-     * @param array<string, PostRelatedIds> $tagIdsByPost
+     * @param array<string, PostRelatedIdsData> $mediaIdsByPost
+     * @param array<string, PostRelatedIdsData> $tagIdsByPost
      */
     public static function fromDatabaseRows(iterable $rows, array $mediaIdsByPost, array $tagIdsByPost): self
     {
@@ -28,8 +28,8 @@ final class PostDataCollection extends TypedCollection
 
             $postDataCollection->push(PostData::fromDatabaseRow(
                 row: $row,
-                mediaIds: ($mediaIdsByPost[$id] ?? new PostRelatedIds(ids: []))->ids,
-                tagIds: ($tagIdsByPost[$id] ?? new PostRelatedIds(ids: []))->ids,
+                mediaIds: ($mediaIdsByPost[$id] ?? new PostRelatedIdsData(ids: []))->ids,
+                tagIds: ($tagIdsByPost[$id] ?? new PostRelatedIdsData(ids: []))->ids,
             ));
         }
 

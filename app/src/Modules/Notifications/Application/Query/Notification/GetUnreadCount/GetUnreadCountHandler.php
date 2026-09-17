@@ -13,9 +13,9 @@ final readonly class GetUnreadCountHandler
         private NotificationRepository $notificationRepository,
     ) {}
 
-    public function handle(GetUnreadCountQuery $query): UnreadCountResult
+    public function handle(GetUnreadCountQuery $query): GetUnreadCountResult
     {
-        return new UnreadCountResult(
+        return new GetUnreadCountResult(
             count: $this->notificationRepository->countUnreadForRecipient(UserId::fromString($query->userId)),
         );
     }

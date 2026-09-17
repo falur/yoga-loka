@@ -10,7 +10,7 @@ namespace App\Modules\Posts\Application\Data;
  * список напрямую, потому что тип контракта проекта не допускает вложенные массивы
  * (`array<string, list<string>>`).
  */
-final readonly class PostRelatedIds
+final readonly class PostRelatedIdsData
 {
     /**
      * @param list<string> $ids

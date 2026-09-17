@@ -21,6 +21,7 @@
             <directory suffix="Test.php">app/src/Modules/Auth/Tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/Notifications/Tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/Outbox/Tests/Unit</directory>
+            <directory suffix="Test.php">app/src/Modules/Posts/Tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/Tags/Tests/Unit</directory>
             <directory suffix="Test.php">app/src/Modules/User/Tests/Unit</directory>
         </testsuite>
@@ -30,6 +31,7 @@
             <directory suffix="Test.php">app/src/Modules/Auth/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/Notifications/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/Outbox/Tests/Integration</directory>
+            <directory suffix="Test.php">app/src/Modules/Posts/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/System/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/Tags/Tests/Integration</directory>
             <directory suffix="Test.php">app/src/Modules/User/Tests/Integration</directory>
@@ -38,6 +40,7 @@
             <directory suffix="Test.php">tests/Feature</directory>
             <directory suffix="Test.php">app/src/Modules/Auth/Tests/Feature</directory>
             <directory suffix="Test.php">app/src/Modules/Notifications/Tests/Feature</directory>
+            <directory suffix="Test.php">app/src/Modules/Posts/Tests/Feature</directory>
             <directory suffix="Test.php">app/src/Modules/System/Tests/Feature</directory>
         </testsuite>
     </testsuites>
@@ -50,6 +53,7 @@
             <directory>app/src/Modules/Auth/Tests</directory>
             <directory>app/src/Modules/Notifications/Tests</directory>
             <directory>app/src/Modules/Outbox/Tests</directory>
+            <directory>app/src/Modules/Posts/Tests</directory>
             <directory>app/src/Modules/System/Tests</directory>
             <directory>app/src/Modules/Tags/Tests</directory>
             <directory>app/src/Modules/User/Tests</directory>

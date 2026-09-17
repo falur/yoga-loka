@@ -11,8 +11,11 @@ use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
 use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
+use App\Modules\Media\Public\Event\MediaDeletedEvent;
+use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
+use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
 
 final readonly class DeleteMediaHandler
@@ -20,9 +23,17 @@ final readonly class DeleteMediaHandler
     public function __construct(
         private MediaRepository $mediaRepository,
         private MediaFileServiceContract $mediaFileService,
+        private IntegrationEventStoreContract $integrationEventStore,
         private LoggerInterface $logger,
     ) {}
 
+    /**
+     * Транзакция охватывает удаление строки медиа и запись MediaDeletedEvent в outbox: откат
+     * уносит и то, и другое, поэтому наружу не уйдёт событие о факте, которого не случилось
+     * (docs/arch.md, «Владение данными» — межмодульная согласованность после снятия FK
+     * `post_media.media_id -> media.id` обеспечивается этим событием, а не внешним ключом).
+     */
+    #[Transactional]
     #[LogOperation]
     public function handle(DeleteMediaCommand $command): void
     {
@@ -45,6 +56,8 @@ final readonly class DeleteMediaHandler
         $this->mediaFileService->deleteObject(storage: $media->storage, path: $media->path);
 
         $this->mediaRepository->delete($media);
+
+        $this->integrationEventStore->add(new MediaDeletedEvent(mediaId: $media->id->value()));
 
         $this->logger->debug(message: 'Медиа удалено.', context: [
             'mediaId' => $command->mediaId,

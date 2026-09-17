@@ -359,10 +359,6 @@ OpenAPI генерируется из типизированных Controller, F
 
 Доменная модель ролей и прав готова (`app/src/Modules/Access/Domain/{Entity,ValueObject,Enum,Collection,Repository}`), `AccessBootloader` зарегистрирован в `Shared/Infrastructure/Spiral/Kernel`. Разделов `Application` и `Public` у модуля нет, публичного атрибута доступа он не предоставляет: в продукте сегодня нет маршрутов служебных действий, которым нужны его права. Разделы не создаются без кода и появятся вместе с первым таким маршрутом.
 
-### Историческая миграция Posts создаёт таблицу `tags`
-
-`app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/20260617.160942_0_create_posts_domain_tables.php` создаёт таблицу `tags`, владелец которой — модуль `Tags`. Применённую миграцию редактировать нельзя (`docs/rules.md`), поэтому она остаётся как есть. Все последующие изменения таблицы лежат у владельца: `app/src/Modules/Tags/Infrastructure/Persistence/Cycle/Migration/20260916.090200_0_drop_tags_created_by_foreign_key.php`.
-
 ### Пара `add()`/`save()` в пяти доменных Repository
 
 `RegistrationTicketRepository` и `LoginCodeRepository` (Auth), `StoredOutboxEventRepository` (Outbox), `PostRepository` и `CommentRepository` (Posts) объявляют оба метода: `add()` ставит агрегат в текущую запись без прогона, `save()` сохраняет своим прогоном вместе со всем, что уже поставлено. Это делает единицу работы видимой в доменном интерфейсе — цена за сценарии с несколькими корнями агрегатов, которым нужен ровно один прогон `EntityManager`. Семантика одинакова во всех пяти и описана докблоком в каждом интерфейсе.

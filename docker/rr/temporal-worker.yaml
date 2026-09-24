@@ -11,6 +11,10 @@ temporal:
   address: 'temporal:7233'
   activities:
     num_workers: 2
+    # Холодный старт приложения занимает до полутора минут: tokenizer сканирует
+    # все классы проекта через bind-mount, а кэш целей и схемы Cycle в разработке
+    # выключен. Стандартных 60 секунд не хватает, воркер не успевает подняться.
+    allocate_timeout: 180s
   workflows:
     num_workers: 2
 

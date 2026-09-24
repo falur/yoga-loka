@@ -48,18 +48,56 @@ jobs:
       driver: memory
       config:
         priority: 10
-    rabbitmq:
+    mail:
       driver: amqp
       config:
         priority: 10
         prefetch: ${RABBITMQ_QUEUE_PREFETCH:-100}
-        queue: ${RABBITMQ_QUEUE_NAME:-yoga_loka_jobs}
+        queue: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_mail
         queue_auto_delete: false
-        exchange: ${RABBITMQ_EXCHANGE_NAME:-yoga_loka_jobs}
+        exchange: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_mail
         exchange_durable: ${RABBITMQ_EXCHANGE_DURABLE:-true}
         exchange_type: ${RABBITMQ_EXCHANGE_TYPE:-direct}
         exchange_auto_delete: false
-        routing_key: ${RABBITMQ_ROUTING_KEY:-yoga_loka_jobs}
+        routing_key: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_mail
+        exclusive: false
+        multiple_ack: false
+        requeue_on_fail: ${RABBITMQ_REQUEUE_ON_FAIL:-false}
+        durable: ${RABBITMQ_QUEUE_DURABLE:-true}
+        consume_all: false
+        delete_queue_on_stop: false
+        redial_timeout: 60
+    media:
+      driver: amqp
+      config:
+        priority: 10
+        prefetch: ${RABBITMQ_QUEUE_PREFETCH:-100}
+        queue: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_media
+        queue_auto_delete: false
+        exchange: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_media
+        exchange_durable: ${RABBITMQ_EXCHANGE_DURABLE:-true}
+        exchange_type: ${RABBITMQ_EXCHANGE_TYPE:-direct}
+        exchange_auto_delete: false
+        routing_key: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_media
+        exclusive: false
+        multiple_ack: false
+        requeue_on_fail: ${RABBITMQ_REQUEUE_ON_FAIL:-false}
+        durable: ${RABBITMQ_QUEUE_DURABLE:-true}
+        consume_all: false
+        delete_queue_on_stop: false
+        redial_timeout: 60
+    notifications:
+      driver: amqp
+      config:
+        priority: 10
+        prefetch: ${RABBITMQ_QUEUE_PREFETCH:-100}
+        queue: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_notifications
+        queue_auto_delete: false
+        exchange: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_notifications
+        exchange_durable: ${RABBITMQ_EXCHANGE_DURABLE:-true}
+        exchange_type: ${RABBITMQ_EXCHANGE_TYPE:-direct}
+        exchange_auto_delete: false
+        routing_key: ${RABBITMQ_QUEUE_PREFIX:-yoga_loka}_notifications
         exclusive: false
         multiple_ack: false
         requeue_on_fail: ${RABBITMQ_REQUEUE_ON_FAIL:-false}
@@ -68,7 +106,9 @@ jobs:
         delete_queue_on_stop: false
         redial_timeout: 60
   consume:
-    - rabbitmq
+    - mail
+    - media
+    - notifications
 
 logs:
   mode: development

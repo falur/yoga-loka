@@ -23,7 +23,7 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 use Tests\DatabaseTestCase;
@@ -218,7 +218,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
             notificationRepository: $this->notificationRepository(),
             notificationSettingRepository: $this->getContainer()->get(NotificationSettingRepository::class),
             typeCatalog: $registry,
-            integrationEventStore: $store,
+            outboxEventStore: $store,
             logger: new NullLogger(),
         );
     }
@@ -243,7 +243,7 @@ final class DispatchNotificationHandlerTest extends DatabaseTestCase
     /**
      * @param class-string $messageClass
      */
-    private function messageOf(RecordingOutboxEventStore $store, string $messageClass): IntegrationEvent|null
+    private function messageOf(RecordingOutboxEventStore $store, string $messageClass): IntegrationEventContract|null
     {
         foreach ($store->messages as $message) {
             if ($message::class === $messageClass) {

@@ -44,7 +44,7 @@ deptrac:
 
   layers:
     # --- Слои модулей ---------------------------------------------------------------------------
-    # На каждый из девяти модулей — пять слоёв. Infrastructure намеренно разделена на две части:
+    # На каждый из восьми модулей — пять слоёв. Infrastructure намеренно разделена на две части:
     # docs/arch.md («Границы слоёв → Infrastructure») требует, чтобы все прямые зависимости модуля
     # от Spiral лежали в `Infrastructure/Spiral`. Одним слоем на модуль это правило выразить нельзя —
     # разделение делает его проверяемым: доступ к слою `SpiralFramework` есть только у
@@ -190,41 +190,6 @@ deptrac:
       collectors:
         - type: classLike
           value: '^App\\Modules\\Notifications\\Infrastructure\\Spiral\\'
-
-    - name: OutboxDomain
-      collectors:
-        - type: classLike
-          value: '^App\\Modules\\Outbox\\Domain\\'
-
-    - name: OutboxPublic
-      collectors:
-        - type: classLike
-          value: '^App\\Modules\\Outbox\\Public\\'
-
-    - name: OutboxApplication
-      collectors:
-        - type: classLike
-          value: '^App\\Modules\\Outbox\\Application\\'
-
-    - name: OutboxInfrastructure
-      collectors:
-        - type: bool
-          must:
-            - type: classLike
-              value: '^App\\Modules\\Outbox\\Infrastructure\\'
-          must_not:
-            - type: classLike
-              value: '^App\\Modules\\Outbox\\Infrastructure\\Spiral\\'
-        # Миграции Cycle живут в namespace `Migration\`, а не в `App\`, поэтому по имени класса их
-        # не поймать — слой добирает их по каталогу модуля-владельца. Без этого миграция осталась
-        # бы вне слоёв, и её зависимости никто бы не проверял.
-        - type: directory
-          value: 'app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Migration/'
-
-    - name: OutboxInfrastructureSpiral
-      collectors:
-        - type: classLike
-          value: '^App\\Modules\\Outbox\\Infrastructure\\Spiral\\'
 
     - name: PostsDomain
       collectors:
@@ -435,6 +400,16 @@ deptrac:
         - type: classLike
           value: '^GianTiaga\\SpiralCqrs\\(Attribute\\|[A-Za-z]+Interface$)'
 
+    # Контракты обмена событиями: маркер интеграционного события, хранилище и загрузчик пакета
+    # `gian-tiaga/spiral-outbox`. Это контракт сценария, поэтому слой доступен `Public` (событие
+    # реализует маркер), `Application` (handler пишет событие в хранилище) и Infrastructure — и
+    # недоступен `Domain`. Остальное из пакета (маршрут, конфигурация, исключения, bootloader,
+    # relay и интерсептор доставки) — runtime поверх Spiral, он попадает в слой ниже.
+    - name: OwnPackageOutboxContract
+      collectors:
+        - type: classLike
+          value: '^GianTiaga\\SpiralOutbox\\(IntegrationEventContract|OutboxEventStoreContract|OutboxMessageLoaderContract)$'
+
     # Остальное из собственных пакетов — bootloader-ы, middleware, интерсепторы, HTTP-ответы и
     # генератор OpenAPI: это runtime поверх Spiral, поэтому слой доступен только из
     # `{Module}InfrastructureSpiral`, `SharedInfrastructure` и `Kernel`. Не-Spiral части
@@ -449,11 +424,11 @@ deptrac:
               value: '^GianTiaga\\'
           must_not:
             - type: classLike
-              value: '^GianTiaga\\(SpiralApiErrors\\Exception\\|SpiralCqrs\\(Attribute\\|[A-Za-z]+Interface$))'
+              value: '^GianTiaga\\(SpiralApiErrors\\Exception\\|SpiralCqrs\\(Attribute\\|[A-Za-z]+Interface$)|SpiralOutbox\\(IntegrationEventContract|OutboxEventStoreContract|OutboxMessageLoaderContract)$)'
 
   ruleset:
     # --- Модули ---------------------------------------------------------------------------------
-    # Правила одинаковы для всех девяти модулей и читаются построчно как таблица
+    # Правила одинаковы для всех восьми модулей и читаются построчно как таблица
     # «Направления зависимостей» docs/arch.md.
     #
     # Domain         -> PHP, свой Domain, Shared/Domain и базовое переводимое исключение
@@ -483,7 +458,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -491,6 +465,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AccessApplication:
       - AccessDomain
@@ -498,7 +473,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -507,6 +481,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AccessInfrastructure:
       - AccessDomain
@@ -516,7 +491,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -527,6 +501,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AccessInfrastructureSpiral:
       - AccessDomain
@@ -536,7 +511,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -548,6 +522,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     AuthDomain:
@@ -559,7 +534,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -567,6 +541,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AuthApplication:
       - AuthDomain
@@ -574,7 +549,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -583,6 +557,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AuthInfrastructure:
       - AuthDomain
@@ -592,7 +567,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -603,6 +577,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     AuthInfrastructureSpiral:
       - AuthDomain
@@ -612,7 +587,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -624,6 +598,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     MediaDomain:
@@ -635,7 +610,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -643,6 +617,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     MediaApplication:
       - MediaDomain
@@ -650,7 +625,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -659,6 +633,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     MediaInfrastructure:
       - MediaDomain
@@ -668,7 +643,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -679,6 +653,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     MediaInfrastructureSpiral:
       - MediaDomain
@@ -688,7 +663,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -700,6 +674,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     NotificationsDomain:
@@ -711,7 +686,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -719,6 +693,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     NotificationsApplication:
       - NotificationsDomain
@@ -726,7 +701,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -735,6 +709,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     NotificationsInfrastructure:
       - NotificationsDomain
@@ -744,7 +719,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -755,6 +729,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     NotificationsInfrastructureSpiral:
       - NotificationsDomain
@@ -764,7 +739,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -776,82 +750,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
-      - OwnPackageRuntime
-
-    OutboxDomain:
-      - SharedDomain
-      - OwnPackageExceptionContract
-
-    OutboxPublic:
-      - AccessPublic
-      - AuthPublic
-      - MediaPublic
-      - NotificationsPublic
-      - OutboxPublic
-      - PostsPublic
-      - SystemPublic
-      - TagsPublic
-      - UserPublic
-      - SharedDomain
-      - OwnPackageExceptionContract
-      - OwnPackageCqrsContract
-
-    OutboxApplication:
-      - OutboxDomain
-      - AccessPublic
-      - AuthPublic
-      - MediaPublic
-      - NotificationsPublic
-      - OutboxPublic
-      - PostsPublic
-      - SystemPublic
-      - TagsPublic
-      - UserPublic
-      - SharedDomain
-      - SharedApplication
-      - OwnPackageExceptionContract
-      - OwnPackageCqrsContract
-
-    OutboxInfrastructure:
-      - OutboxDomain
-      - OutboxApplication
-      - OutboxInfrastructureSpiral
-      - AccessPublic
-      - AuthPublic
-      - MediaPublic
-      - NotificationsPublic
-      - OutboxPublic
-      - PostsPublic
-      - SystemPublic
-      - TagsPublic
-      - UserPublic
-      - SharedDomain
-      - SharedApplication
-      - SharedInfrastructure
-      - CycleOrm
-      - OwnPackageExceptionContract
-      - OwnPackageCqrsContract
-
-    OutboxInfrastructureSpiral:
-      - OutboxDomain
-      - OutboxApplication
-      - OutboxInfrastructure
-      - AccessPublic
-      - AuthPublic
-      - MediaPublic
-      - NotificationsPublic
-      - OutboxPublic
-      - PostsPublic
-      - SystemPublic
-      - TagsPublic
-      - UserPublic
-      - SharedDomain
-      - SharedApplication
-      - SharedInfrastructure
-      - SpiralFramework
-      - CycleOrm
-      - OwnPackageExceptionContract
-      - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     PostsDomain:
@@ -863,7 +762,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -871,6 +769,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     PostsApplication:
       - PostsDomain
@@ -878,7 +777,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -887,6 +785,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     PostsInfrastructure:
       - PostsDomain
@@ -896,7 +795,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -907,6 +805,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     PostsInfrastructureSpiral:
       - PostsDomain
@@ -916,7 +815,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -928,6 +826,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     SystemDomain:
@@ -939,7 +838,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -947,6 +845,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     SystemApplication:
       - SystemDomain
@@ -954,7 +853,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -963,6 +861,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     SystemInfrastructure:
       - SystemDomain
@@ -972,7 +871,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -983,6 +881,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     SystemInfrastructureSpiral:
       - SystemDomain
@@ -992,7 +891,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1004,6 +902,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     TagsDomain:
@@ -1015,7 +914,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1023,6 +921,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     TagsApplication:
       - TagsDomain
@@ -1030,7 +929,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1039,6 +937,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     TagsInfrastructure:
       - TagsDomain
@@ -1048,7 +947,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1059,6 +957,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     TagsInfrastructureSpiral:
       - TagsDomain
@@ -1068,7 +967,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1080,6 +978,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     UserDomain:
@@ -1091,7 +990,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1099,6 +997,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     UserApplication:
       - UserDomain
@@ -1106,7 +1005,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1115,6 +1013,7 @@ deptrac:
       - SharedApplication
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     UserInfrastructure:
       - UserDomain
@@ -1124,7 +1023,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1135,6 +1033,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     UserInfrastructureSpiral:
       - UserDomain
@@ -1144,7 +1043,6 @@ deptrac:
       - AuthPublic
       - MediaPublic
       - NotificationsPublic
-      - OutboxPublic
       - PostsPublic
       - SystemPublic
       - TagsPublic
@@ -1156,6 +1054,7 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     # --- Общие слои -----------------------------------------------------------------------------
@@ -1168,6 +1067,7 @@ deptrac:
       - SharedDomain
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
 
     SharedInfrastructure:
       - SharedDomain
@@ -1176,19 +1076,19 @@ deptrac:
       - CycleOrm
       - OwnPackageExceptionContract
       - OwnPackageCqrsContract
+      - OwnPackageOutboxContract
       - OwnPackageRuntime
 
     # Kernel — единственное место, которому docs/arch.md разрешает знать состав модулей: он
     # собирает их bootloader-ы. Точнее слоя не получается: bootloader живёт в
     # `Infrastructure/Spiral` модуля, а слои обязаны быть взаимоисключающими — отдельный слой на
     # bootloader-ы пересёкся бы со слоем `{Module}InfrastructureSpiral`. Фактическое соблюдение
-    # узкой формулировки проверяется тем, что Kernel импортирует ровно девять bootloader-ов.
+    # узкой формулировки проверяется тем, что Kernel импортирует ровно восемь bootloader-ов модулей.
     Kernel:
       - AccessInfrastructureSpiral
       - AuthInfrastructureSpiral
       - MediaInfrastructureSpiral
       - NotificationsInfrastructureSpiral
-      - OutboxInfrastructureSpiral
       - PostsInfrastructureSpiral
       - SystemInfrastructureSpiral
       - TagsInfrastructureSpiral

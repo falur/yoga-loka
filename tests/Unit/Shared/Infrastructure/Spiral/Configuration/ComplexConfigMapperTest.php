@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Shared\Infrastructure\Spiral\Configuration;
 
-use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
-use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
+use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
+use GianTiaga\SpiralOutbox\Worker\OutboxDeliveryInterceptor;
 use App\Shared\Infrastructure\Spiral\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Database\DatabaseConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
@@ -199,15 +198,15 @@ final class ComplexConfigMapperTest extends TestCase
                 ],
             ],
             'registry' => [
-                'handlers' => [OutboxDebugLogJob::class => OutboxDebugLogJob::class],
-                'serializers' => [OutboxDebugLogJob::class => OutboxQueueSerializer::class],
+                'handlers' => [SendLoginCodeJob::class => SendLoginCodeJob::class],
+                'serializers' => [SendLoginCodeJob::class => 'json'],
             ],
             'driverAliases' => ['sync' => SyncDriver::class],
             'interceptors' => [
                 'push' => [],
                 'consume' => [
                     ErrorHandlerInterceptor::class,
-                    OutboxQueueStatusInterceptor::class,
+                    OutboxDeliveryInterceptor::class,
                     RetryPolicyInterceptor::class,
                 ],
             ],
@@ -229,13 +228,13 @@ final class ComplexConfigMapperTest extends TestCase
         self::assertSame('sync', $config->connections['sync']->driver);
         self::assertSame('memory', $config->connections['in-memory']->pipeline);
         self::assertSame('rabbitmq', $config->connections['rabbitmq']->pipeline);
-        self::assertSame(OutboxDebugLogJob::class, $config->registry->handlers[OutboxDebugLogJob::class]);
-        self::assertSame(OutboxQueueSerializer::class, $config->registry->serializers[OutboxDebugLogJob::class]);
+        self::assertSame(SendLoginCodeJob::class, $config->registry->handlers[SendLoginCodeJob::class]);
+        self::assertSame('json', $config->registry->serializers[SendLoginCodeJob::class]);
         self::assertSame(SyncDriver::class, $config->driverAliases['sync']);
         self::assertSame(
             [
                 ErrorHandlerInterceptor::class,
-                OutboxQueueStatusInterceptor::class,
+                OutboxDeliveryInterceptor::class,
                 RetryPolicyInterceptor::class,
             ],
             $config->interceptors->consume,

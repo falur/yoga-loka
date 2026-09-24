@@ -32,7 +32,7 @@ use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\Exception\MediaAccessDeniedException;
 use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Modules\Media\Public\Event\MediaDeletedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use Psr\Log\NullLogger;
 
@@ -206,7 +206,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
     {
         $this->expectException(MediaNotFoundException::class);
 
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::never())->method('add');
 
         $this->handler($this->createStub(MediaFileServiceContract::class), $outboxStore)->handle(new DeleteMediaCommand(
@@ -222,7 +222,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
 
         $this->expectException(MediaAccessDeniedException::class);
 
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::never())->method('add');
 
         $this->handler($this->createStub(MediaFileServiceContract::class), $outboxStore)->handle(new DeleteMediaCommand(
@@ -239,7 +239,7 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $captured = null;
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::once())->method('add')->willReturnCallback(
             function (MediaDeletedEvent $event) use (&$captured): string {
                 $captured = $event;
@@ -257,19 +257,19 @@ final class DeleteMediaHandlerTest extends MediaApplicationTestCase
         self::assertSame($media->id->value(), $captured->mediaId);
     }
 
-    private function handler(MediaFileServiceContract $fileService, IntegrationEventStoreContract $outboxStore): DeleteMediaHandler
+    private function handler(MediaFileServiceContract $fileService, OutboxEventStoreContract $outboxStore): DeleteMediaHandler
     {
         return new DeleteMediaHandler(
             mediaRepository: $this->mediaRepository(),
             mediaFileService: $fileService,
-            integrationEventStore: $outboxStore,
+            outboxEventStore: $outboxStore,
             logger: new NullLogger(),
         );
     }
 
-    private function outboxStore(): IntegrationEventStoreContract
+    private function outboxStore(): OutboxEventStoreContract
     {
-        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createStub(OutboxEventStoreContract::class);
         $outboxStore->method('add')->willReturn('outbox-1');
 
         return $outboxStore;

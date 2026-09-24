@@ -46,7 +46,7 @@ interface CommentRepository
     /**
      * Ставит комментарий в текущую единицу работы без прогона: он уйдёт в базу тем прогоном,
      * которым Handler завершает запись сценария (своим или другого корня — EntityManager один
-     * на запрос). Тем же приёмом, что и `LoginCodeRepository::add()`/`StoredOutboxEventRepository::add()`,
+     * на запрос). Тем же приёмом, что и `LoginCodeRepository::add()`/`RegistrationTicketRepository::add()`,
      * сохраняется прежняя граница ровно одного прогона на сценарий с двумя корнями (Comment и Post).
      */
     public function add(Comment $comment): void;

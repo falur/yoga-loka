@@ -65,7 +65,7 @@ final readonly class DeleteCommentHandler
      * Один прогон EntityManager на сценарий: счётчик второго корня (записи для комментария
      * верхнего уровня, родителя для ответа) только ставится в очередь через add(), а флашит всё
      * разом save() самого удаляемого комментария — оба репозитория используют общий
-     * shared-singleton EntityManager запроса, как `LoginCodeRepository`/`StoredOutboxEventRepository`.
+     * shared-singleton EntityManager запроса, как `LoginCodeRepository`/`RegistrationTicketRepository`.
      */
     private function mirrorCounter(Comment $comment, string $postId, string|null $parentId): void
     {

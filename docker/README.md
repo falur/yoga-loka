@@ -11,7 +11,7 @@ Compose-файл `docker/docker-compose.dev.yml` поднимает:
 - `redis` - Redis 8.6 для cache/session и RoadRunner KV.
 - `minio` и `minio-init` - S3-compatible storage и repeatable bucket bootstrap.
 - `mailpit` - SMTP и web UI для локальной почты.
-- `rabbitmq` - брокер очередей для RoadRunner jobs и transactional outbox.
+- `rabbitmq` - брокер очередей для RoadRunner jobs и доставок outbox.
 - `temporal` и `temporal-ui` - Temporal Server и UI.
 - `centrifugo` - realtime-сервис с dev admin/API config.
 
@@ -53,9 +53,10 @@ imagick, GD остаётся фолбэком: драйвер выбираетс
 образом apt-пакет imagick станет недоступен, альтернатива — собрать расширение через PECL с
 `libmagickwand-dev`.
 
-RoadRunner jobs по умолчанию используют RabbitMQ pipeline. Memory pipeline
-остаётся в конфигурации только для локальных экспериментов и обратной
-совместимости.
+RoadRunner jobs читает три очереди назначения RabbitMQ — `mail`, `media` и
+`notifications`. Memory pipeline остаётся подключением по умолчанию: очередь
+каждой доставки задаёт маршрут outbox явно, поэтому подключение по умолчанию
+используется только отправкой без объявленной очереди.
 
 Temporal использует две базы: `temporal` и `temporal_visibility`. Это нужно
 для корректной visibility-схемы `temporalio/auto-setup`.
@@ -115,15 +116,15 @@ Dev `STORAGE_DEFAULT=s3`, test `STORAGE_DEFAULT=s3-test`. Test cache остаё�
 Test queue остаётся `QUEUE_CONNECTION=sync`, чтобы `make test` не требовал
 RabbitMQ там, где тест не проверяет очередь явно.
 
-RabbitMQ pipeline настраивается через env:
+Приложение объявляет три очереди назначения — `mail`, `media` и `notifications`.
+Имя очереди, exchange и routing key каждой собираются как `<префикс>_<очередь>`,
+поэтому pipeline настраивается через общие env:
 
-- `RABBITMQ_QUEUE_NAME`
+- `RABBITMQ_QUEUE_PREFIX`
 - `RABBITMQ_QUEUE_PREFETCH`
 - `RABBITMQ_QUEUE_DURABLE`
-- `RABBITMQ_EXCHANGE_NAME`
 - `RABBITMQ_EXCHANGE_TYPE`
 - `RABBITMQ_EXCHANGE_DURABLE`
-- `RABBITMQ_ROUTING_KEY`
 - `RABBITMQ_REQUEUE_ON_FAIL`
 
 ## Команды
@@ -154,21 +155,32 @@ Worker-и ParaTest изолированы по ресурсам: базы `yoga_
 Покрытие собирается PCOV (`pcov.enabled=0` по умолчанию, coverage-команда включает
 его через `php -d pcov.enabled=1` и пробрасывает в worker-ы ParaTest).
 
-Разово переложить pending outbox-события в RabbitMQ:
+Выполнить один проход relay (создать доставки по маршрутам и отправить их в очереди):
 
 ```bash
-make shell CMD='php app.php outbox:relay 100'
+make shell CMD='php app.php outbox:relay'
 ```
 
 Запустить relay в постоянном режиме:
 
 ```bash
-make shell CMD='php app.php outbox:relay 100 --loop --sleep=1'
+make shell CMD='php app.php outbox:relay --loop --sleep=1'
 ```
 
-Постоянный relay должен быть один. Несколько процессов `outbox:relay --loop`
-одновременно не поддерживаются, пока в выборке outbox-событий нет отдельного
-контракта `SKIP LOCKED`.
+Размер пачки прохода задаёт приложение в секции конфигурации `outbox`, аргумента у команды нет.
+В составе runtime постоянный relay один (`docs/arch.md`, раздел «Runtime»). Три пачечные выборки
+прохода relay берут строки через `FOR UPDATE SKIP LOCKED`, поэтому второй процесс не заберёт чужую
+строку и не задвоит доставку.
+
+Показать состояние обмена — немаршрутизированные события, доставки по статусам и возраст
+старейшей незакрытой доставки:
+
+```bash
+make shell CMD='php app.php outbox:status'
+```
+
+Команда только читает и на пустых таблицах не падает: счётчики печатаются нулями, а обе строки
+возраста — прочерком «—».
 
 Для one-shot команды в app-контейнере:
 
@@ -204,8 +216,8 @@ RabbitMQ management UI доступен на `http://127.0.0.1:61672`.
 Dev-логин: `yoga_loka`, пароль берётся из `RABBITMQ_PASSWORD`.
 
 Реальные email, push, Centrifugo и webhooks этот runtime не отправляет сам.
-Они должны добавляться отдельными Job через outbox. Если внешний сервис
-поддерживает idempotency key, использовать `outboxId`.
+Они добавляются отдельными Job через outbox. Если внешний сервис поддерживает
+idempotency key, использовать `outboxDeliveryId` из полезной нагрузки Job.
 
 Проверить Redis cache:
 

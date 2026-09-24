@@ -64,7 +64,7 @@ final class RequestLoginCodeHandlerTest extends AuthApplicationTestCase
         return new RequestLoginCodeHandler(
             loginCodeRepository: $this->loginCodeRepository(),
             secretHasher: $this->secretHasher(),
-            integrationEventStore: $outbox,
+            outboxEventStore: $outbox,
             logger: new NullLogger(),
         );
     }

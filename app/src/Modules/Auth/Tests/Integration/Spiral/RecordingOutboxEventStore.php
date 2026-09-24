@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Tests\Integration\Spiral;
 
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
 
 /**
- * Записывающий outbox-стор для проверки, какие сообщения поставлены в очередь.
+ * Записывающий дублёр хранилища событий outbox: запоминает, какие события записал сценарий.
+ * В очередь хранилище ничего не ставит — доставки создаёт relay уже после commit-а.
  */
-final class RecordingOutboxEventStore implements IntegrationEventStoreContract
+final class RecordingOutboxEventStore implements OutboxEventStoreContract
 {
     /**
-     * @var list<IntegrationEvent>
+     * @var list<IntegrationEventContract>
      */
     public array $messages = [];
 
     #[\Override]
-    public function add(IntegrationEvent $integrationEvent): string
+    public function add(IntegrationEventContract $event): string
     {
-        $this->messages[] = $integrationEvent;
+        $this->messages[] = $event;
 
         return 'outbox-test';
     }

@@ -12,7 +12,7 @@ use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Modules\Media\Domain\Repository\MediaRepository;
 use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Public\Event\MediaDeletedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -23,7 +23,7 @@ final readonly class DeleteMediaHandler
     public function __construct(
         private MediaRepository $mediaRepository,
         private MediaFileServiceContract $mediaFileService,
-        private IntegrationEventStoreContract $integrationEventStore,
+        private OutboxEventStoreContract $outboxEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -57,7 +57,7 @@ final readonly class DeleteMediaHandler
 
         $this->mediaRepository->delete($media);
 
-        $this->integrationEventStore->add(new MediaDeletedEvent(mediaId: $media->id->value()));
+        $this->outboxEventStore->add(new MediaDeletedEvent(mediaId: $media->id->value()));
 
         $this->logger->debug(message: 'Медиа удалено.', context: [
             'mediaId' => $command->mediaId,

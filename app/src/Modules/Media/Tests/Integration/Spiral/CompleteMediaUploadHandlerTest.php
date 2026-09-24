@@ -41,7 +41,7 @@ use App\Modules\Media\Domain\ValueObject\MediaMultipartPartNumber;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartsCount;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartPartSize;
 use App\Modules\Media\Domain\ValueObject\MediaMultipartUploadIdValue;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
@@ -55,7 +55,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $captured = null;
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::once())->method('add')->willReturnCallback(
             function (MediaUploadedEvent $message) use (&$captured): string {
                 $captured = $message;
@@ -367,7 +367,7 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         $this->persist($media);
 
         $captured = null;
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::once())->method('add')->willReturnCallback(
             function (MediaUploadedEvent $message) use (&$captured): string {
                 $captured = $message;
@@ -571,12 +571,12 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
 
     private function handler(
         MediaFileServiceContract $fileService,
-        IntegrationEventStoreContract $outboxStore,
+        OutboxEventStoreContract $outboxStore,
     ): CompleteMediaUploadHandler {
         return new CompleteMediaUploadHandler(
             mediaRepository: $this->mediaRepository(),
             mediaFileService: $fileService,
-            integrationEventStore: $outboxStore,
+            outboxEventStore: $outboxStore,
             logger: new NullLogger(),
         );
     }
@@ -591,9 +591,9 @@ final class CompleteMediaUploadHandlerTest extends MediaApplicationTestCase
         return $fileService;
     }
 
-    private function outboxStore(): IntegrationEventStoreContract
+    private function outboxStore(): OutboxEventStoreContract
     {
-        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createStub(OutboxEventStoreContract::class);
         $outboxStore->method('add')->willReturn('outbox-1');
 
         return $outboxStore;

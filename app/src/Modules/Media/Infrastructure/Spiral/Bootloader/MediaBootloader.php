@@ -24,10 +24,13 @@ use App\Modules\Media\Infrastructure\Storage\MediaUrlService;
 use App\Modules\Media\Infrastructure\Storage\S3ClientProvider;
 use App\Modules\Media\Infrastructure\Storage\S3MediaFileService;
 use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
-use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
 use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Cycle\Migrations\Config\MigrationConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfigFactory;
+use GianTiaga\SpiralOutbox\OutboxRoute;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Bootloader\I18nBootloader;
 use Spiral\Config\ConfiguratorInterface;
@@ -110,11 +113,28 @@ final class MediaBootloader extends Bootloader
         }
     }
 
-    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
+    /**
+     * Маршрут своего события объявляет сам модуль: обработку загруженного медиа выполняет Media.
+     * Три паузы дают четыре попытки, а двухчасовой таймаут покрывает конверсию тяжёлого видео.
+     *
+     * @param ConfiguratorInterface<object> $config
+     */
+    public function boot(ConfiguratorInterface $config): void
     {
-        $integrationEventRouting->register(
-            integrationEventClass: MediaUploadedEvent::class,
-            jobClass: ProcessMediaJob::class,
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: MediaUploadedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: ProcessMediaJob::class,
+                        queue: QueueName::Media->value,
+                        retryDelaysSeconds: [60, 300, 900],
+                        deliveryTimeoutSeconds: 7200,
+                    ),
+                ],
+            ),
         );
     }
 }

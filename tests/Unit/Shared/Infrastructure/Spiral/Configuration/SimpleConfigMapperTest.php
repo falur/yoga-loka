@@ -8,7 +8,6 @@ use App\Modules\Auth\Infrastructure\Spiral\Configuration\MailerConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Mapping\ConfigMapper;
 use App\Shared\Infrastructure\Spiral\Configuration\Exception\ConfigMappingException;
 use App\Shared\Infrastructure\Spiral\Configuration\Migration\MigrationConfig;
-use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationOptionsConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Session\SessionConfig;
@@ -99,25 +98,6 @@ final class SimpleConfigMapperTest extends TestCase
         self::assertTrue($config->secure);
         self::assertNull($config->sameSite);
         self::assertInstanceOf(Autowire::class, $config->handler);
-    }
-
-    public function testHydratesOutboxConfigFromArray(): void
-    {
-        $config = $this->mapperFor(OutboxConfig::configName(), [
-            'maxAttempts' => 7,
-            'maxConsecutiveRelayFailures' => 5,
-            'baseRelayRetryDelaySeconds' => 2,
-            'maxRelayRetryDelaySeconds' => 20,
-            'claimTimeoutSeconds' => 45,
-            'publishRetryDelaySeconds' => 90,
-        ])->map(section: OutboxConfig::configName(), targetClass: OutboxConfig::class);
-
-        self::assertSame(7, $config->maxAttempts);
-        self::assertSame(5, $config->maxConsecutiveRelayFailures);
-        self::assertSame(2, $config->baseRelayRetryDelaySeconds);
-        self::assertSame(20, $config->maxRelayRetryDelaySeconds);
-        self::assertSame(45, $config->claimTimeoutSeconds);
-        self::assertSame(90, $config->publishRetryDelaySeconds);
     }
 
     public function testHydratesScaffolderConfigFromArray(): void
@@ -244,20 +224,6 @@ final class SimpleConfigMapperTest extends TestCase
                 'handler' => null,
             ],
             'lifetime',
-        ];
-
-        yield 'outbox' => [
-            OutboxConfig::configName(),
-            OutboxConfig::class,
-            [
-                'maxAttempts' => [],
-                'maxConsecutiveRelayFailures' => 10,
-                'baseRelayRetryDelaySeconds' => 1,
-                'maxRelayRetryDelaySeconds' => 30,
-                'claimTimeoutSeconds' => 60,
-                'publishRetryDelaySeconds' => 60,
-            ],
-            'maxAttempts',
         ];
 
         yield 'scaffolder' => [

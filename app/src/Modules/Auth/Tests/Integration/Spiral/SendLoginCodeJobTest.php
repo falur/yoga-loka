@@ -9,25 +9,25 @@ use App\Modules\Auth\Application\Contract\LoginCodeMailerContract;
 use App\Modules\Auth\Application\Contract\TranslatorContract;
 use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Shared\Domain\Locale\LocaleResolver;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use Psr\Log\NullLogger;
-use Ramsey\Uuid\Uuid;
-use Spiral\Queue\Exception\RetryException;
 use Tests\TestCase;
 
 final class SendLoginCodeJobTest extends TestCase
 {
+    /** Идентификатор доставки: статусами доставки владеет интерсептор пакета, не Job. */
+    private const string DELIVERY_ID = '0190f3b1-0000-7000-8000-0000000000de';
+
     public function testLoadsMessageAndSendsEmail(): void
     {
         $loginCodeMailer = new RecordingLoginCodeMailer();
 
         $this->job()->invoke(
-            payload: $this->envelope(),
-            id: 'job-1',
-            integrationEventLoader: $this->loaderReturning(),
+            outboxDeliveryId: self::DELIVERY_ID,
+            outboxMessageLoader: $this->loaderReturning(),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendLoginCodeHandler: $this->handler($loginCodeMailer),
             logger: new NullLogger(),
@@ -42,21 +42,20 @@ final class SendLoginCodeJobTest extends TestCase
         $failingMailer = $this->createStub(LoginCodeMailerContract::class);
         $failingMailer->method('send')->willThrowException(new \RuntimeException('smtp недоступен'));
 
-        $this->expectException(RetryException::class);
+        $this->expectException(RetryableOutboxException::class);
 
         $this->job()->invoke(
-            payload: $this->envelope(),
-            id: 'job-1',
-            integrationEventLoader: $this->loaderReturning(),
+            outboxDeliveryId: self::DELIVERY_ID,
+            outboxMessageLoader: $this->loaderReturning(),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendLoginCodeHandler: $this->handler($failingMailer),
             logger: new NullLogger(),
         );
     }
 
-    private function loaderReturning(): IntegrationEventLoaderContract
+    private function loaderReturning(): OutboxMessageLoaderContract
     {
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new LoginCodeRequestedEvent(
             email: 'user@example.com',
             code: '123456',
@@ -78,13 +77,5 @@ final class SendLoginCodeJobTest extends TestCase
     private function job(): SendLoginCodeJob
     {
         return $this->getContainer()->get(SendLoginCodeJob::class);
-    }
-
-    private function envelope(): OutboxEnvelopeDto
-    {
-        return new OutboxEnvelopeDto(
-            outboxEventId: Uuid::uuid7()->toString(),
-            outboxEventType: LoginCodeRequestedEvent::class,
-        );
     }
 }

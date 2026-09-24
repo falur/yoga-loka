@@ -16,8 +16,8 @@ final class EntityColumnsCatalogTest extends TestCase
 {
     public function testEveryModuleHasColumnsCatalog(): void
     {
-        // Каталог заводится на каждую таблицу: 29 сущностей хранения — 29 каталогов.
-        self::assertCount(29, self::columnsCatalogFiles());
+        // Каталог заводится на каждую таблицу: 28 сущностей хранения — 28 каталогов.
+        self::assertCount(28, self::columnsCatalogFiles());
     }
 
     /**

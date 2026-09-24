@@ -33,10 +33,13 @@ use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificat
 use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Configuration\CentrifugoConfig;
 use App\Modules\Notifications\Infrastructure\Spiral\Configuration\PushConfig;
-use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
 use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Cycle\Migrations\Config\MigrationConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfigFactory;
+use GianTiaga\SpiralOutbox\OutboxRoute;
 use GuzzleHttp\Client;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Factory;
@@ -55,8 +58,8 @@ use Spiral\Config\Patch\Append;
  * service-account FCM нужен только при фактической отправке, не на старте/в тестах
  * с дублёрами. PSR-18 клиент собирается под Centrifugo внутри фабрики centrifugoClient(), а не
  * биндится на глобальный ClientInterface — модуль не занимает общий интерфейс и не навязывает свою
- * конфигурацию Guzzle другим модулям. Регистрируется в Kernel после Outbox-бутлоадеров, т.к. boot()
- * (пары событие -> Job) использует IntegrationEventRoutingContract из OutboxBootloader.
+ * конфигурацию Guzzle другим модулям. Три маршрута своих событий модуль дописывает в секцию
+ * конфигурации outbox: рассылку, push и realtime выполняет он же.
  */
 final class NotificationsBootloader extends Bootloader
 {
@@ -126,19 +129,59 @@ final class NotificationsBootloader extends Bootloader
         );
     }
 
-    public function boot(IntegrationEventRoutingContract $integrationEventRouting): void
+    /**
+     * Маршруты трёх своих событий. У рассылки и push две паузы — три попытки; у realtime пауз нет:
+     * уведомление показывается «сейчас», и повтор через минуту уже не имеет смысла, поэтому первая
+     * же ошибка закрывает доставку окончательно.
+     *
+     * @param ConfiguratorInterface<object> $config
+     */
+    public function boot(ConfiguratorInterface $config): void
     {
-        $integrationEventRouting->register(
-            integrationEventClass: NotificationRequestedEvent::class,
-            jobClass: DispatchNotificationJob::class,
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: NotificationRequestedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: DispatchNotificationJob::class,
+                        queue: QueueName::Notifications->value,
+                        retryDelaysSeconds: [60, 300],
+                        deliveryTimeoutSeconds: 600,
+                    ),
+                ],
+            ),
         );
-        $integrationEventRouting->register(
-            integrationEventClass: NotificationPushRequestedEvent::class,
-            jobClass: SendPushNotificationJob::class,
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: NotificationPushRequestedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: SendPushNotificationJob::class,
+                        queue: QueueName::Notifications->value,
+                        retryDelaysSeconds: [60, 300],
+                        deliveryTimeoutSeconds: 600,
+                    ),
+                ],
+            ),
         );
-        $integrationEventRouting->register(
-            integrationEventClass: NotificationRealtimeRequestedEvent::class,
-            jobClass: PublishRealtimeNotificationJob::class,
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: NotificationRealtimeRequestedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: PublishRealtimeNotificationJob::class,
+                        queue: QueueName::Notifications->value,
+                        retryDelaysSeconds: [],
+                        deliveryTimeoutSeconds: 120,
+                    ),
+                ],
+            ),
         );
     }
 

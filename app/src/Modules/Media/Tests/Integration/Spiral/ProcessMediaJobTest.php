@@ -12,18 +12,20 @@ use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Domain\Enum\MediaStatus;
 use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use App\Modules\Media\Domain\Exception\MediaNotFoundException;
 use App\Shared\Domain\ValueObject\UserId;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
 use Ramsey\Uuid\Uuid;
-use Spiral\Queue\Exception\RetryException;
 use Psr\Log\LogLevel;
 
 final class ProcessMediaJobTest extends MediaApplicationTestCase
 {
+    /** Идентификатор доставки: сам Job его не проверяет, статусами доставки владеет интерсептор. */
+    private const string DELIVERY_ID = '0192f2a0-0000-7000-8000-0000000000de';
+
     #[DataProvider('failureProvider')]
     public function testClassifiesProcessingFailureAndRecordsErrorOnMedia(
         \Throwable $exception,
@@ -33,16 +35,15 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $job = $this->getContainer()->get(ProcessMediaJob::class);
 
         try {
             $job->invoke(
-                payload: $this->envelope(),
-                id: 'job-1',
-                integrationEventLoader: $loader,
+                outboxDeliveryId: self::DELIVERY_ID,
+                outboxMessageLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($exception),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
@@ -69,7 +70,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         $media->markUploaded();
         $this->persist($media);
 
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $media->id->value(), plan: $this->emptyPlan()));
 
         $logger = new RecordingMediaLogger();
@@ -77,16 +78,15 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
 
         try {
             $job->invoke(
-                payload: $this->envelope(),
-                id: 'job-1',
-                integrationEventLoader: $loader,
+                outboxDeliveryId: self::DELIVERY_ID,
+                outboxMessageLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($exception),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
                 logger: $logger,
             );
         } catch (\Throwable) {
-            // Job всегда пробрасывает: временный -> RetryException, постоянный -> исходное.
+            // Job всегда пробрасывает: временный -> RetryableOutboxException, постоянный -> исходное.
         }
 
         self::assertTrue($logger->hasLevel($expectedLevel));
@@ -98,10 +98,10 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         // Сценарий ревью: медиа конкурентно удалили к моменту записи ошибки -> запись
         // (RecordMediaProcessingFailureHandler::handle -> findById ?? throw MediaNotFoundException)
         // падает. Вторичный сбой записи не должен подменять исходную классификацию:
-        // для временного исходного сбоя Job всё равно бросает RetryException.
+        // для временного исходного сбоя Job всё равно бросает RetryableOutboxException.
         $missingMediaId = Uuid::uuid7()->toString();
 
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new MediaUploadedEvent(mediaId: $missingMediaId, plan: $this->emptyPlan()));
 
         $storageError = new \RuntimeException('сырой AWS-сбой');
@@ -117,9 +117,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
 
         try {
             $job->invoke(
-                payload: $this->envelope(),
-                id: 'job-1',
-                integrationEventLoader: $loader,
+                outboxDeliveryId: self::DELIVERY_ID,
+                outboxMessageLoader: $loader,
                 commandBus: new ThrowingProcessMediaCommandBus($transientException),
                 processMediaHandler: $this->getContainer()->get(ProcessMediaHandler::class),
                 recordMediaProcessingFailureHandler: $this->getContainer()->get(RecordMediaProcessingFailureHandler::class),
@@ -130,8 +129,8 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             $thrown = $caught;
         }
 
-        // Исходная причина не подменяется: временный сбой -> RetryException, а не MediaNotFoundException.
-        self::assertInstanceOf(RetryException::class, $thrown);
+        // Исходная причина не подменяется: временный сбой -> RetryableOutboxException, а не MediaNotFoundException.
+        self::assertInstanceOf(RetryableOutboxException::class, $thrown);
         // Вторичный сбой записи залогирован как ERROR (rules.md:84), плюс ERROR классификации не мешает
         // WARN временного повтора.
         self::assertTrue($logger->hasLevel(LogLevel::ERROR));
@@ -201,7 +200,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
         return [
             'транзиентный сбой хранилища -> повтор' => [
                 MediaFileServiceFailedException::transient(message: 'Ошибка хранилища.', previous: $storageError),
-                RetryException::class,
+                RetryableOutboxException::class,
             ],
             'постоянный сбой хранилища -> терминально' => [
                 MediaFileServiceFailedException::permanent(message: 'Ошибка хранилища.', previous: $storageError),
@@ -209,7 +208,7 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
             ],
             'временный сбой процессора -> повтор' => [
                 MediaProcessorFailedException::transient(message: 'Не удалось обработать медиа.', previous: $storageError),
-                RetryException::class,
+                RetryableOutboxException::class,
             ],
             'постоянный сбой процессора -> терминально' => [
                 MediaProcessorFailedException::permanent(message: 'Не удалось обработать медиа.', previous: $storageError),
@@ -220,13 +219,5 @@ final class ProcessMediaJobTest extends MediaApplicationTestCase
                 \RuntimeException::class,
             ],
         ];
-    }
-
-    private function envelope(): OutboxEnvelopeDto
-    {
-        return new OutboxEnvelopeDto(
-            outboxEventId: Uuid::uuid7()->toString(),
-            outboxEventType: MediaUploadedEvent::class,
-        );
     }
 }

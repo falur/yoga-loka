@@ -24,7 +24,7 @@ use App\Modules\Notifications\Public\Enum\NotificationChannel as PublicNotificat
 use App\Modules\Notifications\Domain\Collection\NotificationCollection;
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -32,7 +32,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Фоновая рассылка: после commit-а источника решает каналы доставки, идемпотентно создаёт инбокс и
- * стейджит push/realtime. Идемпотентность — по notifications.outbox_id (повтор того же события при
+ * стейджит push/realtime. Идемпотентность — по notifications.outbox_id (повтор той же доставки при
  * включённом database — полный no-op).
  */
 final readonly class DispatchNotificationHandler
@@ -41,7 +41,7 @@ final readonly class DispatchNotificationHandler
         private NotificationRepository $notificationRepository,
         private NotificationSettingRepository $notificationSettingRepository,
         private NotificationTypeCatalogContract $typeCatalog,
-        private IntegrationEventStoreContract $integrationEventStore,
+        private OutboxEventStoreContract $outboxEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -83,9 +83,9 @@ final readonly class DispatchNotificationHandler
             $this->stageRealtime($command);
         }
 
-        // Единственный прогон сценария: он уносит в базу и созданный инбокс, и события outbox,
-        // поставленные в ту же запись публичным контрактом Outbox. Инбокса могло и не быть —
-        // прогон нужен и тогда, потому что каналы push и realtime уже застейджены.
+        // Прогон сценария уносит в базу только созданный инбокс. События push и realtime
+        // хранилище пакета (OutboxEventStoreContract) вставило выше своими запросами и прогона
+        // не ждёт; в одну транзакцию с инбоксом их сводит граница #[Transactional].
         $this->notificationRepository->saveAll($notifications);
     }
 
@@ -138,7 +138,7 @@ final readonly class DispatchNotificationHandler
 
     private function stagePush(DispatchNotificationCommand $command): void
     {
-        $outboxEventId = $this->integrationEventStore->add(new NotificationPushRequestedEvent(
+        $outboxEventId = $this->outboxEventStore->add(new NotificationPushRequestedEvent(
             userId: $command->userId,
             type: $command->type,
             title: $command->title,
@@ -156,7 +156,7 @@ final readonly class DispatchNotificationHandler
 
     private function stageRealtime(DispatchNotificationCommand $command): void
     {
-        $outboxEventId = $this->integrationEventStore->add(new NotificationRealtimeRequestedEvent(
+        $outboxEventId = $this->outboxEventStore->add(new NotificationRealtimeRequestedEvent(
             userId: $command->userId,
             type: $command->type,
             title: $command->title,

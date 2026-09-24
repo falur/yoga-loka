@@ -27,7 +27,6 @@ final class ConfigShapeTest extends TestCase
                 'media',
                 'migration',
                 'openapi',
-                'outbox',
                 'push',
                 'queue',
                 'scaffolder',
@@ -85,8 +84,10 @@ final class ConfigShapeTest extends TestCase
 
     /**
      * Каталоги, где после волны G живёт конфигурация: `app/config` (секции без владельца среди
-     * модулей) и `Infrastructure/Spiral/Configuration` шести модулей, полностью владеющих своей
-     * секцией. `ConfigBootloader` — production-аналог этого списка (реестр каталогов, пополняемый
+     * модулей) и `Infrastructure/Spiral/Configuration` четырёх модулей, полностью владеющих своей
+     * секцией. Секции `outbox` в этом списке нет: ею владеет пакет `gian-tiaga/spiral-outbox`,
+     * её разбирает его собственная фабрика, и файла-массива в проекте у неё нет.
+     * `ConfigBootloader` — production-аналог этого списка (реестр каталогов, пополняемый
      * модулями в `init()`); здесь список зафиксирован явно, чтобы тест проверял результат
      * независимо от того, как production-код его считает.
      *
@@ -96,7 +97,6 @@ final class ConfigShapeTest extends TestCase
     {
         return [
             $this->rootDirectory() . '/app/src/Modules/Media/Infrastructure/Spiral/Configuration',
-            $this->rootDirectory() . '/app/src/Modules/Outbox/Infrastructure/Spiral/Configuration',
             $this->rootDirectory() . '/app/src/Modules/Notifications/Infrastructure/Spiral/Configuration',
             $this->rootDirectory() . '/app/src/Modules/Auth/Infrastructure/Spiral/Configuration',
             $this->rootDirectory() . '/app/src/Modules/System/Infrastructure/Spiral/Configuration',

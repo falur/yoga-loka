@@ -7,33 +7,33 @@ namespace App\Modules\Auth\Infrastructure\Spiral\Job;
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeCommand;
 use App\Modules\Auth\Application\Command\SendLoginCode\SendLoginCodeHandler;
 use App\Modules\Auth\Public\Event\LoginCodeRequestedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use Psr\Log\LoggerInterface;
-use Spiral\Queue\Exception\RetryException;
 use Spiral\Queue\JobHandler;
 
 /**
- * Инфраструктурный Job отправки письма с кодом: грузит LoginCodeRequestedEvent из outbox и
- * диспатчит SendLoginCodeCommand. Сбой отправки (граница системы) → WARN + RetryException,
- * чтобы письмо было повторено (статусы outbox правит общий queue interceptor).
+ * Инфраструктурный Job отправки письма с кодом: грузит LoginCodeRequestedEvent по идентификатору
+ * доставки и диспатчит SendLoginCodeCommand. Сбой почтовой границы объясняется записью WARNING и
+ * переводится в повторяемую ошибку outbox — статусы доставки правит интерсептор пакета. В контекст
+ * записи идут только идентификатор доставки и класс ошибки: адрес получателя и код входа в журнал
+ * не попадают.
  */
 final class SendLoginCodeJob extends JobHandler
 {
     private const string MAILER_FAILURE_MESSAGE = 'Не удалось отправить письмо с кодом входа.';
 
     public function invoke(
-        OutboxEnvelopeDto $payload,
-        string $id,
-        IntegrationEventLoaderContract $integrationEventLoader,
+        string $outboxDeliveryId,
+        OutboxMessageLoaderContract $outboxMessageLoader,
         CommandBusInterface $commandBus,
         SendLoginCodeHandler $sendLoginCodeHandler,
         LoggerInterface $logger,
     ): void {
-        $loginCodeRequested = $integrationEventLoader->load(
-            outboxEventId: $payload->outboxEventId,
-            expectedEventClass: LoginCodeRequestedEvent::class,
+        $loginCodeRequested = $outboxMessageLoader->load(
+            outboxDeliveryId: $outboxDeliveryId,
+            expectedMessageClass: LoginCodeRequestedEvent::class,
         );
 
         try {
@@ -47,12 +47,11 @@ final class SendLoginCodeJob extends JobHandler
             );
         } catch (\Throwable $exception) {
             $logger->warning(message: self::MAILER_FAILURE_MESSAGE, context: [
-                'email' => $loginCodeRequested->email,
-                'jobId' => $id,
+                'outboxDeliveryId' => $outboxDeliveryId,
                 'errorClass' => $exception::class,
             ]);
 
-            throw new RetryException(reason: self::MAILER_FAILURE_MESSAGE);
+            throw new RetryableOutboxException(message: self::MAILER_FAILURE_MESSAGE);
         }
     }
 }

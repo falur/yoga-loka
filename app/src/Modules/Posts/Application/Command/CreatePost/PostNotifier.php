@@ -14,8 +14,8 @@ use Psr\Log\LoggerInterface;
 /**
  * Стейджит одно уведомление модуля Posts получателю. Самодействие не уведомляет
  * (recipient == actor -> send() не вызывается). Текст рендерится в локали получателя через
- * NotificationContentBuilder, отправка — через публичный контракт Notifications (стейджинг в
- * outbox, flush делает вызывающий Handler своим run()). Профиль автора и deep-link перекладываются
+ * NotificationContentBuilder, отправка — через публичный контракт Notifications (событие пишется
+ * в outbox сразу, в транзакцию вызывающего Handler-а). Профиль автора и deep-link перекладываются
  * в публичные DTO автора и перехода здесь, чтобы билдер принимал их цельными объектами.
  */
 final readonly class PostNotifier

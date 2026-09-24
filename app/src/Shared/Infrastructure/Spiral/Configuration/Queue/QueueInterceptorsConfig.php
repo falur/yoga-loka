@@ -11,8 +11,15 @@ use Spiral\Interceptors\InterceptorInterface;
 final readonly class QueueInterceptorsConfig
 {
     /**
-     * @param list<class-string<InterceptorInterface>|class-string<CoreInterceptorInterface>|InterceptorInterface|CoreInterceptorInterface|Autowire<InterceptorInterface>|Autowire<CoreInterceptorInterface>> $push
-     * @param list<class-string<InterceptorInterface>|class-string<CoreInterceptorInterface>|InterceptorInterface|CoreInterceptorInterface|Autowire<InterceptorInterface>|Autowire<CoreInterceptorInterface>> $consume
+     * Интерсептор объявляется именем класса, готовым объектом или `Autowire` — последним его
+     * дописывает bootloader пакета `gian-tiaga/spiral-outbox`. Форма `Autowire` в объединении
+     * ровно одна: две одинаковые по структуре ветви (`Autowire<InterceptorInterface>` и
+     * `Autowire<CoreInterceptorInterface>`) неразличимы для сопоставителя, и он отказывался
+     * выбирать между ними. Устаревший `CoreInterceptorInterface` остаётся допустимым именем
+     * класса и готовым объектом.
+     *
+     * @param list<class-string<InterceptorInterface>|class-string<CoreInterceptorInterface>|InterceptorInterface|CoreInterceptorInterface|Autowire<InterceptorInterface>> $push
+     * @param list<class-string<InterceptorInterface>|class-string<CoreInterceptorInterface>|InterceptorInterface|CoreInterceptorInterface|Autowire<InterceptorInterface>> $consume
      */
     public function __construct(
         public array $push = [],

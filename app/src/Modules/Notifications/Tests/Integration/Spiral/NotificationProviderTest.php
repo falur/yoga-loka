@@ -11,7 +11,7 @@ use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Public\Dto\NotificationContentDto;
 use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use Tests\DatabaseTestCase;
 use App\Modules\Notifications\Tests\Unit\Application\Fixture\FixtureNotificationTypeDefinition;
@@ -35,7 +35,7 @@ final class NotificationProviderTest extends DatabaseTestCase
         parent::setUp();
 
         $this->outboxStore = new RecordingOutboxEventStore();
-        $this->getContainer()->bindSingleton(IntegrationEventStoreContract::class, $this->outboxStore);
+        $this->getContainer()->bindSingleton(OutboxEventStoreContract::class, $this->outboxStore);
     }
 
     public function testSendStagesOneEventWithActionAndActor(): void

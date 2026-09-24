@@ -12,7 +12,7 @@ use App\Modules\Auth\Domain\ValueObject\Expiration;
 use App\Modules\Auth\Domain\ValueObject\LoginCodeId;
 use App\Modules\Auth\Domain\ValueObject\SecretHash;
 use App\Modules\Auth\Domain\Repository\LoginCodeRepository;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
@@ -30,7 +30,7 @@ final readonly class RequestLoginCodeHandler
     public function __construct(
         private LoginCodeRepository $loginCodeRepository,
         private SecretHasherContract $secretHasher,
-        private IntegrationEventStoreContract $integrationEventStore,
+        private OutboxEventStoreContract $outboxEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -68,13 +68,14 @@ final readonly class RequestLoginCodeHandler
             expiration: Expiration::after(now: $now, seconds: self::CODE_TTL_SECONDS),
             now: $now,
         );
-        $this->integrationEventStore->add(new LoginCodeRequestedEvent(
+        $this->outboxEventStore->add(new LoginCodeRequestedEvent(
             email: $email->value(),
             code: $code,
             locale: $command->requestLocale,
         ));
-        // Единственный прогон сценария: он уносит в базу и погашенный прежний код, и событие
-        // outbox, поставленные выше в ту же запись, и сам новый код.
+        // Единственный прогон сценария: он уносит в базу погашенный прежний код и сам новый.
+        // Событие outbox хранилище пакета вставило выше своим запросом и прогона не ждёт;
+        // атомарность даёт общая транзакция сценария, а не общий прогон.
         $this->loginCodeRepository->save($loginCode);
 
         $this->logger->debug(message: 'Код входа запрошен и поставлен в outbox.', context: [

@@ -6,7 +6,7 @@ namespace App\Modules\Notifications\Public\Dto;
 
 /**
  * Примитивное представление перехода (deep-link) в payload интеграционных событий и команд.
- * Публичный конструктор из двух строк — чтобы ValinorOutboxMessageSerializer восстанавливал его
+ * Публичный конструктор из двух строк — чтобы сериализатор пакета outbox восстанавливал его
  * без приватных фабрик. null на месте этого DTO означает «перехода нет».
  */
 final readonly class NotificationActionDto

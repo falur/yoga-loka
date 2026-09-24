@@ -33,7 +33,7 @@ use App\Modules\Media\Domain\ValueObject\MediaId;
 use App\Modules\Media\Domain\ValueObject\MediaPixelDimension;
 use App\Modules\Media\Domain\ValueObject\MediaSampleRate;
 use App\Modules\Media\Domain\ValueObject\MediaWaveformPeakCount;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\Attribute\LogOperation;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
@@ -45,7 +45,7 @@ final readonly class CompleteMediaUploadHandler
     public function __construct(
         private MediaRepository $mediaRepository,
         private MediaFileServiceContract $mediaFileService,
-        private IntegrationEventStoreContract $integrationEventStore,
+        private OutboxEventStoreContract $outboxEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -73,7 +73,7 @@ final readonly class CompleteMediaUploadHandler
         $this->assertObjectUploaded($media);
 
         $media->markUploaded();
-        $this->integrationEventStore->add(new MediaUploadedEvent(
+        $this->outboxEventStore->add(new MediaUploadedEvent(
             mediaId: $media->id->value(),
             plan: $command->plan,
         ));

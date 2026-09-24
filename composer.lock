@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bacec808b8dec973df79802e46a866d6",
+    "content-hash": "a6e69a803c90d13813d96e837e932909",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2185,6 +2185,61 @@
                 "source": "https://github.com/falur/spiral-openapi"
             },
             "time": "2026-09-14T14:35:49+00:00"
+        },
+        {
+            "name": "gian-tiaga/spiral-outbox",
+            "version": "v0.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/falur/spiral-outbox.git",
+                "reference": "d37fe3a1e417dd1de61bff7330d6caaf92a217b9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/falur/spiral-outbox/zipball/d37fe3a1e417dd1de61bff7330d6caaf92a217b9",
+                "reference": "d37fe3a1e417dd1de61bff7330d6caaf92a217b9",
+                "shasum": ""
+            },
+            "require": {
+                "cuyz/valinor": "^2.6",
+                "cycle/database": "^2.16",
+                "cycle/migrations": "^4.3",
+                "php": ">=8.5",
+                "php-http/discovery": "^1.20",
+                "psr/clock": "^1.0",
+                "psr/log": "^3.0",
+                "ramsey/uuid": "^4.9",
+                "spiral/framework": "^3.16"
+            },
+            "require-dev": {
+                "gian-tiaga/phpstan-strict-rules": "^0.1.0",
+                "php-cs-fixer/shim": "^3.95.23",
+                "phpstan/phpstan": "^2.1.54",
+                "phpunit/phpunit": "^13.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "GianTiaga\\SpiralOutbox\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ildar Enakaev",
+                    "email": "ienakaev@ya.ru"
+                }
+            ],
+            "description": "Transactional outbox package for Spiral applications",
+            "homepage": "https://github.com/falur/spiral-outbox",
+            "support": {
+                "issues": "https://github.com/falur/spiral-outbox/issues",
+                "source": "https://github.com/falur/spiral-outbox"
+            },
+            "time": "2026-09-17T19:18:16+00:00"
         },
         {
             "name": "google/auth",

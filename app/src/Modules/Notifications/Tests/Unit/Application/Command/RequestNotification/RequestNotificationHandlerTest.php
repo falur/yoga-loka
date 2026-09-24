@@ -13,8 +13,8 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationTitle;
 use App\Modules\Notifications\Domain\ValueObject\NotificationTypeCode;
 use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeRegistry;
 use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\ValueObject\UserId;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -29,10 +29,10 @@ final class RequestNotificationHandlerTest extends TestCase
         $avatarMediaId = UserId::generate()->value();
         $captured = null;
 
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::once())
             ->method('add')
-            ->willReturnCallback(static function (IntegrationEvent $message) use (&$captured): string {
+            ->willReturnCallback(static function (IntegrationEventContract $message) use (&$captured): string {
                 $captured = $message;
 
                 return 'outbox-1';
@@ -62,9 +62,9 @@ final class RequestNotificationHandlerTest extends TestCase
     public function testStagesNullActionWhenNoLink(): void
     {
         $captured = null;
-        $outboxStore = $this->createStub(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createStub(OutboxEventStoreContract::class);
         $outboxStore->method('add')->willReturnCallback(
-            static function (IntegrationEvent $message) use (&$captured): string {
+            static function (IntegrationEventContract $message) use (&$captured): string {
                 $captured = $message;
 
                 return 'outbox-1';
@@ -80,12 +80,12 @@ final class RequestNotificationHandlerTest extends TestCase
 
     public function testRejectsUnregisteredTypeWithoutStaging(): void
     {
-        $outboxStore = $this->createMock(IntegrationEventStoreContract::class);
+        $outboxStore = $this->createMock(OutboxEventStoreContract::class);
         $outboxStore->expects(self::never())->method('add');
 
         $handler = new RequestNotificationHandler(
             typeCatalog: new NotificationTypeRegistry(),
-            integrationEventStore: $outboxStore,
+            outboxEventStore: $outboxStore,
             logger: new NullLogger(),
         );
 
@@ -94,14 +94,14 @@ final class RequestNotificationHandlerTest extends TestCase
         $handler->handle($this->command(action: NotificationAction::none()));
     }
 
-    private function handler(IntegrationEventStoreContract $outboxStore): RequestNotificationHandler
+    private function handler(OutboxEventStoreContract $outboxStore): RequestNotificationHandler
     {
         $registry = new NotificationTypeRegistry();
         $registry->register(FixtureNotificationTypeDefinition::allChannels('chat.message_received'));
 
         return new RequestNotificationHandler(
             typeCatalog: $registry,
-            integrationEventStore: $outboxStore,
+            outboxEventStore: $outboxStore,
             logger: new NullLogger(),
         );
     }

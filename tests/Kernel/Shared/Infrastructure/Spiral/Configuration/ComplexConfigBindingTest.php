@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 
-use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueSerializer;
-use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
-use App\Modules\Outbox\Infrastructure\Spiral\Job\OutboxDebugLogJob;
 use App\Shared\Infrastructure\Spiral\Configuration\Cycle\CycleConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Cycle\CycleCollectionFactoryConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Cycle\CycleCollectionsConfig;
@@ -28,10 +25,13 @@ use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageS3OptionsConfi
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageServerConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Storage\StorageVisibilityModeConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\TypedConfig;
+use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Cycle\Database\Config\DatabaseConfig as CycleDatabaseConfig;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spiral\Cycle\Config\CycleConfig as SpiralCycleConfig;
 use Spiral\Queue\Config\QueueConfig as SpiralQueueConfig;
+use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
 use Spiral\Queue\QueueRegistry;
 use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\Storage\Config\StorageConfig as SpiralStorageConfig;
@@ -74,28 +74,39 @@ final class ComplexConfigBindingTest extends TestCase
         self::assertSame($container->get(SpiralQueueConfig::class)->getDefaultDriver(), $queueConfig->default);
         self::assertSame('roadrunner', $queueConfig->connections['in-memory']->driver);
         self::assertSame('memory', $queueConfig->connections['in-memory']->pipeline);
-        self::assertSame('roadrunner', $queueConfig->connections['rabbitmq']->driver);
-        self::assertSame('rabbitmq', $queueConfig->connections['rabbitmq']->pipeline);
+
+        foreach (QueueName::cases() as $queueName) {
+            self::assertSame('roadrunner', $queueConfig->connections[$queueName->value]->driver);
+            self::assertSame($queueName->value, $queueConfig->connections[$queueName->value]->pipeline);
+        }
+
         self::assertSame('json', $queueConfig->defaultSerializer);
-        // Пары «outbox-событие -> Job» не лежат в секции конфигурации: OutboxJobRegistry::register()
-        // кладёт handler и сериализатор прямо в реестр очереди Spiral, поэтому статический список в
-        // queue.php пуст, а фактическая регистрация проверяется через сам реестр.
+        // Job-потребители outbox в статическом реестре не перечисляются: типом задачи служит полное
+        // имя класса Job, и обработчик Spiral находит его через контейнер.
         self::assertSame([], $queueConfig->registry->handlers);
         self::assertSame([], $queueConfig->registry->serializers);
         $queueRegistry = $container->get(QueueRegistry::class);
-        self::assertInstanceOf(OutboxDebugLogJob::class, $queueRegistry->getHandler(OutboxDebugLogJob::class));
-        self::assertInstanceOf(OutboxQueueSerializer::class, $queueRegistry->getSerializer(OutboxDebugLogJob::class));
-        self::assertContains(OutboxQueueStatusInterceptor::class, $queueConfig->interceptors->consume);
+        self::assertInstanceOf(SendLoginCodeJob::class, $queueRegistry->getHandler(SendLoginCodeJob::class));
+        // Политика повторов Spiral убрана: повторами владеет только outbox.
+        self::assertNotContains(RetryPolicyInterceptor::class, $queueConfig->interceptors->consume);
         self::assertArrayHasKey('memory', $queueConfig->pipelines);
-        self::assertArrayHasKey('rabbitmq', $queueConfig->pipelines);
-        self::assertInstanceOf(AMQPCreateInfo::class, $queueConfig->pipelines['rabbitmq']->connector);
-        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->queue);
-        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->exchange);
-        self::assertSame('yoga_loka_jobs', $queueConfig->pipelines['rabbitmq']->connector->routingKey);
-        self::assertSame(100, $queueConfig->pipelines['rabbitmq']->connector->prefetch);
-        self::assertTrue($queueConfig->pipelines['rabbitmq']->connector->durable);
-        self::assertTrue($queueConfig->pipelines['rabbitmq']->connector->exchangeDurable);
-        self::assertFalse($queueConfig->pipelines['rabbitmq']->connector->requeueOnFail);
+        self::assertArrayNotHasKey('rabbitmq', $queueConfig->pipelines);
+
+        // Три очереди назначения объявлены отдельными конвейерами: имя очереди, exchange и routing
+        // key собираются из общего префикса окружения и имени очереди.
+        foreach (QueueName::cases() as $queueName) {
+            $pipelineConnector = $queueConfig->pipelines[$queueName->value]->connector;
+
+            self::assertInstanceOf(AMQPCreateInfo::class, $pipelineConnector);
+            self::assertSame('yoga_loka_' . $queueName->value, $pipelineConnector->queue);
+            self::assertSame('yoga_loka_' . $queueName->value, $pipelineConnector->exchange);
+            self::assertSame('yoga_loka_' . $queueName->value, $pipelineConnector->routingKey);
+            self::assertSame(100, $pipelineConnector->prefetch);
+            self::assertTrue($pipelineConnector->durable);
+            self::assertTrue($pipelineConnector->exchangeDurable);
+            self::assertFalse($pipelineConnector->requeueOnFail);
+            self::assertTrue($queueConfig->pipelines[$queueName->value]->consume);
+        }
 
         self::assertSame('s3-test', $storageConfig->default);
         self::assertSame('local', $storageConfig->servers['local']->adapter);

@@ -50,7 +50,7 @@ use App\Modules\User\Domain\ValueObject\UserName;
 use App\Modules\User\Domain\ValueObject\UserNickname;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Entity\CycleUserEntity;
 use App\Modules\User\Infrastructure\Persistence\Cycle\Mapper\UserMapper;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use App\Shared\Domain\Enum\Locale;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
@@ -78,7 +78,7 @@ abstract class PostsHttpTestCase extends DatabaseTestCase
         parent::setUp();
 
         $this->outboxStore = new RecordingOutboxEventStore();
-        $this->getContainer()->bindSingleton(IntegrationEventStoreContract::class, $this->outboxStore);
+        $this->getContainer()->bindSingleton(OutboxEventStoreContract::class, $this->outboxStore);
 
         $fileService = $this->createStub(MediaFileServiceContract::class);
         $fileService->method('publicUrl')->willReturn('https://media.test/object.jpg');

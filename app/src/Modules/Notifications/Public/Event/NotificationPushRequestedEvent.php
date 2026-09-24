@@ -6,14 +6,14 @@ namespace App\Modules\Notifications\Public\Event;
 
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
 
 /**
  * Запрос на push-доставку, который фоновая рассылка стейджит, когда канал push включён. Payload —
  * только примитивы (createdAt — строка, action — nullable DTO, actor — снимок автора либо null).
  * После commit-а relay запускает SendPushNotificationJob.
  */
-final readonly class NotificationPushRequestedEvent implements IntegrationEvent
+final readonly class NotificationPushRequestedEvent implements IntegrationEventContract
 {
     public function __construct(
         public string $userId,

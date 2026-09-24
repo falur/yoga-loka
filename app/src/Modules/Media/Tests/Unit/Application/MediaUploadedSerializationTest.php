@@ -12,14 +12,14 @@ use App\Modules\Media\Public\Event\MediaUploadedEvent;
 use App\Modules\Media\Public\Enum\MediaAudioConversionType;
 use App\Modules\Media\Public\Enum\MediaImageConversionType;
 use App\Modules\Media\Public\Enum\MediaVideoConversionType;
-use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
+use GianTiaga\SpiralOutbox\Store\JsonOutboxEventSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class MediaUploadedSerializationTest extends TestCase
 {
-    public function testRestoresNestedConversionPlanThroughValinor(): void
+    public function testRestoresNestedConversionPlanThroughPackageSerializer(): void
     {
-        $serializer = new ValinorOutboxMessageSerializer();
+        $serializer = new JsonOutboxEventSerializer();
 
         $serialized = $serializer->serialize(new MediaUploadedEvent(
             mediaId: '0192f2a0-0000-7000-8000-000000000001',
@@ -40,9 +40,12 @@ final class MediaUploadedSerializationTest extends TestCase
                 )],
             ),
         ));
-        $restored = $serializer->deserialize(serializedOutboxMessage: $serialized);
+        $restored = $serializer->deserialize(
+            eventClass: MediaUploadedEvent::class,
+            payload: $serialized,
+        );
 
-        self::assertSame(MediaUploadedEvent::class, $serialized->type);
+        self::assertJson($serialized);
         self::assertInstanceOf(MediaUploadedEvent::class, $restored);
         self::assertSame('0192f2a0-0000-7000-8000-000000000001', $restored->mediaId);
 

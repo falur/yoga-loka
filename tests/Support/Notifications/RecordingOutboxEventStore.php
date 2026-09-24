@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace Tests\Support\Notifications;
 
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 
 /**
- * Тестовый дублёр IntegrationEventStoreContract: не пишет в БД, только запоминает застейдженные
- * сообщения, чтобы проверять решения рассылки (какие каналы застейджены) без реального outbox.
+ * Тестовый дублёр OutboxEventStoreContract: не пишет в БД, только запоминает записанные события,
+ * чтобы проверять решения рассылки (какие каналы застейджены) без реальных таблиц обмена.
  */
-final class RecordingOutboxEventStore implements IntegrationEventStoreContract
+final class RecordingOutboxEventStore implements OutboxEventStoreContract
 {
     /**
-     * @var list<IntegrationEvent>
+     * @var list<IntegrationEventContract>
      */
     public array $messages = [];
 
     private int $counter = 0;
 
     #[\Override]
-    public function add(IntegrationEvent $integrationEvent): string
+    public function add(IntegrationEventContract $event): string
     {
-        $this->messages[] = $integrationEvent;
+        $this->messages[] = $event;
         $this->counter++;
 
         return \sprintf('recorded-%d', $this->counter);
@@ -36,7 +36,7 @@ final class RecordingOutboxEventStore implements IntegrationEventStoreContract
     {
         return \count(\array_filter(
             $this->messages,
-            static fn(IntegrationEvent $message): bool => $message::class === $messageClass,
+            static fn(IntegrationEventContract $message): bool => $message::class === $messageClass,
         ));
     }
 }

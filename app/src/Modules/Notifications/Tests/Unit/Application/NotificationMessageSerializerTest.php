@@ -7,14 +7,14 @@ namespace App\Modules\Notifications\Tests\Unit\Application;
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
-use App\Modules\Outbox\Infrastructure\Serializer\ValinorOutboxMessageSerializer;
+use GianTiaga\SpiralOutbox\Store\JsonOutboxEventSerializer;
 use PHPUnit\Framework\TestCase;
 
 final class NotificationMessageSerializerTest extends TestCase
 {
     public function testRoundTripsNotificationRequestedWithAction(): void
     {
-        $serializer = new ValinorOutboxMessageSerializer();
+        $serializer = new JsonOutboxEventSerializer();
 
         $serialized = $serializer->serialize(new NotificationRequestedEvent(
             userId: '0190f3b1-0000-7000-8000-000000000000',
@@ -29,10 +29,12 @@ final class NotificationMessageSerializerTest extends TestCase
             ),
             createdAt: '2026-06-13T10:00:00+00:00',
         ));
-        $restored = $serializer->deserialize($serialized);
+        $restored = $serializer->deserialize(
+            eventClass: NotificationRequestedEvent::class,
+            payload: $serialized,
+        );
 
-        self::assertSame(NotificationRequestedEvent::class, $serialized->type);
-        self::assertJson($serialized->payload);
+        self::assertJson($serialized);
         self::assertInstanceOf(NotificationRequestedEvent::class, $restored);
         self::assertSame('chat.message_received', $restored->type);
         self::assertSame('Новое сообщение', $restored->title);
@@ -48,7 +50,7 @@ final class NotificationMessageSerializerTest extends TestCase
 
     public function testRoundTripsNotificationRequestedWithoutAction(): void
     {
-        $serializer = new ValinorOutboxMessageSerializer();
+        $serializer = new JsonOutboxEventSerializer();
 
         $serialized = $serializer->serialize(new NotificationRequestedEvent(
             userId: '0190f3b1-0000-7000-8000-000000000000',
@@ -59,7 +61,10 @@ final class NotificationMessageSerializerTest extends TestCase
             actor: null,
             createdAt: '2026-06-13T10:00:00+00:00',
         ));
-        $restored = $serializer->deserialize($serialized);
+        $restored = $serializer->deserialize(
+            eventClass: NotificationRequestedEvent::class,
+            payload: $serialized,
+        );
 
         self::assertInstanceOf(NotificationRequestedEvent::class, $restored);
         self::assertNull($restored->action);

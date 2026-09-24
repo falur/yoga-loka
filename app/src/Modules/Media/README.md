@@ -148,19 +148,19 @@
 `ProcessMediaJob` фиксирует `ProcessingFailed` через `RecordMediaProcessingFailure` и выбирает
 стратегию повтора по **контрактному сигналу** временной ошибки, а не по типу хранилища:
 `MediaFileServiceFailedException::isTransient()` → временная (сетевые/5xx/ограничение скорости) даёт
-`RetryException` (событие остаётся на повтор) и лог уровня WARN; постоянная (Imagick/битый файл,
-нештатный ответ S3) → терминальный проброс (outbox → `failed`) и лог уровня ERROR. Ошибки ffmpeg
-классифицируются так же контрактным `MediaProcessorFailedException::isTransient()` (таймаут
-транскодирования → временная/`RetryException`; битый/неподдерживаемый вход, нештатный код выхода →
-постоянная); причина повтора в `RetryException` выбирается по типу (ошибка процессора ≠ ошибка
-хранилища). Классификацию сырого `AwsException`/исключений php-ffmpeg делает Infrastructure
+`RetryableOutboxException` (доставка остаётся на повтор) и лог уровня WARN; постоянная (Imagick/битый
+файл, нештатный ответ S3) → терминальный проброс (доставка → `failed`) и лог уровня ERROR. Ошибки
+ffmpeg классифицируются так же контрактным `MediaProcessorFailedException::isTransient()` (таймаут
+транскодирования → временная/`RetryableOutboxException`; битый/неподдерживаемый вход, нештатный код
+выхода → постоянная); причина повтора в `RetryableOutboxException` выбирается по типу (ошибка
+процессора ≠ ошибка хранилища). Классификацию сырого `AwsException`/исключений php-ffmpeg делает Infrastructure
 (`S3MediaFileService` / ffmpeg-процессоры → контрактные исключения), поэтому `Infrastructure/Spiral/Job` не
 импортирует `Aws\*`/`FFMpeg\*` и не знает про реализации хранилища и обработки. Текст ошибки —
 из предопределённого набора безопасных сообщений; сырой текст AWS не прокидывается (VO
 `MediaProcessingError` отклоняет пути и слово `etag`). Сама запись ошибки на Media обёрнута
 локальным guard: если она падает (медиа конкурентно удалили → `MediaNotFoundException`, короткий сбой
 БД), вторичный сбой логируется уровнем ERROR и не подменяет исходную причину — Job всё равно
-выбирает повтор/терминальный исход по исходному исключению (временное → `RetryException`).
+выбирает повтор/терминальный исход по исходному исключению (временное → `RetryableOutboxException`).
 
 ## Транзакционная дисциплина S3
 
@@ -181,7 +181,7 @@
   процессором в локальный файл (потоково, не в память); перекладка оригинала в целевой бакет —
   server-side `copyObject` для всех типов.
 - Набор `conversions` фиксируется один раз в `CompleteMediaUpload` и доезжает до обработки в
-  outbox-сообщении, поэтому на практике он стабилен. Повторная обработка перезаписывает объекты
+  событии outbox, поэтому на практике он стабилен. Повторная обработка перезаписывает объекты
   по детерминированным ключам и не размножает их; но если бы тот же media обработали повторно с
   другим набором конверсий, ранее залитые и больше не запрашиваемые конверсии в S3 не удаляются
   (осиротевшие объекты). В текущем контракте такого повтора не возникает.
@@ -208,13 +208,14 @@
 
 ## Интеграционное событие
 
-`Public/Event/MediaUploadedEvent implements IntegrationEvent` — только примитивы/enum
+`Public/Event/MediaUploadedEvent implements IntegrationEventContract` — только примитивы/enum
 (`string mediaId`, вложенный `MediaConversionPlanDto` из `list<...Dto>`), потому что
-`ValinorOutboxMessageSerializer` не регистрирует кастомные конструкторы доменных VO; точные
-PHPDoc-типы `list<...Dto>` обязательны для восстановления вложенного DTO Valinor-ом.
-Пара `MediaUploadedEvent → ProcessMediaJob` регистрируется в `MediaBootloader`; там же связан
-публичный контракт `MediaContract → MediaProvider`. Job — в `app/config/queue.php`
-(`registry.handlers` + `registry.serializers = OutboxQueueSerializer`).
+`JsonOutboxEventSerializer` пакета не регистрирует кастомные конструкторы доменных VO; точные
+PHPDoc-типы `list<...Dto>` обязательны для восстановления вложенного DTO.
+Маршрут `MediaUploadedEvent → ProcessMediaJob` объявляет `MediaBootloader` патчем секции
+конфигурации `outbox` (очередь `media`); там же связан публичный контракт
+`MediaContract → MediaProvider`. В статический реестр `app/config/queue.php` Job не попадает:
+`registry.handlers` и `registry.serializers` пусты, типом задачи служит полное имя класса Job.
 
 ## Инфраструктура и конфиг
 

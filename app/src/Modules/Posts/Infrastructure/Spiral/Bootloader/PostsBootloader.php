@@ -6,7 +6,6 @@ namespace App\Modules\Posts\Infrastructure\Spiral\Bootloader;
 
 use App\Modules\Media\Public\Event\MediaDeletedEvent;
 use App\Modules\Notifications\Public\Contract\NotificationTypeRegistryContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Modules\Posts\Application\Command\CreatePost\PostNotificationType;
 use App\Modules\Posts\Application\Contract\CommentViewerReader;
 use App\Modules\Posts\Application\Contract\DetachMediaAttachmentsContract;
@@ -25,7 +24,11 @@ use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostBlock
 use App\Modules\Posts\Infrastructure\Persistence\Cycle\Repository\CyclePostRepository;
 use App\Modules\Posts\Infrastructure\Spiral\Adapter\SpiralTranslator;
 use App\Modules\Posts\Infrastructure\Spiral\Job\DetachDeletedMediaJob;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Cycle\Migrations\Config\MigrationConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfigFactory;
+use GianTiaga\SpiralOutbox\OutboxRoute;
 use Spiral\Boot\Bootloader\Bootloader;
 use Spiral\Bootloader\I18nBootloader;
 use Spiral\Config\ConfiguratorInterface;
@@ -85,15 +88,29 @@ final class PostsBootloader extends Bootloader
         );
     }
 
+    /** @param ConfiguratorInterface<object> $config */
     public function boot(
         NotificationTypeRegistryContract $typeRegistry,
-        IntegrationEventRoutingContract $integrationEventRouting,
+        ConfiguratorInterface $config,
     ): void {
         $typeRegistry->register(...PostNotificationType::cases());
 
-        $integrationEventRouting->register(
-            integrationEventClass: MediaDeletedEvent::class,
-            jobClass: DetachDeletedMediaJob::class,
+        // Маршрут чужого события объявляет потребитель: снятие вложений — забота Posts.
+        // Очередь маршрута — `media`: она принадлежит событию, а не модулю-потребителю.
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: MediaDeletedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: DetachDeletedMediaJob::class,
+                        queue: QueueName::Media->value,
+                        retryDelaysSeconds: [60, 300],
+                        deliveryTimeoutSeconds: 600,
+                    ),
+                ],
+            ),
         );
     }
 }

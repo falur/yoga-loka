@@ -80,8 +80,9 @@ kernel и внешние сервисы:
 
 - `Tests\DatabaseTestCase` - обычный DB-тест: оборачивается в транзакцию с rollback
   в `tearDown()`, чистит ORM heap, по умолчанию подменяет storage fake-реализацией.
-- `Tests\NonTransactionalDatabaseTestCase` - тесты, где нужен реальный commit, outbox
-  relay, queue status, console flow или явный транзакционный сценарий (без общего rollback).
+- `Tests\NonTransactionalDatabaseTestCase` - тесты, где нужен реальный commit, проход
+  outbox relay, статусы доставок, console flow или явный транзакционный сценарий
+  (без общего rollback).
 - `Tests\RealStorageTestCase` - тесты, где реальный MinIO/S3 является предметом проверки
   (fake storage отключён, созданные объекты bucket чистятся в `tearDown()`).
 
@@ -102,28 +103,35 @@ kernel и внешние сервисы:
 
 ## Outbox и очередь
 
-Внешние действия вроде email, push, Centrifugo и webhooks не вызываются прямо из
-Handler-ов. Handler сохраняет outbox-сообщение в PostgreSQL, а relay после
-commit-а перекладывает его в RabbitMQ.
+Обмен держит пакет `gian-tiaga/spiral-outbox`. Внешние действия вроде email,
+push, Centrifugo и webhooks не вызываются прямо из Handler-ов: Handler пишет
+интеграционное событие в PostgreSQL в своей транзакции, а relay после commit-а
+создаёт доставку на каждый маршрут события и отправляет её задачей в очередь
+назначения RabbitMQ.
 
-Разовый запуск relay:
+Один проход relay:
 
 ```bash
-make shell CMD='php app.php outbox:relay 100'
+make shell CMD='php app.php outbox:relay'
 ```
 
 Постоянный процесс для dev/prod:
 
 ```bash
-make shell CMD='php app.php outbox:relay 100 --loop --sleep=1'
+make shell CMD='php app.php outbox:relay --loop --sleep=1'
 ```
 
-Запускайте только один постоянный relay-процесс. Текущая выборка использует
-обычный `FOR UPDATE` без `SKIP LOCKED`, поэтому несколько relay-процессов
-одновременно не являются поддерживаемым режимом.
+Аргументов у команды нет — только опции `--loop` и `--sleep`; размер пачки
+прохода задаёт приложение в секции конфигурации `outbox`.
+
+В составе runtime постоянный relay один (`docs/arch.md`, раздел «Runtime»). Это
+решение о составе процессов, а не ограничение выборки: три пачечные выборки
+прохода relay берут строки через `FOR UPDATE SKIP LOCKED`, поэтому второй
+процесс не заберёт чужую строку и не задвоит доставку.
 
 Реальные email, push, Centrifugo и webhooks добавляются отдельными Job. Каждый
-такой Job должен использовать `outboxId` как ключ идемпотентности, если внешний
-сервис это поддерживает.
+такой Job получает `outboxDeliveryId` в полезной нагрузке и использует его как
+ключ идемпотентности, в том числе для внешнего сервиса, если тот поддерживает
+idempotency key.
 
 Подробности по контейнерам, volumes, env и диагностике: `docker/README.md`.

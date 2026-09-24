@@ -29,12 +29,15 @@ use App\Modules\Auth\Infrastructure\Spiral\Adapter\HmacSecretHasher;
 use App\Modules\Auth\Infrastructure\Spiral\Mail\SpiralLoginCodeMailer;
 use App\Modules\Auth\Infrastructure\Spiral\Job\SendLoginCodeJob;
 use App\Modules\Auth\Infrastructure\Spiral\Adapter\SpiralTranslator;
-use App\Modules\Outbox\Public\Contract\IntegrationEventRoutingContract;
 use App\Shared\Infrastructure\Spiral\Bootloader\ConfigBootloader;
 use App\Shared\Infrastructure\Spiral\Bootloader\RoutesBootloader;
 use App\Shared\Infrastructure\Spiral\Configuration\ConfigArrayFile;
 use App\Shared\Infrastructure\Spiral\Http\Access\AccessRuleRegistry;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Cycle\Migrations\Config\MigrationConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfig;
+use GianTiaga\SpiralOutbox\Config\OutboxConfigFactory;
+use GianTiaga\SpiralOutbox\OutboxRoute;
 use Spiral\Auth\Middleware\AuthTransportWithStorageMiddleware;
 use Spiral\Auth\Transport\HeaderTransport;
 use Spiral\Bootloader\Auth\AuthBootloader as SpiralAuthBootloader;
@@ -55,10 +58,10 @@ use Spiral\Views\Bootloader\ViewsBootloader;
  * агрегатов связаны со своими Cycle-реализациями, контракты Application — с инфраструктурными
  * реализациями. Транспорт (Authorization: Bearer), хранилище токенов (cycle) и actor-provider
  * регистрируются кодом без app/config/auth.php. View-шаблоны модуля (например письмо с кодом
- * входа) лежат в Infrastructure/Spiral/Resources/views и регистрируются под namespace `auth`. Пара
- * LoginCodeRequestedEvent → SendLoginCodeJob регистрируется в outbox-реестре. Установление личности
- * подключается к группе маршрутов `api` целиком, а правила публичных атрибутов доступа — в общий
- * реестр правил HTTP-границы.
+ * входа) лежат в Infrastructure/Spiral/Resources/views и регистрируются под namespace `auth`.
+ * Маршрут LoginCodeRequestedEvent → SendLoginCodeJob дописывается в секцию конфигурации outbox.
+ * Установление личности подключается к группе маршрутов `api` целиком, а правила публичных
+ * атрибутов доступа — в общий реестр правил HTTP-границы.
  */
 final class AuthBootloader extends Bootloader
 {
@@ -146,7 +149,6 @@ final class AuthBootloader extends Bootloader
 
     /** @param ConfiguratorInterface<object> $config */
     public function boot(
-        IntegrationEventRoutingContract $integrationEventRouting,
         GroupRegistry $routeGroups,
         AccessRuleRegistry $accessRuleRegistry,
         ConfiguratorInterface $config,
@@ -170,9 +172,23 @@ final class AuthBootloader extends Bootloader
             ),
         );
 
-        $integrationEventRouting->register(
-            integrationEventClass: LoginCodeRequestedEvent::class,
-            jobClass: SendLoginCodeJob::class,
+        // Маршрут события объявляет модуль-потребитель: письмо с кодом отправляет сам Auth.
+        // Повторами владеет outbox — две паузы дают три попытки, физического возврата задачи
+        // в RabbitMQ нет.
+        $config->modify(
+            section: OutboxConfig::CONFIG_SECTION,
+            patch: new Append(
+                position: OutboxConfigFactory::ROUTES,
+                key: LoginCodeRequestedEvent::class,
+                value: [
+                    new OutboxRoute(
+                        job: SendLoginCodeJob::class,
+                        queue: QueueName::Mail->value,
+                        retryDelaysSeconds: [30, 120],
+                        deliveryTimeoutSeconds: 300,
+                    ),
+                ],
+            ),
         );
 
         // Установление личности не является требованием доступа: оно кладёт личность в запрос и

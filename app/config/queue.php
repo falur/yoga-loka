@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Outbox\Infrastructure\Spiral\Queue\OutboxQueueStatusInterceptor;
+use App\Shared\Infrastructure\Spiral\Queue\QueueName;
 use Spiral\Queue\Driver\SyncDriver;
 use Spiral\Queue\Interceptor\Consume\ErrorHandlerInterceptor;
-use Spiral\Queue\Interceptor\Consume\RetryPolicyInterceptor;
 use Spiral\RoadRunner\Jobs\Queue\AMQP\ExchangeType;
 use Spiral\RoadRunner\Jobs\Queue\AMQPCreateInfo;
 use Spiral\RoadRunner\Jobs\Queue\BeanstalkCreateInfo;
@@ -14,13 +13,60 @@ use Spiral\RoadRunner\Jobs\Queue\SQSCreateInfo;
 use Spiral\RoadRunnerBridge\Queue\Queue;
 
 /**
+ * Общие параметры очередей RabbitMQ. Имена очереди, exchange и routing key собираются из одного
+ * префикса окружения и имени очереди назначения, остальные параметры у всех очередей одинаковы.
+ */
+$rabbitMqQueuePrefix = (string) \env('RABBITMQ_QUEUE_PREFIX', 'yoga_loka');
+$rabbitMqPrefetch = \max(1, (int) \env('RABBITMQ_QUEUE_PREFETCH', 100));
+$rabbitMqExchangeType = ExchangeType::from((string) \env('RABBITMQ_EXCHANGE_TYPE', ExchangeType::Direct->value));
+$rabbitMqRequeueOnFail = (bool) \filter_var(
+    value: \env('RABBITMQ_REQUEUE_ON_FAIL', 'false'),
+    filter: FILTER_VALIDATE_BOOL,
+);
+$rabbitMqQueueDurable = (bool) \filter_var(
+    value: \env('RABBITMQ_QUEUE_DURABLE', 'true'),
+    filter: FILTER_VALIDATE_BOOL,
+);
+$rabbitMqExchangeDurable = (bool) \filter_var(
+    value: \env('RABBITMQ_EXCHANGE_DURABLE', 'true'),
+    filter: FILTER_VALIDATE_BOOL,
+);
+
+/**
+ * Имя ресурса RabbitMQ для очереди назначения: очередь, exchange и routing key называются одинаково.
+ */
+$rabbitMqResourceName = static fn(QueueName $queueName): string => $rabbitMqQueuePrefix . '_' . $queueName->value;
+
+/**
+ * Конвейер очереди назначения: у каждой очереди свой коннектор AMQP и свой обработчик.
+ *
+ * @return array{connector: AMQPCreateInfo, consume: bool}
+ */
+$rabbitMqPipeline = static fn(QueueName $queueName): array => [
+    'connector' => new AMQPCreateInfo(
+        name: $queueName->value,
+        prefetch: $rabbitMqPrefetch,
+        queue: $rabbitMqResourceName($queueName),
+        exchange: $rabbitMqResourceName($queueName),
+        exchangeType: $rabbitMqExchangeType,
+        routingKey: $rabbitMqResourceName($queueName),
+        requeueOnFail: $rabbitMqRequeueOnFail,
+        durable: $rabbitMqQueueDurable,
+        exchangeDurable: $rabbitMqExchangeDurable,
+    ),
+    'consume' => true,
+];
+
+/**
  * Конфигурация очередей.
  *
  * @link https://spiral.dev/docs/queue-configuration and https://spiral.dev/docs/queue-roadrunner
  */
 return [
     /**
-     * Подключение очереди по умолчанию.
+     * Подключение очереди по умолчанию. Очередь доставки задаёт маршрут outbox явно
+     * (`Options::onQueue()`), поэтому это подключение остаётся запасным: оно определяет драйвер
+     * отправки и pipeline только для отправки без объявленной очереди.
      */
     'default' => \env('QUEUE_CONNECTION', 'in-memory'),
 
@@ -47,9 +93,17 @@ return [
             'driver' => 'roadrunner',
             'pipeline' => 'memory',
         ],
-        'rabbitmq' => [
+        QueueName::Mail->value => [
             'driver' => 'roadrunner',
-            'pipeline' => 'rabbitmq',
+            'pipeline' => QueueName::Mail->value,
+        ],
+        QueueName::Media->value => [
+            'driver' => 'roadrunner',
+            'pipeline' => QueueName::Media->value,
+        ],
+        QueueName::Notifications->value => [
+            'driver' => 'roadrunner',
+            'pipeline' => QueueName::Notifications->value,
         ],
     ],
 
@@ -67,29 +121,9 @@ return [
             // php app.php queue:pause local
             'consume' => true,
         ],
-        'rabbitmq' => [
-            'connector' => new AMQPCreateInfo(
-                name: 'rabbitmq',
-                prefetch: \max(1, (int) \env('RABBITMQ_QUEUE_PREFETCH', 100)),
-                queue: (string) \env('RABBITMQ_QUEUE_NAME', 'yoga_loka_jobs'),
-                exchange: (string) \env('RABBITMQ_EXCHANGE_NAME', 'yoga_loka_jobs'),
-                exchangeType: ExchangeType::from((string) \env('RABBITMQ_EXCHANGE_TYPE', ExchangeType::Direct->value)),
-                routingKey: (string) \env('RABBITMQ_ROUTING_KEY', 'yoga_loka_jobs'),
-                requeueOnFail: (bool) \filter_var(
-                    value: \env('RABBITMQ_REQUEUE_ON_FAIL', 'false'),
-                    filter: FILTER_VALIDATE_BOOL,
-                ),
-                durable: (bool) \filter_var(
-                    value: \env('RABBITMQ_QUEUE_DURABLE', 'true'),
-                    filter: FILTER_VALIDATE_BOOL,
-                ),
-                exchangeDurable: (bool) \filter_var(
-                    value: \env('RABBITMQ_EXCHANGE_DURABLE', 'true'),
-                    filter: FILTER_VALIDATE_BOOL,
-                ),
-            ),
-            'consume' => true,
-        ],
+        QueueName::Mail->value => $rabbitMqPipeline(QueueName::Mail),
+        QueueName::Media->value => $rabbitMqPipeline(QueueName::Media),
+        QueueName::Notifications->value => $rabbitMqPipeline(QueueName::Notifications),
         // 'amqp' => [
         //     'connector' => new AMQPCreateInfo('bus', ...),
         //     // Не запускаем обработчик этого конвейера при старте.
@@ -121,11 +155,9 @@ return [
          *
          * (QueueInterface)->push('ping', ["url" => "http://site.com"]);
          *
-         * Пары «outbox-событие -> Job» сюда не перечисляются статично: единственный источник истины —
-         * App\Modules\Outbox\Infrastructure\Spiral\Registry\OutboxJobRegistry::register(), которая
-         * в момент регистрации маршрута кладёт handler и сериализатор прямо в реестр очереди
-         * Spiral\Queue\QueueRegistry (вызывается каждым производящим событие модулем в его boot()
-         * через IntegrationEventRoutingContract).
+         * Job-потребители outbox сюда не перечисляются: типом задачи служит полное имя класса Job,
+         * который relay берёт из маршрута секции `outbox`, а обработчик Spiral находит по этому
+         * же имени класса.
          *
          * @link https://spiral.dev/docs/queue-jobs#job-handler-registry
          */
@@ -137,7 +169,7 @@ return [
          * Соответствие имён задач и сериализаторов.
          * При постановке задачи используется указанный сериализатор, при обработке он же используется для десериализации.
          *
-         * Пары «outbox-событие -> Job» сюда не перечисляются статично — см. комментарий у 'handlers'.
+         * Job-потребители outbox сюда не перечисляются — см. комментарий у 'handlers'.
          *
          * @link https://spiral.dev/docs/queue-jobs#changing-serializer
          */
@@ -154,15 +186,12 @@ return [
      */
     'interceptors' => [
         // 'push' => [],
-        // Порядок критичен: RetryPolicyInterceptor обязан стоять ниже (внутри)
-        // OutboxQueueStatusInterceptor, иначе исключение Job ещё не преобразовано в
-        // RetryException и статус-interceptor спутает «оставить на повтор» с
-        // «окончательно failed». Перестановка interceptor-ов местами или удаление
-        // политики ретраев молча инвертирует классификацию ошибок outbox.
+        // Политики повторов Spiral здесь нет: повторами владеет только outbox — их число задаёт
+        // список пауз маршрута, а физического возврата задачи в RabbitMQ не происходит
+        // (`requeue_on_fail: false`). Интерсептор доставки дописывает сюда bootloader пакета
+        // gian-tiaga/spiral-outbox: он закрывает доставку и сам решает, повторить её или нет.
         'consume' => [
             ErrorHandlerInterceptor::class,
-            OutboxQueueStatusInterceptor::class,
-            RetryPolicyInterceptor::class,
         ],
     ],
 

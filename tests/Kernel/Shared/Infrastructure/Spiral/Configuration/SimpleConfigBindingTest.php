@@ -7,7 +7,6 @@ namespace Tests\Kernel\Shared\Infrastructure\Spiral\Configuration;
 use App\Shared\Infrastructure\Spiral\Configuration\Locale\LocaleConfig;
 use App\Modules\Auth\Infrastructure\Spiral\Configuration\MailerConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Migration\MigrationConfig;
-use App\Modules\Outbox\Infrastructure\Spiral\Configuration\OutboxConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationConfig;
 use App\Shared\Infrastructure\Spiral\Configuration\Scaffolder\ScaffolderDeclarationOptionsConfig;
@@ -50,7 +49,6 @@ final class SimpleConfigBindingTest extends TestCase
         $mailerConfig = $container->get(MailerConfig::class);
         $translatorConfig = $container->get(TranslatorConfig::class);
         $sessionConfig = $container->get(SessionConfig::class);
-        $outboxConfig = $container->get(OutboxConfig::class);
         $scaffolderConfig = $container->get(ScaffolderConfig::class);
 
         // Каталог миграций — заглушка внутри runtime-директории (файлы переехали в модули): в
@@ -68,12 +66,6 @@ final class SimpleConfigBindingTest extends TestCase
         self::assertSame(86400, $sessionConfig->lifetime);
         self::assertNull($sessionConfig->sameSite);
         self::assertNull($sessionConfig->handler);
-        self::assertSame(100, $outboxConfig->maxAttempts);
-        self::assertSame(10, $outboxConfig->maxConsecutiveRelayFailures);
-        self::assertSame(1, $outboxConfig->baseRelayRetryDelaySeconds);
-        self::assertSame(30, $outboxConfig->maxRelayRetryDelaySeconds);
-        self::assertSame(60, $outboxConfig->claimTimeoutSeconds);
-        self::assertSame(60, $outboxConfig->publishRetryDelaySeconds);
         self::assertSame('App', $scaffolderConfig->namespace);
         self::assertArrayHasKey('config', $scaffolderConfig->declarations);
         self::assertArrayHasKey('entity', $scaffolderConfig->defaults->declarations);
@@ -123,7 +115,6 @@ final class SimpleConfigBindingTest extends TestCase
         yield MailerConfig::class => [MailerConfig::class];
         yield TranslatorConfig::class => [TranslatorConfig::class];
         yield SessionConfig::class => [SessionConfig::class];
-        yield OutboxConfig::class => [OutboxConfig::class];
         yield ScaffolderConfig::class => [ScaffolderConfig::class];
     }
 }

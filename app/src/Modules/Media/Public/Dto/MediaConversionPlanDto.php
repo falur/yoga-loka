@@ -9,7 +9,7 @@ namespace App\Modules\Media\Public\Dto;
  * задаёт списки на тип, валидируется только список, относящийся к типу медиа.
  *
  * Все три списка несут точные PHPDoc-типы list<...Dto> — это условие восстановления вложенного
- * DTO через ValinorOutboxMessageSerializer (план кладётся в событие MediaUploadedEvent).
+ * DTO сериализатором пакета outbox (план кладётся в событие MediaUploadedEvent).
  */
 final readonly class MediaConversionPlanDto
 {

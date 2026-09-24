@@ -13,23 +13,17 @@ use App\Modules\Notifications\Application\Exception\CentrifugoPublishException;
 use App\Modules\Notifications\Application\Exception\FcmPushFailedException;
 use App\Modules\Notifications\Public\Event\NotificationPushRequestedEvent;
 use App\Modules\Notifications\Public\Event\NotificationRealtimeRequestedEvent;
-use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
 use App\Modules\Notifications\Domain\Entity\NotificationDeviceToken;
 use App\Modules\Notifications\Domain\Enum\DevicePlatform;
 use App\Modules\Notifications\Domain\ValueObject\DeviceToken;
-use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\PublishRealtimeNotificationJob;
 use App\Modules\Notifications\Infrastructure\Spiral\Job\SendPushNotificationJob;
 use App\Modules\Notifications\Domain\Repository\NotificationDeviceTokenRepository;
-use App\Modules\Outbox\Application\Contract\OutboxJobRegistryContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use Psr\Log\NullLogger;
-use Spiral\Queue\Exception\RetryException;
 use Tests\DatabaseTestCase;
 use App\Modules\Notifications\Tests\Support\PersistsMedia;
 
@@ -37,6 +31,8 @@ final class DeliveryJobTest extends DatabaseTestCase
 {
     use PersistsMedia;
 
+    /** Доставки с таким идентификатором нет: сценарии проверяют только классификацию сбоя. */
+    private const string DELIVERY_ID = '0190f3b1-0000-7000-8000-0000000000de';
 
     public function testPushJobRetriesOnTransientFailure(): void
     {
@@ -46,7 +42,7 @@ final class DeliveryJobTest extends DatabaseTestCase
         $fcmPushSender = $this->createStub(FcmPushSenderContract::class);
         $fcmPushSender->method('send')->willThrowException(FcmPushFailedException::transient(new \RuntimeException('down')));
 
-        $this->expectException(RetryException::class);
+        $this->expectException(RetryableOutboxException::class);
 
         $this->invokePushJob($userId, $this->pushHandler($fcmPushSender));
     }
@@ -69,7 +65,7 @@ final class DeliveryJobTest extends DatabaseTestCase
         $centrifugoService = $this->createStub(CentrifugoServiceContract::class);
         $centrifugoService->method('publish')->willThrowException(CentrifugoPublishException::serverError(503));
 
-        $this->expectException(RetryException::class);
+        $this->expectException(RetryableOutboxException::class);
 
         $this->invokeRealtimeJob($this->realtimeHandler($centrifugoService));
     }
@@ -84,18 +80,9 @@ final class DeliveryJobTest extends DatabaseTestCase
         $this->invokeRealtimeJob($this->realtimeHandler($centrifugoService));
     }
 
-    public function testJobRegistryMapsMessagesToJobs(): void
-    {
-        $registry = $this->getContainer()->get(OutboxJobRegistryContract::class);
-
-        self::assertSame(DispatchNotificationJob::class, $registry->jobFor($this->message(NotificationRequestedEvent::class)));
-        self::assertSame(SendPushNotificationJob::class, $registry->jobFor($this->message(NotificationPushRequestedEvent::class)));
-        self::assertSame(PublishRealtimeNotificationJob::class, $registry->jobFor($this->message(NotificationRealtimeRequestedEvent::class)));
-    }
-
     private function invokePushJob(UserId $userId, SendPushNotificationHandler $handler): void
     {
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new NotificationPushRequestedEvent(
             userId: $userId->value(),
             type: 'chat.message_received',
@@ -107,9 +94,8 @@ final class DeliveryJobTest extends DatabaseTestCase
         ));
 
         $this->getContainer()->get(SendPushNotificationJob::class)->invoke(
-            payload: $this->envelope(NotificationPushRequestedEvent::class),
-            id: 'push-job',
-            integrationEventLoader: $loader,
+            outboxDeliveryId: self::DELIVERY_ID,
+            outboxMessageLoader: $loader,
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             sendPushNotificationHandler: $handler,
             logger: new NullLogger(),
@@ -118,7 +104,7 @@ final class DeliveryJobTest extends DatabaseTestCase
 
     private function invokeRealtimeJob(PublishRealtimeNotificationHandler $handler): void
     {
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new NotificationRealtimeRequestedEvent(
             userId: UserId::generate()->value(),
             type: 'chat.message_received',
@@ -130,9 +116,8 @@ final class DeliveryJobTest extends DatabaseTestCase
         ));
 
         $this->getContainer()->get(PublishRealtimeNotificationJob::class)->invoke(
-            payload: $this->envelope(NotificationRealtimeRequestedEvent::class),
-            id: 'realtime-job',
-            integrationEventLoader: $loader,
+            outboxDeliveryId: self::DELIVERY_ID,
+            outboxMessageLoader: $loader,
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             publishRealtimeNotificationHandler: $handler,
             logger: new NullLogger(),
@@ -169,32 +154,5 @@ final class DeliveryJobTest extends DatabaseTestCase
             token: DeviceToken::fromString('fcm-token'),
             platform: DevicePlatform::Ios,
         ));
-    }
-
-    /**
-     * @param class-string<IntegrationEvent> $messageClass
-     */
-    private function envelope(string $messageClass): OutboxEnvelopeDto
-    {
-        return new OutboxEnvelopeDto(
-            outboxEventId: OutboxEventId::generate()->value(),
-            outboxEventType: $messageClass,
-        );
-    }
-
-    /**
-     * @param class-string<IntegrationEvent> $messageClass
-     */
-    private function message(string $messageClass): IntegrationEvent
-    {
-        return new $messageClass(
-            userId: UserId::generate()->value(),
-            type: 'chat.message_received',
-            title: 'Новое сообщение',
-            body: 'Вам пришло сообщение',
-            action: null,
-            actor: null,
-            createdAt: '2026-06-13T10:00:00+00:00',
-        );
     }
 }

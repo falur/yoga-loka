@@ -6,8 +6,8 @@ namespace App\Modules\Notifications\Application\Exception;
 
 /**
  * Временный сбой отправки push через FCM (недоступность/ошибка сервера) как часть контракта
- * FcmPushSenderContract. isTransient() = true: Job переводит его в RetryException. Невалидные токены
- * сбоем не считаются — они возвращаются в FcmPushResult для удаления.
+ * FcmPushSenderContract. isTransient() = true: Job переводит его в RetryableOutboxException.
+ * Невалидные токены сбоем не считаются — они возвращаются в FcmPushResult для удаления.
  *
  * Слой исключения определяется контрактом, к которому оно относится (Application/Contract),
  * а не местом выброса: бросает его инфраструктурная реализация KreaitFcmPushSender.

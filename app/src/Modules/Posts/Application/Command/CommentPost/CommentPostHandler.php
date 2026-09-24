@@ -63,7 +63,7 @@ final readonly class CommentPostHandler
 
         // Один прогон EntityManager на сценарий: комментарий с упоминаниями только ставятся в
         // очередь, а запись флашит всё разом своим save() — оба репозитория используют общий
-        // shared-singleton EntityManager запроса, как `LoginCodeRepository`/`StoredOutboxEventRepository`.
+        // shared-singleton EntityManager запроса, как `LoginCodeRepository`/`RegistrationTicketRepository`.
         $this->commentRepository->addWithMentions(comment: $comment, mentions: $mentions);
         $this->postRepository->save($post);
 

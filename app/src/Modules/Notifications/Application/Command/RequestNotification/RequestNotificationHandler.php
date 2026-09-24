@@ -10,21 +10,22 @@ use App\Modules\Notifications\Domain\ValueObject\NotificationActor;
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
 use App\Modules\Notifications\Public\Event\NotificationRequestedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
 use GianTiaga\SpiralCqrs\Attribute\Transactional;
 use Psr\Log\LoggerInterface;
 
 /**
- * Лёгкий триггер отправки: валидирует вид через каталог (fail-fast) и стейджит один
+ * Лёгкий триггер отправки: валидирует вид через каталог (fail-fast) и пишет один
  * NotificationRequestedEvent в outbox. Сценарий вызывается из транзакции источника, поэтому его
- * #[Transactional] вложенный и даёт SAVEPOINT, а EntityManager::run() здесь не вызывается — flush
- * делает Handler модуля-источника.
+ * #[Transactional] вложенный и даёт SAVEPOINT. EntityManager::run() здесь не вызывается и не
+ * нужен: хранилище пакета вставляет строку события сразу, а в одну транзакцию с данными
+ * источника её сводит внешняя транзакция.
  */
 final readonly class RequestNotificationHandler
 {
     public function __construct(
         private NotificationTypeCatalogContract $typeCatalog,
-        private IntegrationEventStoreContract $integrationEventStore,
+        private OutboxEventStoreContract $outboxEventStore,
         private LoggerInterface $logger,
     ) {}
 
@@ -39,7 +40,7 @@ final readonly class RequestNotificationHandler
             'type' => $command->type->value(),
         ]);
 
-        $outboxEventId = $this->integrationEventStore->add(new NotificationRequestedEvent(
+        $outboxEventId = $this->outboxEventStore->add(new NotificationRequestedEvent(
             userId: $command->recipient->value(),
             type: $command->type->value(),
             title: $command->title->value(),

@@ -8,6 +8,11 @@ parameters:
     # Интерфейс-маркер санкционированной массовой записи: пакет правил не знает классов
     # приложения, поэтому имя маркера объявляет сам проект.
     setBasedWriteMarkerInterface: 'App\Shared\Infrastructure\Persistence\Cycle\SetBasedWrite'
+    # Интерфейс-маркер интеграционного события: правило проверяет, что поля события описаны
+    # точными типами и у каждого есть одноимённый параметр конструктора — иначе событие не
+    # собрать обратно из полезной нагрузки. Имя контракта объявляет приложение: пакет правил
+    # не знает, каким outbox пользуется проект.
+    integrationEventInterface: 'GianTiaga\SpiralOutbox\IntegrationEventContract'
     # Объявления доступа маршрута: правило требует ровно одно из них на каждом методе с #[Route],
     # поэтому забытая декларация не доживает до выката. Список ведёт приложение: пакет правил
     # не знает публичных атрибутов модулей.
@@ -57,7 +62,7 @@ parameters:
             message: '#Call to function is_string\(\) with non-empty-string will always evaluate to true\.#'
             paths:
                 - app/src/Shared/Infrastructure/Persistence/Cycle/LazyGhostEntityFactory.php
-        # Девять миграций вызывают Cycle\Database\Schema\AbstractTable позиционно: тело написано до
+        # Восемь миграций вызывают Cycle\Database\Schema\AbstractTable позиционно: тело написано до
         # правила именованных аргументов, а массовый перевод на именованные не входил в задачу волны
         # (Access/Posts/User точечно правились позже — снятие межмодульных внешних ключей, — но
         # оставшийся код файлов не тронут, стиль вызовов не менялся). Все новые миграции уже
@@ -72,6 +77,5 @@ parameters:
                 - app/src/Modules/Media/Infrastructure/Persistence/Cycle/Migration/20260521.184100_0_create_media_domain_tables.php
                 - app/src/Modules/Media/Infrastructure/Persistence/Cycle/Migration/20260620.222100_0_create_media_audio_conversions_table.php
                 - app/src/Modules/Notifications/Infrastructure/Persistence/Cycle/Migration/20260613.130000_0_create_notification_domain_tables.php
-                - app/src/Modules/Outbox/Infrastructure/Persistence/Cycle/Migration/20260525.153700_0_create_outbox_events_table.php
                 - app/src/Modules/Posts/Infrastructure/Persistence/Cycle/Migration/20260617.160942_0_create_posts_domain_tables.php
                 - app/src/Modules/User/Infrastructure/Persistence/Cycle/Migration/20260613.143901_0_create_user_domain_tables.php

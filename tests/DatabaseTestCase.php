@@ -18,8 +18,8 @@ use Tests\Storage\FakeStorage;
  * таблиц. ORM heap чистится до и после теста, а storage по умолчанию заменён
  * fake-реализацией, чтобы DB-тест не ходил в MinIO.
  *
- * Тесты, которым нужен реальный commit, relay, queue status, console flow или
- * проверка транзакционного поведения, наследуются от
+ * Тесты, которым нужен реальный commit, проход outbox relay, статусы доставок, console flow
+ * или проверка транзакционного поведения, наследуются от
  * `Tests\NonTransactionalDatabaseTestCase`.
  */
 abstract class DatabaseTestCase extends TestCase

@@ -85,7 +85,7 @@ interface PostRepository
     /**
      * Ставит запись в текущую единицу работы без прогона: она уйдёт в базу тем прогоном, которым
      * Handler завершает запись сценария (своим или другого корня — EntityManager один на запрос).
-     * Тем же приёмом, что и `LoginCodeRepository::add()`/`StoredOutboxEventRepository::add()`,
+     * Тем же приёмом, что и `LoginCodeRepository::add()`/`RegistrationTicketRepository::add()`,
      * сохраняется прежняя граница ровно одного прогона на сценарий с двумя корнями (Post и Comment).
      */
     public function add(Post $post): void;

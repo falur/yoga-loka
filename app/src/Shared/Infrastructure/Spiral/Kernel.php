@@ -37,7 +37,6 @@ use App\Modules\Access\Infrastructure\Spiral\Bootloader\AccessBootloader;
 use App\Modules\Auth\Infrastructure\Spiral\Bootloader\AuthBootloader;
 use App\Modules\Media\Infrastructure\Spiral\Bootloader\MediaBootloader;
 use App\Modules\Notifications\Infrastructure\Spiral\Bootloader\NotificationsBootloader;
-use App\Modules\Outbox\Infrastructure\Spiral\Bootloader\OutboxBootloader;
 use App\Modules\Posts\Infrastructure\Spiral\Bootloader\PostsBootloader;
 use App\Modules\System\Infrastructure\Spiral\Bootloader\SystemBootloader;
 use App\Modules\Tags\Infrastructure\Spiral\Bootloader\TagsBootloader;
@@ -45,6 +44,7 @@ use App\Modules\User\Infrastructure\Spiral\Bootloader\UserBootloader;
 use GianTiaga\SpiralApiErrors\Bootloader\ApiErrorBootloader;
 use GianTiaga\SpiralCqrs\Bootloader\CqrsBootloader;
 use GianTiaga\SpiralOpenApi\Bootloader\OpenApiToolsBootloader;
+use GianTiaga\SpiralOutbox\Bootloader\OutboxBootloader;
 
 class Kernel extends \Spiral\Framework\Kernel
 {
@@ -105,6 +105,12 @@ class Kernel extends \Spiral\Framework\Kernel
             CycleBridge\DatabaseBootloader::class,
             CycleBridge\MigrationsBootloader::class,
 
+            // Обмен событиями: пакет дописывает свой каталог миграций в общий механизм,
+            // поэтому подключается сразу после bootloader миграций. Размер пачки relay задаёт
+            // общий bootloader приложения — у него нет владельца среди модулей.
+            OutboxBootloader::class,
+            Bootloader\OutboxRelayBootloader::class,
+
             // ORM
             CycleBridge\SchemaBootloader::class,
             CycleBridge\CycleOrmBootloader::class,
@@ -143,12 +149,11 @@ class Kernel extends \Spiral\Framework\Kernel
             OpenApiToolsBootloader::class,
             CqrsBootloader::class,
 
-            // Bootloader-ы девяти модулей. Порядок задан зависимостями по реестрам:
-            // Notifications берёт реестр Job из Outbox, Posts — реестр видов уведомлений из Notifications.
+            // Bootloader-ы восьми модулей. Порядок задан зависимостями по реестрам:
+            // Posts берёт реестр видов уведомлений из Notifications.
             AccessBootloader::class,
             TagsBootloader::class,
             UserBootloader::class,
-            OutboxBootloader::class,
             MediaBootloader::class,
             AuthBootloader::class,
             SystemBootloader::class,

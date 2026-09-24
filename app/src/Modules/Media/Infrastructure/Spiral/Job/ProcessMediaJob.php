@@ -11,19 +11,18 @@ use App\Modules\Media\Application\Command\RecordMediaProcessingFailure\RecordMed
 use App\Modules\Media\Application\Exception\MediaFileServiceFailedException;
 use App\Modules\Media\Application\Exception\MediaProcessorFailedException;
 use App\Modules\Media\Public\Event\MediaUploadedEvent;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use Psr\Log\LoggerInterface;
-use Spiral\Queue\Exception\RetryException;
 use Spiral\Queue\JobHandler;
 
 /**
- * Инфраструктурный Job обработки медиа. Грузит MediaUploadedEvent из outbox и запускает
- * ProcessMediaCommand. Ошибки обработки ловятся здесь (Job — граница системы, try-catch
+ * Инфраструктурный Job обработки медиа. Грузит MediaUploadedEvent по идентификатору доставки и
+ * запускает ProcessMediaCommand. Ошибки обработки ловятся здесь (Job — граница системы, try-catch
  * разрешён): фиксируем безопасную ошибку на Media и классифицируем — временную просим
- * повторить (RetryException, его читает OutboxQueueStatusInterceptor), постоянную пробрасываем
- * терминально (outbox -> failed). Статусы outbox Job сам не трогает.
+ * повторить (RetryableOutboxException, её читает интерсептор доставки пакета), постоянную
+ * пробрасываем терминально (доставка -> failed). Статусы доставки Job сам не трогает.
  */
 final class ProcessMediaJob extends JobHandler
 {
@@ -32,17 +31,16 @@ final class ProcessMediaJob extends JobHandler
     private const string PROCESSING_FAILURE_MESSAGE = 'Не удалось обработать медиа.';
 
     public function invoke(
-        OutboxEnvelopeDto $payload,
-        string $id,
-        IntegrationEventLoaderContract $integrationEventLoader,
+        string $outboxDeliveryId,
+        OutboxMessageLoaderContract $outboxMessageLoader,
         CommandBusInterface $commandBus,
         ProcessMediaHandler $processMediaHandler,
         RecordMediaProcessingFailureHandler $recordMediaProcessingFailureHandler,
         LoggerInterface $logger,
     ): void {
-        $mediaUploaded = $integrationEventLoader->load(
-            outboxEventId: $payload->outboxEventId,
-            expectedEventClass: MediaUploadedEvent::class,
+        $mediaUploaded = $outboxMessageLoader->load(
+            outboxDeliveryId: $outboxDeliveryId,
+            expectedMessageClass: MediaUploadedEvent::class,
         );
 
         try {
@@ -77,16 +75,15 @@ final class ProcessMediaJob extends JobHandler
             } catch (\Throwable $recordFailure) {
                 $logger->error(message: 'Не удалось записать ошибку обработки на медиа.', context: [
                     'mediaId' => $mediaUploaded->mediaId,
-                    'jobId' => $id,
+                    'outboxDeliveryId' => $outboxDeliveryId,
                     'recordErrorClass' => $recordFailure::class,
                     'originalErrorClass' => $exception::class,
-                    'errorMessage' => $recordFailure->getMessage(),
                 ]);
             }
 
             $logContext = [
                 'mediaId' => $mediaUploaded->mediaId,
-                'jobId' => $id,
+                'outboxDeliveryId' => $outboxDeliveryId,
                 'isTransient' => $isTransient,
                 'errorClass' => $exception::class,
             ];
@@ -103,7 +100,7 @@ final class ProcessMediaJob extends JobHandler
                     ? self::PROCESSING_RETRY_MESSAGE
                     : self::STORAGE_FAILURE_MESSAGE;
 
-                throw new RetryException(reason: $retryReason);
+                throw new RetryableOutboxException(message: $retryReason);
             }
 
             // Постоянный сбой (битый файл/нарушение инварианта) -> ERROR, повтора не будет.

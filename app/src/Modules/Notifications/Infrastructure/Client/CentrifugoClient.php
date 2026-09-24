@@ -140,7 +140,8 @@ final readonly class CentrifugoClient
     /**
      * Centrifugo на логический отказ публикации (неизвестный канал/namespace, лимиты, отклонение
      * proxy) отвечает кодом 200 с объектом `error` в теле. Без разбора тела такой отказ молча
-     * считался бы успехом и outbox-событие помечалось бы handled с потерей realtime-уведомления.
+     * считался бы успехом и доставка outbox закрылась бы как `completed` с потерей
+     * realtime-уведомления.
      */
     private function ensureNoApiError(string $body): void
     {

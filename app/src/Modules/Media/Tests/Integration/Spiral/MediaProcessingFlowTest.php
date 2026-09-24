@@ -23,19 +23,18 @@ use App\Modules\Media\Domain\ValueObject\MediaFileSize;
 use App\Modules\Media\Domain\ValueObject\MediaPath;
 use App\Modules\Media\Domain\ValueObject\MediaProcessingError;
 use App\Modules\Media\Infrastructure\Spiral\Configuration\MediaConfig;
+use App\Modules\Media\Infrastructure\Spiral\Job\ProcessMediaJob;
 use Symfony\Component\Process\Process;
-use App\Modules\Outbox\Domain\Enum\OutboxEventStatus;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
-use App\Modules\Outbox\Domain\ValueObject\OutboxRelayBatchSize;
-use App\Modules\Outbox\Infrastructure\Relay\OutboxRelay;
-use App\Modules\Outbox\Domain\Repository\StoredOutboxEventRepository;
 use App\Shared\Domain\ValueObject\UserId;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\OutboxDeliveryStatus;
 use Tests\Support\Outbox\CleansOutboxEvents;
+use Tests\Support\Outbox\RunsOutboxRelay;
 
 final class MediaProcessingFlowTest extends MediaApplicationTestCase
 {
     use CleansOutboxEvents;
+    use RunsOutboxRelay;
 
     /**
      * @var list<array{storage: MediaStorage, path: MediaPath}>
@@ -56,9 +55,12 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         $media = $this->uploadedOriginal($bytes, MediaVisibility::Public);
 
         $this->completeUpload($media, $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)));
-        $publishedCount = $this->relay();
+        $this->runOutboxRelayPass();
 
-        self::assertSame(1, $publishedCount);
+        // Проход relay создал доставку по маршруту события и выполнил её Job: подключение очереди
+        // в тестах — `sync`, поэтому исход доставки известен сразу.
+        $delivery = $this->outboxDeliveryOf(ProcessMediaJob::class);
+        self::assertSame(OutboxDeliveryStatus::Completed, $delivery->status);
 
         $processedMedia = $this->mediaRepository()->findById($media->id);
         self::assertNotNull($processedMedia);
@@ -141,7 +143,8 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         );
 
         $this->completeUpload($media, $this->videoPlan($this->videoConversionSpec(width: 640, height: 480)));
-        self::assertSame(1, $this->relay());
+        $this->runOutboxRelayPass();
+        self::assertSame(OutboxDeliveryStatus::Completed, $this->outboxDeliveryOf(ProcessMediaJob::class)->status);
 
         $processedMedia = $this->mediaRepository()->findById($media->id);
         self::assertNotNull($processedMedia);
@@ -181,7 +184,8 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         );
 
         $this->completeUpload($media, $this->audioPlan($this->audioConversionSpec(waveformPeaks: 48)));
-        self::assertSame(1, $this->relay());
+        $this->runOutboxRelayPass();
+        self::assertSame(OutboxDeliveryStatus::Completed, $this->outboxDeliveryOf(ProcessMediaJob::class)->status);
 
         $processedMedia = $this->mediaRepository()->findById($media->id);
         self::assertNotNull($processedMedia);
@@ -214,7 +218,8 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         );
 
         $this->completeUpload($media, $this->emptyPlan());
-        self::assertSame(1, $this->relay());
+        $this->runOutboxRelayPass();
+        self::assertSame(OutboxDeliveryStatus::Completed, $this->outboxDeliveryOf(ProcessMediaJob::class)->status);
 
         $processedMedia = $this->mediaRepository()->findById($media->id);
         self::assertNotNull($processedMedia);
@@ -233,27 +238,60 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         self::assertNotNull($this->fileService()->headObject(MediaStorage::Public, $readyPath));
     }
 
-    public function testProcessingFailureRecordsErrorAndFailsOutbox(): void
+    public function testPermanentProcessingFailureRecordsErrorAndClosesDeliveryFinally(): void
     {
         $corruptBytes = \random_bytes(2048);
         $media = $this->uploadedOriginal($corruptBytes, MediaVisibility::Public);
 
-        $outboxEventId = $this->completeUpload(
+        $this->completeUpload(
             $media,
             $this->imagePlan($this->imageConversionSpec(PublicMediaImageConversionType::Thumbnail)),
         );
-        $publishedCount = $this->relay();
-
-        self::assertSame(0, $publishedCount);
+        $this->runOutboxRelayPass();
 
         $failedMedia = $this->mediaRepository()->findById($media->id);
         self::assertNotNull($failedMedia);
         self::assertSame(MediaStatus::ProcessingFailed, $failedMedia->status);
         self::assertFalse($failedMedia->processingError->isEmpty());
 
-        $outboxEvent = $this->getContainer()->get(StoredOutboxEventRepository::class)->findById($outboxEventId);
-        self::assertNotNull($outboxEvent);
-        self::assertSame(OutboxEventStatus::Failed, $outboxEvent->status);
+        // Битый файл — постоянный сбой обработчика, повтора он не заслуживает: доставка закрыта
+        // окончательно, а не возвращена в очередь.
+        $delivery = $this->outboxDeliveryOf(ProcessMediaJob::class);
+        self::assertSame(OutboxDeliveryStatus::Failed, $delivery->status);
+    }
+
+    public function testFailedScenarioDoesNotStageEventAndLeavesNeighbourDeliveriesAlone(): void
+    {
+        // Соседняя доставка уже закрыта успехом: её состояние не должно измениться от чужого отказа.
+        $readyMedia = $this->uploadedOriginal($this->jpegBytes(), MediaVisibility::Public);
+        $this->completeUpload($readyMedia, $this->emptyPlan());
+        $this->runOutboxRelayPass();
+        $neighbourDelivery = $this->outboxDeliveryOf(ProcessMediaJob::class);
+        self::assertSame(OutboxDeliveryStatus::Completed, $neighbourDelivery->status);
+
+        $eventCountBeforeFailure = $this->outboxEventCount();
+
+        // Отказ сценария: подтверждение загрузки для несуществующего медиа.
+        try {
+            $this->getContainer()->get(CommandBusInterface::class)->dispatch(
+                command: new CompleteMediaUploadCommand(
+                    userId: $readyMedia->uploadedById->value(),
+                    mediaId: UserId::generate()->value(),
+                    plan: $this->emptyPlan(),
+                    parts: null,
+                ),
+                handler: $this->getContainer()->get(CompleteMediaUploadHandler::class)->handle(...),
+            );
+            self::fail('Ожидался отказ подтверждения загрузки.');
+        } catch (\Throwable) {
+            // Отказ ожидаем: проверяется его след в обмене, а не тип исключения.
+        }
+
+        self::assertSame($eventCountBeforeFailure, $this->outboxEventCount());
+        self::assertSame(
+            $neighbourDelivery->status,
+            $this->outboxDeliveryOf(ProcessMediaJob::class)->status,
+        );
     }
 
     private function uploadedOriginal(
@@ -284,7 +322,7 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         return $media;
     }
 
-    private function completeUpload(Media $media, MediaConversionPlanDto $plan): OutboxEventId
+    private function completeUpload(Media $media, MediaConversionPlanDto $plan): void
     {
         $this->getContainer()->get(CommandBusInterface::class)->dispatch(
             command: new CompleteMediaUploadCommand(
@@ -294,23 +332,6 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
                 parts: null,
             ),
             handler: $this->getContainer()->get(CompleteMediaUploadHandler::class)->handle(...),
-        );
-
-        $outboxEvent = $this->getContainer()->get(StoredOutboxEventRepository::class)->findPendingForRelay(
-            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
-            now: new \DateTimeImmutable(),
-        )->first();
-
-        self::assertNotNull($outboxEvent);
-
-        return $outboxEvent->id;
-    }
-
-    private function relay(): int
-    {
-        return $this->getContainer()->get(OutboxRelay::class)->relay(
-            outboxRelayBatchSize: OutboxRelayBatchSize::fromInt(10),
-            now: new \DateTimeImmutable('2099-01-01 00:00:00'),
         );
     }
 
@@ -379,6 +400,10 @@ final class MediaProcessingFlowTest extends MediaApplicationTestCase
         }
 
         $this->createdObjects = [];
+
+        // Тест не обёрнут в транзакцию с откатом, поэтому убирает свои строки обмена сам: иначе
+        // они дожили бы до следующего теста того же worker-а и сломали его счёт событий.
+        $this->cleanOutboxEvents();
 
         parent::tearDown();
     }

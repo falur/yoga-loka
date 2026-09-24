@@ -6,14 +6,14 @@ namespace App\Modules\Notifications\Public\Event;
 
 use App\Modules\Notifications\Public\Dto\NotificationActionDto;
 use App\Modules\Notifications\Public\Dto\NotificationActorDto;
-use App\Modules\Outbox\Public\Contract\IntegrationEvent;
+use GianTiaga\SpiralOutbox\IntegrationEventContract;
 
 /**
  * Запрос на realtime-доставку (Centrifugo), который фоновая рассылка стейджит, когда канал realtime
  * включён. Payload — только примитивы (action — nullable DTO, actor — снимок автора либо null).
  * После commit-а relay запускает PublishRealtimeNotificationJob.
  */
-final readonly class NotificationRealtimeRequestedEvent implements IntegrationEvent
+final readonly class NotificationRealtimeRequestedEvent implements IntegrationEventContract
 {
     public function __construct(
         public string $userId,

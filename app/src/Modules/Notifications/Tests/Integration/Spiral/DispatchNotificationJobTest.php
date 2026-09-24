@@ -14,53 +14,66 @@ use App\Modules\Notifications\Infrastructure\Spiral\Registry\NotificationTypeReg
 use App\Modules\Notifications\Infrastructure\Spiral\Job\DispatchNotificationJob;
 use App\Modules\Notifications\Domain\Repository\NotificationRepository;
 use App\Modules\Notifications\Domain\Repository\NotificationSettingRepository;
-use App\Modules\Outbox\Public\Contract\IntegrationEventStoreContract;
-use App\Modules\Outbox\Public\Contract\IntegrationEventLoaderContract;
-use App\Modules\Outbox\Public\Dto\OutboxEnvelopeDto;
-use App\Modules\Outbox\Domain\ValueObject\OutboxEventId;
 use App\Shared\Domain\ValueObject\UserId;
 use Cycle\ORM\EntityManagerInterface;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
+use GianTiaga\SpiralOutbox\Exception\RetryableOutboxException;
+use GianTiaga\SpiralOutbox\OutboxEventStoreContract;
+use GianTiaga\SpiralOutbox\OutboxMessageLoaderContract;
 use Psr\Log\NullLogger;
-use Spiral\Queue\Exception\RetryException;
 use Tests\DatabaseTestCase;
 use App\Modules\Notifications\Tests\Unit\Application\Fixture\FixtureNotificationTypeDefinition;
 use Tests\Support\Notifications\RecordingOutboxEventStore;
+use Tests\Support\Outbox\CleansOutboxEvents;
+use Tests\Support\Outbox\RunsOutboxRelay;
 
 final class DispatchNotificationJobTest extends DatabaseTestCase
 {
+    use CleansOutboxEvents;
+    use RunsOutboxRelay;
+
     private const string TYPE = 'chat.message_received';
+    /** Доставки с таким идентификатором нет: сценарий проверяет только классификацию сбоя. */
+    private const string MISSING_DELIVERY_ID = '0190f3b1-0000-7000-8000-0000000000de';
+
+    #[\Override]
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Доставка ищется по классу Job, поэтому тест начинает с пустых таблиц обмена: чужая
+        // строка того же Job от соседа по worker-у сделала бы выбор неоднозначным.
+        $this->cleanOutboxEvents();
+    }
 
     public function testDelegatesToDispatchHandlerAndCreatesInbox(): void
     {
         $this->getContainer()->get(NotificationTypeRegistryContract::class)
             ->register(FixtureNotificationTypeDefinition::allChannels(self::TYPE));
 
-        $eventId = $this->stageNotificationRequested(UserId::generate());
+        $deliveryId = $this->stageNotificationRequested(UserId::generate());
 
         $this->getContainer()->get(DispatchNotificationJob::class)->invoke(
-            payload: $this->envelope($eventId),
-            id: 'job-1',
-            integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
+            outboxDeliveryId: $deliveryId,
+            outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             dispatchNotificationHandler: $this->getContainer()->get(DispatchNotificationHandler::class),
             logger: new NullLogger(),
         );
 
-        $inbox = $this->notificationRepository()->findByOutboxId(NotificationOutboxId::fromString($eventId->value()));
+        $inbox = $this->notificationRepository()->findByOutboxId(NotificationOutboxId::fromString($deliveryId));
         self::assertInstanceOf(Notification::class, $inbox);
     }
 
     public function testRethrowsTerminalDomainErrorForUnknownType(): void
     {
-        $eventId = $this->stageNotificationRequested(UserId::generate());
+        $deliveryId = $this->stageNotificationRequested(UserId::generate());
 
         $this->expectException(NotificationTypeRegistryException::class);
 
         $this->getContainer()->get(DispatchNotificationJob::class)->invoke(
-            payload: $this->envelope($eventId),
-            id: 'job-2',
-            integrationEventLoader: $this->getContainer()->get(IntegrationEventLoaderContract::class),
+            outboxDeliveryId: $deliveryId,
+            outboxMessageLoader: $this->getContainer()->get(OutboxMessageLoaderContract::class),
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             dispatchNotificationHandler: $this->getContainer()->get(DispatchNotificationHandler::class),
             logger: new NullLogger(),
@@ -80,11 +93,11 @@ final class DispatchNotificationJobTest extends DatabaseTestCase
             notificationRepository: $failingNotificationRepository,
             notificationSettingRepository: $this->getContainer()->get(NotificationSettingRepository::class),
             typeCatalog: $registry,
-            integrationEventStore: new RecordingOutboxEventStore(),
+            outboxEventStore: new RecordingOutboxEventStore(),
             logger: new NullLogger(),
         );
 
-        $loader = $this->createStub(IntegrationEventLoaderContract::class);
+        $loader = $this->createStub(OutboxMessageLoaderContract::class);
         $loader->method('load')->willReturn(new NotificationRequestedEvent(
             userId: UserId::generate()->value(),
             type: self::TYPE,
@@ -95,21 +108,24 @@ final class DispatchNotificationJobTest extends DatabaseTestCase
             createdAt: '2026-06-13T10:00:00+00:00',
         ));
 
-        $this->expectException(RetryException::class);
+        $this->expectException(RetryableOutboxException::class);
 
         $this->getContainer()->get(DispatchNotificationJob::class)->invoke(
-            payload: $this->envelope(OutboxEventId::fromString(NotificationOutboxId::generate()->value())),
-            id: 'job-3',
-            integrationEventLoader: $loader,
+            outboxDeliveryId: self::MISSING_DELIVERY_ID,
+            outboxMessageLoader: $loader,
             commandBus: $this->getContainer()->get(CommandBusInterface::class),
             dispatchNotificationHandler: $handler,
             logger: new NullLogger(),
         );
     }
 
-    private function stageNotificationRequested(UserId $userId): OutboxEventId
+    /**
+     * Кладёт событие и выполняет первый этап relay: по маршруту появляется строка доставки, её
+     * идентификатор и есть ключ идемпотентности рассылки.
+     */
+    private function stageNotificationRequested(UserId $userId): string
     {
-        $storedOutboxEventId = $this->getContainer()->get(IntegrationEventStoreContract::class)->add(new NotificationRequestedEvent(
+        $this->getContainer()->get(OutboxEventStoreContract::class)->add(new NotificationRequestedEvent(
             userId: $userId->value(),
             type: self::TYPE,
             title: 'Новое сообщение',
@@ -119,16 +135,9 @@ final class DispatchNotificationJobTest extends DatabaseTestCase
             createdAt: '2026-06-13T10:00:00+00:00',
         ));
         $this->getContainer()->get(EntityManagerInterface::class)->run();
+        $this->routeOutboxEvents();
 
-        return OutboxEventId::fromString($storedOutboxEventId);
-    }
-
-    private function envelope(OutboxEventId $eventId): OutboxEnvelopeDto
-    {
-        return new OutboxEnvelopeDto(
-            outboxEventId: $eventId->value(),
-            outboxEventType: NotificationRequestedEvent::class,
-        );
+        return $this->outboxDeliveryOf(DispatchNotificationJob::class)->outboxDeliveryId;
     }
 
     private function notificationRepository(): NotificationRepository

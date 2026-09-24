@@ -6,17 +6,17 @@
 
 ## Когда применять
 
-Применяй для регулярной или служебной операции, запускаемой из консоли: relay, пересчёт, выгрузка, разовое обслуживание своих данных.
+Применяй для регулярной или служебной операции, запускаемой из консоли: пересчёт, выгрузка, очистка, разовое обслуживание своих данных. Команды самого обмена (`outbox:relay` и `outbox:status`) даёт пакет `gian-tiaga/spiral-outbox`, и своих команд обмена проект не пишет.
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-namespace App\Modules\Outbox\Infrastructure\Spiral\Console;
+namespace App\Modules\Media\Infrastructure\Spiral\Console;
 
-use App\Modules\Outbox\Application\Command\RelayOutbox\RelayOutboxCommand;
-use App\Modules\Outbox\Application\Command\RelayOutbox\RelayOutboxHandler;
+use App\Modules\Media\Application\Command\PurgeExpiredUploads\PurgeExpiredUploadsCommand;
+use App\Modules\Media\Application\Command\PurgeExpiredUploads\PurgeExpiredUploadsHandler;
 use GianTiaga\SpiralCqrs\CommandBusInterface;
 use Spiral\Console\Attribute\Argument;
 use Spiral\Console\Attribute\AsCommand;
@@ -25,36 +25,32 @@ use Spiral\Console\Command;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 #[AsCommand(
-    name: 'outbox:relay',
-    description: 'Переложить pending outbox-события в очередь',
+    name: 'media:purge-expired',
+    description: 'Удалить просроченные незавершённые загрузки',
 )]
-final class OutboxRelayCommand extends Command
+final class PurgeExpiredUploadsCommand extends Command
 {
     #[Argument(description: 'Размер одной пачки')]
     public int $limit = 100;
 
-    #[Option(description: 'Запускать постоянно')]
-    public bool $loop = false;
-
-    #[Option(name: 'sleep', description: 'Пауза между пустыми пачками')]
-    public int $sleepSeconds = 1;
+    #[Option(name: 'dry-run', description: 'Только показать, ничего не удалять')]
+    public bool $dryRun = false;
 
     public function perform(
         CommandBusInterface $commandBus,
-        RelayOutboxHandler $relayOutboxHandler,
+        PurgeExpiredUploadsHandler $purgeExpiredUploadsHandler,
     ): int {
         // Команда — тонкая обёртка: Spiral приводит ввод к типам свойств,
         // а диапазон значений проверяют доменные типы внутри сценария.
-        $publishedCount = $commandBus->dispatch(
-            command: new RelayOutboxCommand(
+        $purgedCount = $commandBus->dispatch(
+            command: new PurgeExpiredUploadsCommand(
                 batchSize: $this->limit,
-                loop: $this->loop,
-                sleepSeconds: $this->sleepSeconds,
+                dryRun: $this->dryRun,
             ),
-            handler: $relayOutboxHandler->handle(...),
+            handler: $purgeExpiredUploadsHandler->handle(...),
         );
 
-        $this->info(\sprintf('Outbox relay обработал событий: %d', $publishedCount));
+        $this->info(\sprintf('Удалено просроченных загрузок: %d', $purgedCount));
 
         return SymfonyCommand::SUCCESS;
     }
@@ -72,4 +68,4 @@ final class OutboxRelayCommand extends Command
 
 ## Допустимые варианты
 
-Долгий режим (`--loop`) остаётся флагом сценария, а не вторым классом команды. Команда, у которой нет разумного значения по умолчанию, объявляет свойство без значения и получает обязательный аргумент.
+Долгий режим остаётся флагом сценария, а не вторым классом команды. Команда, у которой нет разумного значения по умолчанию, объявляет свойство без значения и получает обязательный аргумент.

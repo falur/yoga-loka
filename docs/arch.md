@@ -89,11 +89,11 @@ app/
 tests/                                 сквозные и межмодульные проверки
 ```
 
-Состав модулей: `Access`, `Auth`, `Media`, `Notifications`, `Outbox`, `Posts`, `System`, `Tags`, `User`.
+Состав модулей: `Access`, `Auth`, `Media`, `Notifications`, `Posts`, `System`, `Tags`, `User`.
 
 Дерево — целевая номенклатура разделов, а не опись существующих каталогов: раздел заводится вместе с первым своим классом, поэтому часть имён сегодня не занята ни одним модулем — `Domain/Event`, `Infrastructure/Cache` и `Shared/Application`. Папки внутри `Infrastructure/Spiral` создаются только при наличии соответствующего адаптера. Отдельного верхнеуровневого `Presentation` и папки `Infrastructure/Spiral/Presentation` нет. Папка `Tests/Common` не используется. В `Tests/Support` лежат помощники и фикстуры, которые нужны больше чем одному виду тестов модуля; помощник одного вида остаётся внутри него.
 
-Верхнеуровневый список `Infrastructure/{Cache,Client,Storage}` представительный, а не исчерпывающий: каждая технология собирается в явно названной границе модуля-владельца (принцип — в разделе «Границы слоёв → Infrastructure»). Текущие дополнительные названные границы: `Media/Infrastructure/{Ffmpeg,Imagick}` (внешние библиотеки обработки медиа) и `Outbox/Infrastructure/{Relay,Serializer}` (не-Spiral технические границы очереди и сериализации).
+Верхнеуровневый список `Infrastructure/{Cache,Client,Storage}` представительный, а не исчерпывающий: каждая технология собирается в явно названной границе модуля-владельца (принцип — в разделе «Границы слоёв → Infrastructure»). Текущая дополнительная названная граница — `Media/Infrastructure/{Ffmpeg,Imagick}` (внешние библиотеки обработки медиа). Очередь и гарантированную доставку держит пакет `gian-tiaga/spiral-outbox`, поэтому собственной границы у них в модулях нет.
 
 ## Имена ролей
 
@@ -205,11 +205,11 @@ Kernel         -> bootloader-ы модулей, общие bootloader-ы Shared/
 
 - `Application` зависит от собственного `Public`, потому что именно Application решает, какое доменное действие становится интеграционным событием, и собирает публичный DTO своего модуля.
 - `Application` зависит от `Shared/Domain`: это общие примитивы без владельца — `TypedCollection`, `CursorSlice`, `Locale`, `UserId`.
-- `Infrastructure` модуля и его `Infrastructure/Spiral` — один слой, разделённый только ради изоляции прямой зависимости от Spiral, поэтому зависят друг от друга: типизированный `{Name}Config` лежит в `Infrastructure/Spiral/Configuration`, а читают его в том числе не-Spiral адаптеры (`Storage`, `Client`, `Ffmpeg`, `Imagick`, `Relay`).
+- `Infrastructure` модуля и его `Infrastructure/Spiral` — один слой, разделённый только ради изоляции прямой зависимости от Spiral, поэтому зависят друг от друга: типизированный `{Name}Config` лежит в `Infrastructure/Spiral/Configuration`, а читают его в том числе не-Spiral адаптеры (`Storage`, `Client`, `Ffmpeg`, `Imagick`).
 - `Infrastructure/Spiral` зависит от собственного `Domain`: bootloader связывает интерфейсы `Domain/Repository` с их реализациями Cycle, а Resource отображает доменный enum.
-- `Kernel` подключает не только bootloader-ы модулей: шесть общих bootloader-ов приложения (`AnnotationsBootloader`, `ConfigBootloader`, `ExceptionHandlerBootloader`, `LoggingBootloader`, `RoutesBootloader`, `AppBootloader`) лежат в `Shared/Infrastructure/Spiral/Bootloader`, поэтому `Shared/Infrastructure` для него открыт.
+- `Kernel` подключает не только bootloader-ы модулей: семь общих bootloader-ов приложения (`AnnotationsBootloader`, `ConfigBootloader`, `ExceptionHandlerBootloader`, `LoggingBootloader`, `OutboxRelayBootloader`, `RoutesBootloader`, `AppBootloader`) лежат в `Shared/Infrastructure/Spiral/Bootloader`, поэтому `Shared/Infrastructure` для него открыт. `OutboxRelayBootloader` задаёт размер пачки прохода relay: секцией `outbox` владеет пакет, а размер пачки не принадлежит ни одному модулю — один процесс relay обслуживает события всех.
 
-Runtime собственных Composer-пакетов (bootloader-ы, middleware, интерсепторы, генератор OpenAPI) — такая же прямая зависимость от Spiral, поэтому допущен только в `Infrastructure/Spiral`, `Shared/Infrastructure` и Kernel. Нейтральные контракты тех же пакетов — атрибуты `#[Transactional]`, `#[LogOperation]` и интерфейсы шин `GianTiaga\SpiralCqrs` — относятся к сценарию и доступны `Application`, `Public` и Infrastructure; `#[Transactional]` предписан разделом «Транзакции». Базовый переводимый контракт `GianTiaga\SpiralApiErrors\Exception\TranslatableException` доменные исключения модулей получают по наследству через `Shared/Domain` — см. «Осознанные отступления».
+Runtime собственных Composer-пакетов (bootloader-ы, middleware, интерсепторы, консольные команды, генератор OpenAPI, relay и интерсептор доставки `GianTiaga\SpiralOutbox`) — такая же прямая зависимость от Spiral, поэтому допущен только в `Infrastructure/Spiral`, `Shared/Infrastructure` и Kernel. Нейтральные контракты тех же пакетов — атрибуты `#[Transactional]`, `#[LogOperation]`, интерфейсы шин `GianTiaga\SpiralCqrs` и контракты события, хранилища и загрузчика `GianTiaga\SpiralOutbox` — относятся к сценарию и доступны `Application`, `Public` и Infrastructure; `#[Transactional]` предписан разделом «Транзакции». Базовый переводимый контракт `GianTiaga\SpiralApiErrors\Exception\TranslatableException` доменные исключения модулей получают по наследству через `Shared/Domain` — см. «Осознанные отступления».
 
 ## Проверка границ
 
@@ -223,7 +223,7 @@ Runtime собственных Composer-пакетов (bootloader-ы, middlewar
 
 - Область анализа — `app/src` без `app/src/Modules/*/Tests/*`. `Tests` не является слоем таблицы направлений; это та же область, которую проект уже зафиксировал для PHPStan; фикстуре интеграционного теста нужно готовить состояния, которых публичный контракт соседа не выражает.
 - Правило «каждая технология собрана в явно названной границе» инструментом не проверяется: `FFMpeg`, `Intervention\Image`, `Aws`, `CuyZ\Valinor` и прочий нейтральный вендор в слои не вынесены и остаются непокрытыми зависимостями — формально любой модуль может их импортировать без нарушения.
-- Слой `Kernel` получает доступ к `{Module}Infrastructure/Spiral` целиком, а не к одним bootloader-ам модулей: слои deptrac обязаны быть взаимоисключающими, а bootloader лежит внутри `Infrastructure/Spiral`. Фактически `Kernel.php` импортирует ровно девять классов `{Module}Bootloader`, но импорт другого Spiral-класса модуля инструмент не запретит.
+- Слой `Kernel` получает доступ к `{Module}Infrastructure/Spiral` целиком, а не к одним bootloader-ам модулей: слои deptrac обязаны быть взаимоисключающими, а bootloader лежит внутри `Infrastructure/Spiral`. Фактически `Kernel.php` импортирует ровно восемь классов `{Module}Bootloader`, но импорт другого Spiral-класса модуля инструмент не запретит.
 
 ## Владение данными
 
@@ -290,13 +290,17 @@ Infrastructure/Spiral/{Transport} модуля A
 Command handler
   -> меняет агрегат
   -> создаёт Public/Event
-  -> сохраняет событие в outbox в той же транзакции
+  -> кладёт событие в хранилище пакета outbox в той же транзакции
   -> commit
 
-Outbox relay -> RabbitMQ -> Job модуля-потребителя -> Application handler потребителя
+outbox:relay
+  -> создаёт доставку на каждый маршрут события
+  -> отправляет доставку задачей в очередь назначения RabbitMQ
+
+Очередь -> Job модуля-потребителя -> Application handler потребителя
 ```
 
-Доставка имеет семантику at-least-once, потребитель идемпотентен по идентификатору outbox-события. Событие содержит только минимальные стабильные данные, без Entity, приватных полей и сырых ответов внешних сервисов.
+Обмен держит пакет `gian-tiaga/spiral-outbox`; маршруты события объявляет bootloader модуля-потребителя. Повторами владеет только outbox: их число задаёт список пауз маршрута, физического возврата задачи в RabbitMQ нет. Доставка имеет семантику at-least-once, потребитель идемпотентен по идентификатору доставки. Событие неизменяемо и общего статуса не имеет: успех одной доставки не закрывает соседние доставки того же события. Событие содержит только минимальные стабильные данные, без Entity, приватных полей и сырых ответов внешних сервисов.
 
 ## Потоки
 
@@ -333,7 +337,7 @@ OpenAPI генерируется из типизированных Controller, F
 
 - `app-http` — RoadRunner HTTP и consumer задач RabbitMQ;
 - `temporal-worker` — worker очереди Temporal `default`;
-- один постоянный `outbox:relay --loop`.
+- один постоянный `outbox:relay --loop` — создаёт доставки по маршрутам события и отправляет их в очередь назначения.
 
 Инфраструктура: PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit, Temporal, Temporal UI, Centrifugo. Redis — кэш, сессии и RoadRunner KV; основной брокер очередей — RabbitMQ.
 
@@ -342,7 +346,7 @@ OpenAPI генерируется из типизированных Controller, F
 - файлы и S3/MinIO — `Media`;
 - почта входа — `Auth`;
 - push и Centrifugo — `Notifications`;
-- очередь и гарантированная доставка — `Outbox`;
+- очередь и гарантированная доставка — пакет `gian-tiaga/spiral-outbox`, владельца-модуля у этой границы нет;
 - HTTP, OpenAPI и диагностика — `System` и `Infrastructure/Spiral` модулей.
 
 ## Осознанные отступления
@@ -359,9 +363,9 @@ OpenAPI генерируется из типизированных Controller, F
 
 Доменная модель ролей и прав готова (`app/src/Modules/Access/Domain/{Entity,ValueObject,Enum,Collection,Repository}`), `AccessBootloader` зарегистрирован в `Shared/Infrastructure/Spiral/Kernel`. Разделов `Application` и `Public` у модуля нет, публичного атрибута доступа он не предоставляет: в продукте сегодня нет маршрутов служебных действий, которым нужны его права. Разделы не создаются без кода и появятся вместе с первым таким маршрутом.
 
-### Пара `add()`/`save()` в пяти доменных Repository
+### Пара `add()`/`save()` в четырёх доменных Repository
 
-`RegistrationTicketRepository` и `LoginCodeRepository` (Auth), `StoredOutboxEventRepository` (Outbox), `PostRepository` и `CommentRepository` (Posts) объявляют оба метода: `add()` ставит агрегат в текущую запись без прогона, `save()` сохраняет своим прогоном вместе со всем, что уже поставлено. Это делает единицу работы видимой в доменном интерфейсе — цена за сценарии с несколькими корнями агрегатов, которым нужен ровно один прогон `EntityManager`. Семантика одинакова во всех пяти и описана докблоком в каждом интерфейсе.
+`RegistrationTicketRepository` и `LoginCodeRepository` (Auth), `PostRepository` и `CommentRepository` (Posts) объявляют оба метода: `add()` ставит агрегат в текущую запись без прогона, `save()` сохраняет своим прогоном вместе со всем, что уже поставлено. Это делает единицу работы видимой в доменном интерфейсе — цена за сценарии с несколькими корнями агрегатов, которым нужен ровно один прогон `EntityManager`. Семантика одинакова во всех четырёх и описана докблоком в каждом интерфейсе.
 
 ### `DomainTranslatableException` импортирует `GianTiaga\SpiralApiErrors`
 
@@ -369,7 +373,7 @@ OpenAPI генерируется из типизированных Controller, F
 
 ### Четыре общих исключения `Shared/Domain/Exception` без потребителя в `app/src`
 
-`NotFoundException`, `ForbiddenException`, `ValidationException` и `AuthenticationException` не выбрасывает ни один класс `app/src`: модули, которым нужны собственные исключения, завели их сами — переводимые доменные поверх `DomainTranslatableException` (Auth, Media, Notifications, Posts, System, User) и технические поверх `\DomainException` или `\Exception` (Media, Notifications, Outbox, System); у `Access` и `Tags` собственных исключений нет вовсе. Четыре общих остаются как переиспользуемые примитивы без владельца-модуля; их поведение закреплено `tests/Unit/Shared/Domain/Exception/ApiDomainExceptionTest.php` и тестовым контроллером `tests/App/Modules/System/Http/ApiErrorTestController.php`, который проверяет общий механизм `spiral-api-errors` независимо от бизнес-модуля. Удаление стоило бы либо этой сквозной проверки, либо её дублирования на бизнес-исключении.
+`NotFoundException`, `ForbiddenException`, `ValidationException` и `AuthenticationException` не выбрасывает ни один класс `app/src`: модули, которым нужны собственные исключения, завели их сами — переводимые доменные поверх `DomainTranslatableException` (Auth, Media, Notifications, Posts, System, User) и технические поверх `\DomainException` или `\Exception` (Media, Notifications, System); у `Access` и `Tags` собственных исключений нет вовсе. Четыре общих остаются как переиспользуемые примитивы без владельца-модуля; их поведение закреплено `tests/Unit/Shared/Domain/Exception/ApiDomainExceptionTest.php` и тестовым контроллером `tests/App/Modules/System/Http/ApiErrorTestController.php`, который проверяет общий механизм `spiral-api-errors` независимо от бизнес-модуля. Удаление стоило бы либо этой сквозной проверки, либо её дублирования на бизнес-исключении.
 
 ### Три подавления `@phpstan-ignore varTag.nativeType` в `MediaMapper`
 
